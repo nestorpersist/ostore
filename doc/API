@@ -1,0 +1,87 @@
+Json is widely used. Keys and values are both represented in JSON.
+Many other data structures also use Json.
+Json is handled using a modified version of 
+the Odersky/Twitter Json parser with immutable Scala native types.
+
+Json Type aliases
+   type Json = Any
+   type JsonKey = Any
+   type JsonObject = Map[String,Json] (default HashMap[String,Json])
+   type JsonArray = Seq[Json]         (default List[Json])
+
+Other Json Types
+   String
+   Boolean
+   Int, Long, BigDecimal
+   null
+
+Rest URL's
+   http://host:port/database/table/key
+   for PUT body must be JSON value
+
+Rest form of keys
+   23 => 23
+   abc => "abc" (must be letters and digits and not a number,
+                 true,false,or null)
+   (23,abc) => [23,"abc"]
+   foo%20bar => "foo bar" (escape for blank used)
+   (23,"23") => [23,"23"]
+   (false,"false") => [false,"false"]
+
+Rest get list url forms
+
+   /                                list of databases
+   /{database}                      db info | list of tables
+   /{database}/{table}              table info | list of keys
+   /{database}/server:{server}	    server info |
+   /{database}/ring:{ring}          ring info | list of nodes
+   /{database}/ring:{ring}/{node}   node info |
+   /{database}/{table}/{key}        item 
+
+
+There are special options available via both Scala and
+REST apis. (* = NYI)
+
+For all
+        pretty          REST only
+        *ring=r1
+
+For database (get)
+        rings
+        servers
+
+For table (get)
+        monitor
+        report
+        search="a b"
+
+For database (post)
+	request contains commands
+
+For item (get)
+        get=kvc      multipart return (Key,Value,vector Clock)
+        *r=n         default 1
+
+For table (get list of keys)
+        get=kvc      multipart return (Key,Value,vector Clock)
+        low=key
+        high=key
+        includelow
+        includehigh
+        prefix=key
+        includeprefix
+        parent=arraykey
+        includeparent
+        reverse
+        count=n         REST only, default is 30
+
+For item (put)
+        update           for opt cc (body includes c, c must not have changed)
+        create           for opt cc (must not already exist)
+        *w=n             default 1
+        fast
+        *expires=t
+
+For item (delete)
+	fast
+	* update	for opt cc (body includes c, c must not have changed)

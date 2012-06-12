@@ -1,0 +1,31 @@
+OStore code is licensed by Persist Software 
+under the Apache 2 license.
+
+Other code used within OStore.
+
+1. Scala (Scala License).
+
+2. Akka (Apache 2 License).
+
+3. Json parser. Based on example from Martin Odersky Scala
+   book (Scala License).
+   Modified by Twitter (Apache 2 License). 
+   Further modified by Persist Software (Apache 2 License).
+
+4. JDBM3 (Apache 2 License).
+
+5. HTML server. Based on example in Akka documentation
+   (Typesafe License).
+   Futher modified by Persist Software (Apache 2 License).
+
+6. Vaadin (Apache 2 License).
+
+7. GWT (Apache 2 License).
+
+8. ScalaTest (Apache 2 License).
+
+9. The Scala Porter Stemmer code ("free of charge for
+   any purpose") is by Ken Faulkner and
+   can be found at
+
+   http://tartarus.org/martin/PorterStemmer/

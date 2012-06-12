@@ -1,0 +1,26 @@
+{ "tables":[
+    {"name":"tab1"},
+    {"name":"tab2"},
+    {"name":"tab3"},
+    {"name":"map3", "map":{"from":"tab3","act":"Index","field":"a"}},
+    {"name":"count2", "reduce":{"from":"tab2","act":"Count","size":1}},
+    {"name":"icount2", "map":{"from":"count2","act":"Invert"}}
+    ],
+  "defaults":{ "host":"127.0.0.1", "port":8011 },
+  "rings":[
+   {"name":"r1",
+    "nodes":[
+    {"name":"n1"},
+    {"name":"n2"},
+    {"name":"n3"}
+    ]},
+   {"name":"r2",
+    "nodes":[
+    {"name":"n4"},
+    {"name":"n5"}
+    ]},
+   {"name":"r3",
+    "nodes":[
+    {"name":"n6"}
+    ]}
+]}

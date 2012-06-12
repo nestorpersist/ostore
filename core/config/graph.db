@@ -1,0 +1,20 @@
+{ "tables": [
+  {"name":"graph"}, 
+  {"name":"graphinvert","map":{"from":"graph","act":"InvertKey"}},
+  {"name":"graphfrom","reduce":{"from":"graphinvert","size":1,"act":"KeyPair"}},
+  {"name":"graphpath", "prefix":{"name":"links","size":1},
+                       "map":[{"from":"graph","act":"Identity"},
+                              {"from":"graphpath","fromprefix":"links","act2":"Traverse2"},
+                              {"from":"graphfrom","act":"Identity","toprefix":"links"}]},
+  {"name":"graphroute", "map":{"from":"graphpath","act":"Route"}},
+  {"name":"graphroutecount", "reduce":{"from":"graphroute","size":2,"act":"Count"}},
+  {"name":"graphcycles", "map":{"from":"graphpath","act":"Cycle"}}
+   ],
+  "defaults":{ "host":"127.0.0.1", "port":8011 },
+  "rings":[
+   {"name":"r1",
+    "nodes":[
+    {"name":"n1"}
+    ]}
+   ]
+}
