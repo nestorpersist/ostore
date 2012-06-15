@@ -1,0 +1,25 @@
+Vaadin Web UI for OStore
+
+Build with sbt.
+
+To run via jetty use the following sbt command
+
+   container:start
+
+
+Now point your browser to
+
+   http://127.0.0.1:8080
+
+For development can be run under Tomcat
+in Eclipse. Setup is complex!
+But this allows code changes to take effect
+without restarting Tomcat (jetty does not
+support this).
+Add the following to the url so reloads will 
+pick up changes
+
+   ?restartApplication
+
+
+
