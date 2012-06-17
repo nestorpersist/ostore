@@ -31,7 +31,7 @@ trait ServerTableAssembly extends ServerMapReduceComponent with ServerSyncCompon
 
 class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
   store: Store, monitor: ActorRef, send: ActorRef, config: DatabaseConfig) extends Actor {
-
+  
   object all extends ServerTableAssembly {
     val info = new ServerTableInfo(databaseName, ringName, nodeName, tableName,
       config, send, store, monitor)

@@ -4,6 +4,8 @@
 .DS_Store
 .project
 .classpath
+data
+.cache
 
 # sbt specific
 dist/*

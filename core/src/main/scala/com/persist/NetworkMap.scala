@@ -34,9 +34,9 @@ import scala.collection.immutable.TreeMap
 //       /user/@srv
 //       /user/database
 //       /user/database/@send
-//       /user/database/node
-//       /user/database/node/@mon
-//       /user/database/node/table
+//       /user/database/ring/node
+//       /user/database/ring/node/@mon
+//       /user/database/ring/node/table
 
 class Range {
   private var low: String = ""
@@ -59,10 +59,10 @@ class NetworkMap(system: ActorSystem, val databaseName: String, config: Json) {
     lazy val sendRef = system.actorFor("akka://ostore@" + host + ":" + port + "/user/" + databaseName + "/@send")
   }
 
-  class NodeTableInfo(nodeName: String, val name: String, host: String, port: Int, low: String, high: String) {
+  class NodeTableInfo(ringName:String, nodeName: String, val name: String, host: String, port: Int, low: String, high: String) {
     val range = new Range()
     range.put(low, high)
-    lazy val ref: ActorRef = system.actorFor("akka://ostore@" + host + ":" + port + "/user/" + databaseName + "/" + nodeName + "/" + name)
+    lazy val ref: ActorRef = system.actorFor("akka://ostore@" + host + ":" + port + "/user/" + databaseName + "/" + ringName + "/" + nodeName + "/" + name)
   }
 
   class TableInfo(tableName: String) {
@@ -76,7 +76,7 @@ class NetworkMap(system: ActorSystem, val databaseName: String, config: Json) {
   class NodeInfo(val ringName: String, val name: String, val pos: Int, host: String, port: Int, low: String, high: String) {
     var tables = Map[String, NodeTableInfo]()
     for (tableName <- allTables) {
-      val tableInfo = new NodeTableInfo(name, tableName, host, port, low, high)
+      val tableInfo = new NodeTableInfo(ringName, name, tableName, host, port, low, high)
       tables = tables + (tableName -> tableInfo)
     }
     lazy val ref: ActorRef = system.actorFor("akka://ostore@" + host + ":" + port + "/user/" + databaseName + "/" + name)

@@ -60,11 +60,10 @@ trait ServerMapReduceComponent { this: ServerTableAssembly =>
       val ri = ReduceInfo(to, getReduce(reduce), reduceStore)
       reduces = ri :: reduces
     }
-    val fromReduce: Reduce = if (tconfig.fromReduce != null) {
+    var fromReduce: Reduce = null
+    for ((from,reduce) <- tconfig.toReduce) {
       ops.canWrite = false
-      getReduce(tconfig.fromReduce)
-    } else {
-      null
+      fromReduce = getReduce(reduce)
     }
 
     def close {

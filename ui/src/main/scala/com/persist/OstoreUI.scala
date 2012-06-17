@@ -689,7 +689,7 @@ class Act(app: Application, client: WebClient, all: All, top: Top, left: Left, r
   }
 }
 
-class OstoreUI extends Application {
+class OStoreUI extends Application {
   // TODO list paged fetch for long lists
   def init(): Unit = {
     setTheme("runo")

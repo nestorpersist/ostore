@@ -13,7 +13,7 @@
 		<init-param>
 			<description>Vaadin application class to start</description>
 			<param-name>application</param-name>
-			<param-value>com.persist.OStoreUIApplication</param-value>
+			<param-value>com.persist.OStoreUI</param-value>
 		</init-param>
 		<!--<init-param>
 			<description>Application widgetset</description>

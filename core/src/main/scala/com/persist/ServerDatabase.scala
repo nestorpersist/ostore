@@ -52,8 +52,8 @@ class ServerDatabase(config:DatabaseConfig, map: NetworkMap, serverConfig: Json,
       if (nodeConfig.serverName == serverName) {
         hasRing = true
       }
-      if (hasRing) newRing(ringName)
     }
+    if (hasRing) newRing(ringName)
   }
 
   def receive = {

@@ -1,0 +1,10 @@
+To run the server process on each 
+server, do a
+
+
+   sbt run
+
+This will read in 
+
+   config/server.json
+

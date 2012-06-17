@@ -37,8 +37,7 @@ case class NodeConfig(
   val port: Int,
   val pos: Int) {
   def serverName: String = {
-    // TODO
-    ""
+    host + ":" + port
   }
 }
 
@@ -65,6 +64,11 @@ object DatabaseConfig {
     val nodeConfig = new NodeConfig(ringName, name, host, port, pos)
     nodeConfig
   }
+  
+  private def getMap(map:Map[String,Map[String,Json]],name:String):Map[String,Json] = {
+    if (! map.contains(name)) { Map[String,Json]() } else { map(name) }
+    
+  }
 
   def apply(databaseName: String, config: Json): DatabaseConfig = {
     val tabs = jgetArray(config, "tables")
@@ -80,22 +84,22 @@ object DatabaseConfig {
         case a: JsonArray => {
           for (m <- a) {
             val from = jgetString(map, "from")
-            toMap = toMap + (to -> (toMap(to) + (from -> m)))
-            fromMap = fromMap + (from -> (toMap(from) + (to -> m)))
+            toMap = toMap + (to -> (getMap(toMap,to) + (from -> m)))
+            fromMap = fromMap + (from -> (getMap(fromMap,from) + (to -> m)))
           }
         }
         case m: JsonObject => {
           val from = jgetString(map, "from")
-          toMap = toMap + (to -> (toMap(to) + (from -> m)))
-          fromMap = fromMap + (from -> (toMap(from) + (to -> m)))
+          toMap = toMap + (to -> (getMap(toMap,to) + (from -> m)))
+          fromMap = fromMap + (from -> (getMap(fromMap,from) + (to -> m)))
         }
         case x =>
       }
       val reduce = jget(tab, "reduce")
       if (reduce != null) {
         val from = jgetString(reduce, "from")
-        toReduce = toReduce + (to -> (toReduce(to) + (from -> reduce)))
-        fromReduce = fromReduce + (from -> (toReduce(from) + (to -> reduce)))
+        toReduce = toReduce + (to -> (getMap(toReduce,to) + (from -> reduce)))
+        fromReduce = fromReduce + (from -> (getMap(fromReduce,from) + (to -> reduce)))
       }
     }
 
@@ -107,7 +111,7 @@ object DatabaseConfig {
         case obj: JsonObject => JsonArray(obj)
         case x => JsonArray()
       }
-      val info = TableConfig(name, prefix, toMap(name), fromMap(name), toReduce(name), fromReduce(name))
+      val info = TableConfig(name, prefix, getMap(toMap,name), getMap(fromMap,name), getMap(toReduce,name), getMap(fromReduce,name))
       tables = tables + (name -> info)
     }
 

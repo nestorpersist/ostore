@@ -1,0 +1,38 @@
+1. Start sever
+
+	cd core
+	sbt
+	run
+
+2. Start ui
+
+	cd ui
+	sbt
+	container:start
+
+3. In browser goto url
+
+	http://127.0.0.1:8080/?rstartApplication
+
+4. Add a database
+
+	name: test
+	file: config/test.db
+
+5. Add values to a table
+
+	select the test database
+	select tables
+	select tab1
+	upload
+	file: tab1.data
+
+6. To quit
+
+	for database test
+
+	stop
+
+	Shutdown both core and ui
+
+
