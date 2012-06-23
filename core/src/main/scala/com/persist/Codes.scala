@@ -17,7 +17,7 @@
 
 package com.persist
 
-object Codes {
+private[persist] object Codes {
     // Success
     final val Ok = "Ok"
     final val NotPresent = "NotPresent"

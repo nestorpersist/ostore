@@ -61,9 +61,9 @@ import scala.collection.JavaConversions._
 // wait for all nodes to become idle
 // sync => stopped
 
-class Manager(system: ActorSystem, client: Client) {
+class Manager private[persist](system: ActorSystem, client: Client) {
 
-  implicit val timeout = Timeout(5 seconds)
+  private implicit val timeout = Timeout(5 seconds)
 
   def createDatabase(databaseName: String, config: Json) {
     val map = new NetworkMap(system, databaseName, config)

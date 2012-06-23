@@ -28,9 +28,9 @@ import akka.util.duration._
 import akka.dispatch.Await
 import scala.collection.immutable.TreeMap
 
-class NodeInfo(val name: String, val node: ActorRef)
+private[persist] class NodeInfo(val name: String, val node: ActorRef)
 
-class ServerRing(databaseName:String, ringName:String, send:ActorRef, config:DatabaseConfig, serverConfig: Json, create: Boolean) extends Actor {
+private[persist] class ServerRing(databaseName:String, ringName:String, send:ActorRef, config:DatabaseConfig, serverConfig: Json, create: Boolean) extends Actor {
   val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
   var nodes = TreeMap[String, NodeInfo]()
   implicit val timeout = Timeout(5 seconds)

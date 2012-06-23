@@ -3,9 +3,12 @@
 
 .DS_Store
 .project
+.settings
 .classpath
 data
 .cache
+WebContent
+bin
 
 # sbt specific
 dist/*

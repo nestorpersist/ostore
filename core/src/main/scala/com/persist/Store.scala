@@ -29,7 +29,7 @@ import akka.util.Timeout
 import akka.dispatch.Await
 import akka.actor.ActorContext
 
-class StoreCommit(db: DB) extends Actor {
+private[persist] class StoreCommit(db: DB) extends Actor {
   val system = context.system
   val maxCnt = 500
   val maxTime: Long = 1000 // 1 second
@@ -83,7 +83,7 @@ class StoreCommit(db: DB) extends Actor {
   }
 }
 
-class Store(context:ActorContext, nodeName: String, fname: String, val create: Boolean) {
+private[persist] class Store(context:ActorContext, nodeName: String, fname: String, val create: Boolean) {
   val cacheSize = 1024 * 1024 * 1 // 1 M records
   val dbfname = fixName(fname)
 

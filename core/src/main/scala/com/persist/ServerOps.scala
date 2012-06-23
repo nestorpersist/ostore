@@ -18,7 +18,7 @@
 package com.persist
 
 import JsonOps._
-import scala.Math.max
+import scala.math.max
 import akka.dispatch.Future
 import akka.dispatch.Promise
 import akka.dispatch.ExecutionContext
@@ -26,7 +26,7 @@ import akka.util.Timeout
 import akka.util.duration._
 import akka.actor.ActorSystem
 
-trait ServerOpsComponent { this: ServerTableAssembly =>
+private[persist] trait ServerOpsComponent { this: ServerTableAssembly =>
   val ops: ServerOps
   class ServerOps(system: ActorSystem) {
 

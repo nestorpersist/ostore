@@ -26,10 +26,10 @@ import akka.util.Timeout
 import akka.util.duration._
 import akka.dispatch.Promise
 
-trait ServerTableAssembly extends ServerMapReduceComponent with ServerSyncComponent
+private[persist] trait ServerTableAssembly extends ServerMapReduceComponent with ServerSyncComponent
   with ServerBalanceComponent with ServerOpsComponent with ServerTableInfoComponent
 
-class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
+private [persist] class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
   store: Store, monitor: ActorRef, send: ActorRef, config: DatabaseConfig) extends Actor {
   
   object all extends ServerTableAssembly {

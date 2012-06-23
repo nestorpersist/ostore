@@ -28,7 +28,7 @@ import akka.util.duration._
 import akka.util.Timeout
 import akka.dispatch.Future
 
-object HttpConstants {
+private[persist] object HttpConstants {
   val SP = ByteString(" ")
   val HT = ByteString("\t")
   val CRLF = ByteString("\r\n")
@@ -38,10 +38,10 @@ object HttpConstants {
   val QUERY = ByteString("?")
 }
 
-case class Request(meth: String, path: List[String], query: Option[String], httpver: String, headers: List[Header], body: Option[ByteString])
-case class Header(name: String, value: String)
+private[persist] case class Request(meth: String, path: List[String], query: Option[String], httpver: String, headers: List[Header], body: Option[ByteString])
+private[persist] case class Header(name: String, value: String)
 
-object HttpIteratees {
+private[persist] object HttpIteratees {
   import HttpConstants._
 
   def readRequest =
@@ -144,7 +144,7 @@ object HttpIteratees {
     }
 }
 
-class HttpServer(port: Int) extends Actor {
+private[persist] class HttpServer(port: Int) extends Actor {
 
   val state = IO.IterateeRef.Map.async[IO.Handle]()(context.dispatcher)
   var channel: ServerHandle = null // .close() to shutdown
@@ -170,7 +170,7 @@ class HttpServer(port: Int) extends Actor {
   }
 }
 
-object HttpServer {
+private[persist] object HttpServer {
   import HttpIteratees._
 
   // TODO must add headers to response
@@ -252,7 +252,7 @@ object HttpServer {
     }
 }
 
-object Http {
+private[persist] object Http {
   var server: ActorRef = null
   var system: ActorSystem = null
   implicit val timeout = Timeout(5 seconds)

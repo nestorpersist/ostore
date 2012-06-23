@@ -1,3 +1,20 @@
+/*
+ *  Copyright 2012 Persist Software
+ *  
+ *   http://www.persist.com
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+*/
+
 package com.persist
 
 import JsonOps._
@@ -5,7 +22,7 @@ import scala.collection.immutable.TreeMap
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 
-case class RingConfig(
+private[persist] case class RingConfig(
   val name: String,
   // serverName -> ServerConfig
   val nodes: Map[String, NodeConfig],
@@ -30,7 +47,7 @@ case class RingConfig(
 
 }
 
-case class NodeConfig(
+private[persist] case class NodeConfig(
   val ringName: String,
   val name: String,
   val host: String,
@@ -41,7 +58,7 @@ case class NodeConfig(
   }
 }
 
-case class TableConfig(
+private[persist] case class TableConfig(
   val tableName: String,
   val prefix: JsonArray,
   val toMap: Map[String, Json],
@@ -49,7 +66,7 @@ case class TableConfig(
   val toReduce: Map[String, Json],
   val fromReduce: Map[String, Json])
 
-object DatabaseConfig {
+private[persist] object DatabaseConfig {
 
   private def nodeInit(node: Json, ringName: String, defaultHost: String, defaultPort: Int, pos:Int): NodeConfig = {
     val name = jgetString(node, "name")
@@ -145,7 +162,7 @@ object DatabaseConfig {
 }
 
 // Note DatabaseConfig objects are immutable
-class DatabaseConfig(
+private[persist] class DatabaseConfig(
   val name: String,
   val rings: Map[String, RingConfig],
   val tables: Map[String, TableConfig]) {

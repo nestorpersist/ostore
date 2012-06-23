@@ -29,7 +29,7 @@ import akka.util.Timeout
 import scala.collection.immutable.TreeMap
 import JsonOps._
 
-class ServerNode(databaseName: String, ringName: String, nodeName: String, send: ActorRef, config:DatabaseConfig, serverConfig: Json, create: Boolean) extends Actor {
+private[persist] class ServerNode(databaseName: String, ringName: String, nodeName: String, send: ActorRef, config:DatabaseConfig, serverConfig: Json, create: Boolean) extends Actor {
   
   private val monitor = context.actorOf(Props(new Monitor(nodeName)), name = "@mon")
   implicit val timeout = Timeout(5 seconds)

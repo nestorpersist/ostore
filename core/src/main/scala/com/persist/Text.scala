@@ -15,6 +15,7 @@
  *  limitations under the License.
 */
 
+
 package com.persist
 
 import JsonOps._
@@ -22,7 +23,7 @@ import scala.util.parsing.combinator._
 import scala.collection.immutable.HashSet
 import com.misc.Stemmer
 
-object Text {
+private[persist] object Text {
   private val stemmer = new Stemmer
 
   private def fix(w: String): Option[String] = {

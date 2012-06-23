@@ -15,7 +15,7 @@ package com.misc
 
 import scala.io.Source
 
-class Stemmer {
+private[com] class Stemmer {
 
   // word to be stemmed.
   var b = ""
@@ -170,7 +170,7 @@ class Stemmer {
   // checker is the conditional checker for m.
   def processSubList(l: List[(String, String)], checker: Int => Boolean): Boolean =
     {
-      var iter = l.elements
+      var iter = l.iterator
       var done = false
 
       while (!done && iter.hasNext) {

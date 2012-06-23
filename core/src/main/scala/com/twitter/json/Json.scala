@@ -21,14 +21,14 @@ import scala.util.Sorting
 import scala.util.parsing.combinator._
 
 
-trait JsonSerializable {
+private[com] trait JsonSerializable {
   def toJson(): String
 }
 
 /**
  * An Exception thrown when parsing or building JSON.
  */
-class JsonException(reason: String) extends Exception(reason)
+private[com] class JsonException(reason: String) extends Exception(reason)
 
 
 private class EscapedStringParser extends JavaTokenParsers {
@@ -111,7 +111,7 @@ private class JsonParser extends JavaTokenParsers {
  * Collections are Sequence[T], Map[String, T] where T includes the scalars defined above, or
  * recursive Sequence or Map. You are in flavor country.
  */
-object Json {
+private[com] object Json {
   private[json] def quotedChar(codePoint: Int) = {
     codePoint match {
       case c if c > 0xffff =>
@@ -229,6 +229,6 @@ object Json {
  * allow objects to be converted into JSON, attached to another data structure, and not
  * re-encoded.
  */
-case class JsonQuoted(body: String) {
+private[com] case class JsonQuoted(body: String) {
   override def toString = body
 }

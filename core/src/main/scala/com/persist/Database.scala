@@ -27,12 +27,12 @@ import akka.dispatch.Await
 import akka.util.duration._
 import akka.pattern._
 
-class Database(system: ActorSystem, databaseName: String, map: NetworkMap,config:DatabaseConfig) {
-  implicit val timeout = Timeout(5 seconds)
-  private val send = system.actorOf(Props(new Send(map,config)))
-  val f = send ? ("start")
+class Database private[persist](system: ActorSystem, databaseName: String ,config:DatabaseConfig) {
+  private implicit val timeout = Timeout(5 seconds)
+  private val send = system.actorOf(Props(new Send(system,config)))
+  private val f = send ? ("start")
   Await.result(f,5 seconds)
-  implicit val executor = system.dispatcher
+  private implicit val executor = system.dispatcher
   
   def stop() {
     val f = send ? ("stop")
@@ -42,6 +42,6 @@ class Database(system: ActorSystem, databaseName: String, map: NetworkMap,config
   }
 
   // TODO list tables, server, rings, nodes (using map)
-  def syncTable(tableName: String) = new SyncTable(tableName, system, map, send)
+  def syncTable(tableName: String) = new SyncTable(tableName, system, config, send)
   def asyncTable(tableName: String) = new AsyncTable(tableName, system, send)
 }

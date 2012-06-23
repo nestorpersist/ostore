@@ -37,11 +37,11 @@ import akka.util.duration._
 import akka.dispatch.ExecutionContext
 import akka.dispatch.Promise
 
-class NotFoundException(val msg: String) extends Exception
-class BadRequestException(val msg: String) extends Exception
-class ConflictException(val msg: String) extends Exception
+private class NotFoundException(val msg: String) extends Exception
+private class BadRequestException(val msg: String) extends Exception
+private class ConflictException(val msg: String) extends Exception
 
-class QParse extends JavaTokenParsers {
+private[persist] class QParse extends JavaTokenParsers {
   private def decode(a: Any): String = {
     val s1 = a.toString()
     val s2 = URLDecoder.decode(s1, "UTF-8")
@@ -75,11 +75,11 @@ class QParse extends JavaTokenParsers {
     })
 }
 
-object QParser extends QParse {
+private[persist] object QParser extends QParse {
   def parse(s: String) = parseAll(q, s).get
 }
 
-object RestClient1 {
+private[persist] object RestClient1 {
 
   var databases = Map[String, DatabaseInfo]()
   var system: ActorSystem = null
@@ -129,7 +129,7 @@ object RestClient1 {
       // TODO verify both v and c exist
       val v = jget(value, "v")
       val c = jget(value, "c")
-      aclient.update(key, v, c, options - "update" - "v" - "c") map { success =>
+      aclient.conditionalPut(key, v, c, options - "update" - "v" - "c") map { success =>
         if (!success) throw new ConflictException("Item has changed: " + Compact(key))
         None
       }
@@ -259,7 +259,7 @@ object RestClient1 {
       case Some(ni) => {
         val result1 = ni.value +: result
         if (count <= 1) {
-          Future { Some(result.reverse) }
+          Future { Some(result1.reverse) }
         } else {
           doAll(count - 1, ni.next(), result1)
         }

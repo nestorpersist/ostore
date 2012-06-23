@@ -19,7 +19,7 @@ package com.persist
 
 import JsonOps._
 
-object ClockVector {
+private[persist] object ClockVector {
 
   // {"r1:"d1,"r2":d2} can be empty but not null
 

@@ -46,7 +46,7 @@ import scala.io.Source
 // TODO 10. fix up timeouts (special debug settings)
 
 
-class Listener extends Actor {
+private class Listener extends Actor {
   def receive = {
     case r: RemoteClientError => {
       println("*****Remote Client Error:" + r.getCause().getMessage() + ":" + r.getRemoteAddress())
@@ -61,7 +61,7 @@ class Listener extends Actor {
   }
 }
 
-class DatabaseInfo(
+private[persist] class DatabaseInfo(
   val system: ActorSystem, 
   val serverName: String, 
   val databaseName: String, 
@@ -69,14 +69,14 @@ class DatabaseInfo(
   var config: DatabaseConfig,
   var state: String) {
   private lazy val serverInfo = map.serverInfo(serverName)
-  def client(databaseName: String) = new SyncTable(databaseName, system, map, serverInfo.sendRef)
+  def client(databaseName: String) = new SyncTable(databaseName, system, config, serverInfo.sendRef)
   def aclient(databaseName: String) = new AsyncTable(databaseName, system, serverInfo.sendRef)
 }
 
-class Server(serverConfig: Json) extends Actor {
-  implicit val timeout = Timeout(5 seconds)
+private[persist] class Server(serverConfig: Json) extends Actor {
+  private implicit val timeout = Timeout(5 seconds)
 
-  def deletePath(f: File) {
+  private def deletePath(f: File) {
     if (f.isDirectory()) {
       for (f1: File <- f.listFiles()) {
         deletePath(f1);
@@ -85,15 +85,15 @@ class Server(serverConfig: Json) extends Actor {
     f.delete();
   }
 
-  val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
-  val path = jgetString(serverConfig, "path")
-  val fname = path + "/" + "@server" +"/" + serverName
-  val f = new File(fname)
-  val exists = f.exists()
-  val system = context.system
-  val store = new Store(context, "@server", fname, ! exists)
-  val storeTable = store.getTable(serverName)
-  val listener = system.actorOf(Props[Listener])
+  private val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
+  private val path = jgetString(serverConfig, "path")
+  private val fname = path + "/" + "@server" +"/" + serverName
+  private val f = new File(fname)
+  private val exists = f.exists()
+  private val system = context.system
+  private val store = new Store(context, "@server", fname, ! exists)
+  private val storeTable = store.getTable(serverName)
+  private val listener = system.actorOf(Props[Listener])
   system.eventStream.subscribe(listener, classOf[DeadLetter])
   system.eventStream.subscribe(listener, classOf[RemoteLifeCycleEvent])
 
@@ -138,7 +138,7 @@ class Server(serverConfig: Json) extends Actor {
         sender ! "AlreadyPresent"
       } else {
         storeTable.putMeta(databaseName, dbConf)
-        val database = system.actorOf(Props(new ServerDatabase(config, map, serverConfig, true)), name = databaseName)
+        val database = system.actorOf(Props(new ServerDatabase(config, serverConfig, true)), name = databaseName)
         val info = new DatabaseInfo(system, serverName, databaseName, map, config, "starting")
         databases += (databaseName -> info)
         RestClient1.databases = databases // should be better synchronized
@@ -182,7 +182,7 @@ class Server(serverConfig: Json) extends Actor {
     case ("startDatabase1", databaseName: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
-          val database = system.actorOf(Props(new ServerDatabase(info.config,info.map, serverConfig, false)), name = databaseName)
+          val database = system.actorOf(Props(new ServerDatabase(info.config, serverConfig, false)), name = databaseName)
           val f = database ? ("start1")
           Await.result(f, 5 seconds)
           info.state = "starting"
@@ -261,9 +261,9 @@ class Server(serverConfig: Json) extends Actor {
 }
 
 object Server {
-  implicit val timeout = Timeout(200 seconds)
+  private implicit val timeout = Timeout(200 seconds)
   private var server:ActorRef = null
-  var system:ActorSystem = null
+  private var system:ActorSystem = null
   
   def start(config: Json):ActorSystem = {
     // TODO get port from config

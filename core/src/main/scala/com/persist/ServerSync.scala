@@ -21,7 +21,7 @@ import akka.actor.Actor
 import akka.actor.ActorRef
 import JsonOps._
 
-trait ServerSyncComponent { this: ServerTableAssembly =>
+private[persist] trait ServerSyncComponent { this: ServerTableAssembly =>
   val sync: ServerSync
   class ServerSync {
     val hasSync = info.config.rings.size > 1

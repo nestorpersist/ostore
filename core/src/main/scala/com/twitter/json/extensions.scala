@@ -20,7 +20,7 @@ import scala.util.matching.Regex
 
 // These are Robey's extensions from Configgy and when Configgy for 2.8 is done,
 // we'll move back to using it.
-final class ConfiggyString(wrapped: String) {
+private[com] final class ConfiggyString(wrapped: String) {
   /**
    * For every section of a string that matches a regular expression, call
    * a function to determine a replacement (as in python's
@@ -132,7 +132,7 @@ final class ConfiggyString(wrapped: String) {
 }
 
 
-final class ConfiggyByteArray(wrapped: Array[Byte]) {
+private[com] final class ConfiggyByteArray(wrapped: Array[Byte]) {
   /**
    * Turn an Array[Byte] into a string of hex digits.
    */
@@ -150,7 +150,7 @@ final class ConfiggyByteArray(wrapped: Array[Byte]) {
 }
 
 
-object extensions {
+private[com] object extensions {
   implicit def stringToConfiggyString(s: String): ConfiggyString = new ConfiggyString(s)
   implicit def byteArrayToConfiggyByteArray(b: Array[Byte]): ConfiggyByteArray = new ConfiggyByteArray(b)
 }

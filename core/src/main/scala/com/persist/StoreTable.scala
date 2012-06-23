@@ -32,7 +32,7 @@ import akka.dispatch.Promise
 import java.io.ObjectOutputStream
 import JsonOps._
 
-class JObject(var j:Json) extends java.io.Serializable {
+private class JObject(var j:Json) extends java.io.Serializable {
   def writeObject(out:java.io.ObjectOutputStream) {
     out.writeObject(Compact(j))
     out.close()
@@ -47,7 +47,7 @@ class JObject(var j:Json) extends java.io.Serializable {
   }
 }
 
-class StoreTable(system: ActorSystem, db: DB, meta: SortedMap[String, String], vals: Map[String, String],doCommit: => Unit) {
+private[persist] class StoreTable(system: ActorSystem, db: DB, meta: SortedMap[String, String], vals: Map[String, String],doCommit: => Unit) {
 
   lazy implicit private val ec = ExecutionContext.defaultExecutionContext(system)
   implicit private val timeout = Timeout(5 seconds)

@@ -38,7 +38,7 @@ import scala.collection.immutable.TreeMap
 //       /user/database/ring/node/@mon
 //       /user/database/ring/node/table
 
-class Range {
+private[persist] class Range {
   private var low: String = ""
   private var high: String = ""
   def get() = { (low, high) }
@@ -48,24 +48,24 @@ class Range {
   }
 }
 
-class NetworkMap(system: ActorSystem, val databaseName: String, config: Json) {
+private[persist] class NetworkMap(system: ActorSystem, val databaseName: String, config: Json) {
 
   // TODO temp constructor as Json rep is changed!
   //def this(system:ActorSystem,databaseName:String,config:String) = this(system,databaseName,Json(config))
 
-  class ServerInfo(val name: String, val host: String, val port: Int) {
+  private[persist] class ServerInfo(val name: String, val host: String, val port: Int) {
     lazy val ref = system.actorFor("akka://ostore@" + host + ":" + port + "/user/@svr")
     lazy val dbRef = system.actorFor("akka://ostore@" + host + ":" + port + "/user/" + databaseName)
     lazy val sendRef = system.actorFor("akka://ostore@" + host + ":" + port + "/user/" + databaseName + "/@send")
   }
 
-  class NodeTableInfo(ringName:String, nodeName: String, val name: String, host: String, port: Int, low: String, high: String) {
+  private[persist] class NodeTableInfo(ringName:String, nodeName: String, val name: String, host: String, port: Int, low: String, high: String) {
     val range = new Range()
     range.put(low, high)
     lazy val ref: ActorRef = system.actorFor("akka://ostore@" + host + ":" + port + "/user/" + databaseName + "/" + ringName + "/" + nodeName + "/" + name)
   }
 
-  class TableInfo(tableName: String) {
+  private[persist] class TableInfo(tableName: String) {
     var prefix:JsonArray = JsonArray()
     var toMap = Map[String, Json]()
     var fromMap = Map[String, Json]()
@@ -73,7 +73,7 @@ class NetworkMap(system: ActorSystem, val databaseName: String, config: Json) {
     var fromReduce:Json = null
   }
 
-  class NodeInfo(val ringName: String, val name: String, val pos: Int, host: String, port: Int, low: String, high: String) {
+  private[persist] class NodeInfo(val ringName: String, val name: String, val pos: Int, host: String, port: Int, low: String, high: String) {
     var tables = Map[String, NodeTableInfo]()
     for (tableName <- allTables) {
       val tableInfo = new NodeTableInfo(ringName, name, tableName, host, port, low, high)
@@ -92,7 +92,7 @@ class NetworkMap(system: ActorSystem, val databaseName: String, config: Json) {
     }
   }
 
-  class RingInfo(val name: String) {
+  private[persist] class RingInfo(val name: String) {
     // serverName -> ServerInfo
     var map = Map[String, NodeInfo]()
     // server names

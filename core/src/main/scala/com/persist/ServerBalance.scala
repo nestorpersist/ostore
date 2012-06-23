@@ -21,7 +21,7 @@ import JsonOps._
 import akka.actor.ActorSystem
 import akka.actor.ActorRef
 
-trait ServerBalanceComponent { this: ServerTableAssembly =>
+private[persist] trait ServerBalanceComponent { this: ServerTableAssembly =>
   val bal: ServerBalance
   class ServerBalance(system:ActorSystem) {
     var canSend = false

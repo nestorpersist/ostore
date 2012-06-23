@@ -28,12 +28,12 @@ import akka.util.duration._
 import akka.dispatch.Await
 import scala.collection.immutable.TreeMap
 
-class RingInfo(val name: String, val ring: ActorRef)
+private[persist] class RingInfo(val name: String, val ring: ActorRef)
 
-class ServerDatabase(config:DatabaseConfig, map: NetworkMap, serverConfig: Json, create: Boolean) extends Actor {
+private[persist] class ServerDatabase(config:DatabaseConfig, serverConfig: Json, create: Boolean) extends Actor {
   val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
   val databaseName = config.name
-  val send = context.actorOf(Props(new Send(map,config)), name = "@send")
+  val send = context.actorOf(Props(new Send(context.system,config)), name = "@send")
   var rings = TreeMap[String, RingInfo]()
   implicit val timeout = Timeout(5 seconds)
 

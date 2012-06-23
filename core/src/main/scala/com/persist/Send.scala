@@ -31,14 +31,21 @@ import akka.util.duration._
 import akka.dispatch._
 import akka.actor.Cancellable
 
-class Send(networkMap: NetworkMap,config:DatabaseConfig) extends Actor {
+private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Actor {
+  
+  val databaseMap = DatabaseMap(config)
+  
   val timeout1 = 100000L // debug 100 sec
   implicit val timeout = Timeout(5 seconds)
 
   private var last = 0L
   private val uidGen = new UidGen
+  
+  val defaultRing = config.rings.keys.head
 
-  class MsgAction(val ring: String, val node: String, val table: String, val when: Long, val why: String)
+  class MsgAction(val ring: String, val nodeMap: NodeMap, val table: String, val when: Long, val why: String)
+  
+  private val noDest = Map[String,String]()
 
   class MsgInfo(kind1: String, dest1: Map[String, String], client1: Any, uid1: Long, tab1: String, key1: String, value1: Any) {
     val kind = kind1
@@ -68,7 +75,7 @@ class Send(networkMap: NetworkMap,config:DatabaseConfig) extends Actor {
       }
       if (when > now) {
         val delta: Long = when - now
-        timer = context.system.scheduler.scheduleOnce(5 milliseconds, null, "foo")
+        timer = system.scheduler.scheduleOnce(5 milliseconds, null, "foo")
         //("timer"),when-now,java.util.concurrent.TimeUnit.MILLISECONDS)
         timerWhen = when
       } else {
@@ -98,9 +105,10 @@ class Send(networkMap: NetworkMap,config:DatabaseConfig) extends Actor {
     msgs = msgs - info.uid
   }
 
-  private def sendDirect(kind: String, ring: String, server: String, client: ActorRef, uid: Long, tab: String, key: String, value: Any) {
-    val dest = networkMap.get(ring, server, tab)
-    dest ! (kind, uid, key, value)
+  private def sendDirect(kind: String, ring: String, nodeMap:NodeMap, client: ActorRef, uid: Long, tab: String, key: String, value: Any) {
+    //val dest = networkMap.get(ring, server, tab)
+    val ref = nodeMap.getRef(system)
+    ref ! (kind, uid, key, value)
   }
 
   def send(info: MsgInfo, why: String) {
@@ -108,35 +116,40 @@ class Send(networkMap: NetworkMap,config:DatabaseConfig) extends Actor {
     // r,s  r,k  k r,s+ r,s-
     // r*,s r*,k prefer r but any ok 
     val ring = info.dest get "ring" match {
-      case Some(s: String) => s
-      case None => "r1" // TODO random selection
+      case Some(ringName: String) => ringName
+      case None => defaultRing // TODO random selection???
     }
-    val node = info.dest get "node" match {
-      case Some(s: String) => s // check for + -
+    val nodeMap = info.dest get "node" match {
+      case Some(nodeName: String) => databaseMap.rings(ring).tables(info.tab).nodes(nodeName) 
       case None => {
-        if (info.key != "null") {
+        //if (info.key != "null") {
           val less = info.kind.endsWith("-")
-          val serverInfo = networkMap.getForKey(ring, info.tab, info.key, less)
-          serverInfo match {
-            case Some(si) => {
-              si.name
+          //val nodeInfo = networkMap.getForKey(ring, info.tab, info.key, less)
+          // TODO deal with node1
+          val (node1,node2) = databaseMap.get(ring, info.tab, info.key, less)
+          node2
+          /*
+          nodeInfo match {
+            case Some(ni) => {
+              ni.name
             }
             case None => {
               sendClient(info, "bad table", info.tab)
               return
             }
           }
-        } else {
-          "s1" // TODO error?
-        }
+          */
+        //} else {
+        //  "s1" // TODO error?
+        //}
       }
     }
     val now: Long = System.currentTimeMillis
-    val act = new MsgAction(ring, node, info.tab, now, why)
+    val act = new MsgAction(ring, nodeMap, info.tab, now, why)
     info.history = act :: info.history
     val when = now + (timeout1 * info.history.size)
     addEvent(when, info.uid)
-    sendDirect(info.kind, ring, node, self, info.uid, info.tab, info.key, info.value)
+    sendDirect(info.kind, ring, nodeMap, self, info.uid, info.tab, info.key, info.value)
   }
 
   def receive = {
@@ -145,15 +158,29 @@ class Send(networkMap: NetworkMap,config:DatabaseConfig) extends Actor {
     }
     case ("stop") => {
       for ((msgId, msgInfo) <- msgs) {
-        println("Shutdown error /" + networkMap.databaseName + " " + msgInfo)
+        println("Shutdown error /" + config.name + " " + msgInfo)
 
       }
       sender ! Codes.Ok
     }
-    case (kind: String, dest: Map[String, String], client: Any, tab: String, key: String, value: Any) => {
+    case (kind: String, ring: String, client: Any, tab: String, key: String, value: Any) => {
       // client => server
       implicit val timeout = Timeout(5 seconds)
-      //val uid = Await.result(uidGen ? "get",5 seconds).asInstanceOf[Long]
+      val uid = uidGen.get
+      val dest = if (ring == "") {
+        noDest
+      } else {
+        Map[String,String]("ring"->ring)
+      }
+      // client is either ActorRef or Promise[Any] or ""
+      val info = new MsgInfo(kind, dest, client, uid, tab, key, value)
+      msgs = msgs + (uid -> info)
+      send(info, "init")
+    }
+    case (kind: String, dest: Map[String, String], client: Any, tab: String, key: String, value: Any) => {
+      // TODO old form, remove after deal with calls to specific node
+      // client => server
+      implicit val timeout = Timeout(5 seconds)
       val uid = uidGen.get
       // client is either ActorRef or Promise[Any] or ""
       val info = new MsgInfo(kind, dest, client, uid, tab, key, value)
@@ -171,7 +198,8 @@ class Send(networkMap: NetworkMap,config:DatabaseConfig) extends Actor {
             val high = jgetString(range, "high")
             val lastEvent = info.history.head
             //println("handoff:"+lastEvent.ring+":"+lastEvent.server+" ["+low+","+high+"]")
-            networkMap.setRange(lastEvent.ring, lastEvent.node, lastEvent.table, low, high)
+            //networkMap.setRange(lastEvent.ring, lastEvent.node, lastEvent.table, low, high)
+            databaseMap.setLowHigh(lastEvent.ring, lastEvent.nodeMap.nodeName, lastEvent.table, low, high)
             //val newUid = Await.result(uidGen ? "get",5 seconds).asInstanceOf[Long]
             val newUid = uidGen.get
             val newInfo = new MsgInfo(info.kind, info.dest, info.client, newUid, info.tab, info.key, info.value)
@@ -198,7 +226,7 @@ class Send(networkMap: NetworkMap,config:DatabaseConfig) extends Actor {
             sendClient(info, kind, response)
           }
         }
-        case None => // already processed, ignore
+        case None => // already processed, ignore 
       }
     }
     case ("timer") => {

@@ -1,6 +1,6 @@
 package com.persist
 
-class UidGen {
+private[persist] class UidGen {
   private var last:Long = 0
   private val delta = 1000 // 1 second
   

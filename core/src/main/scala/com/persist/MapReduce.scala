@@ -20,10 +20,10 @@ package com.persist
 import JsonOps._
 import scala.collection.immutable.HashSet
 
+// TODO document constraints on map and reduce
+// TODO reduce generalized to not just prefix but any key func
+
 object MapReduce {
-  
-  // TODO document constraints on map and reduce
-  // TODO reduce generalized to not just prefix but any key func
 
   trait MapAll {
     val options: Json
@@ -170,7 +170,7 @@ object MapReduce {
     }
   }
 
-  def getMap(options: Json): MapAll = {
+  private[persist] def getMap(options: Json): MapAll = {
     val act = jgetString(options, "act")
     val act2 = jgetString(options, "act2")
     if (act != "") {
@@ -243,7 +243,7 @@ object MapReduce {
     }
   }
 
-  def getReduce(options: Json): Reduce = {
+  private[persist] def getReduce(options: Json): Reduce = {
     val act = jgetString(options, "act")
     val size = jgetInt(options, "size")
     act match {

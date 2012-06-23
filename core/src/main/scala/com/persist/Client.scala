@@ -29,19 +29,19 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: String = "80
   // TODO optional database of client state (list of servers)
   // TODO connect command to add servers 
 
-  implicit val timeout = Timeout(5 seconds)
+  private implicit val timeout = Timeout(5 seconds)
 
-  class DbInfo(val databaseName: String, val map: NetworkMap, config:DatabaseConfig, var status: String) {
-    val database = new Database(system, databaseName, map, config)
+  private[persist] class DbInfo(val databaseName: String, val map: NetworkMap, config:DatabaseConfig, var status: String) {
+    val database = new Database(system, databaseName, config)
   }
 
   // TODO use software trans memory or agent to sync???
-  var databases = new TreeMap[String, DbInfo]()
+  private var databases = new TreeMap[String, DbInfo]()
 
-  val server = system.actorFor("akka://ostore@" + host + ":" + port + "/user/@svr")
-  val f = server ? ("databases")
-  val (code: String, s: String) = Await.result(f, 5 seconds)
-  val dblist = jgetArray(Json(s))
+  private val server = system.actorFor("akka://ostore@" + host + ":" + port + "/user/@svr")
+  private val f = server ? ("databases")
+  private val (code: String, s: String) = Await.result(f, 5 seconds)
+  private val dblist = jgetArray(Json(s))
   for (db <- dblist) {
     val databaseName = jgetString(db, "name")
     // TODO make sure name not already present

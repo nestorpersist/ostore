@@ -22,7 +22,7 @@ import akka.actor.ActorRef
 import MapReduce._
 import scala.collection.immutable.HashMap
 
-trait ServerMapReduceComponent { this: ServerTableAssembly =>
+private[persist] trait ServerMapReduceComponent { this: ServerTableAssembly =>
   val mr: ServerMapReduce
   class ServerMapReduce {
 

@@ -21,7 +21,7 @@ import akka.actor.Actor
 import akka.actor.ActorRef
 import JsonOps._
 
-trait ServerTableInfoComponent { this: ServerTableAssembly =>
+private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>
   val info: ServerTableInfo
   class ServerTableInfo(val databaseName: String, val ringName: String, val nodeName: String, val tableName: String,
     initConfig:DatabaseConfig, val send: ActorRef, val store: Store, val monitor:ActorRef) {

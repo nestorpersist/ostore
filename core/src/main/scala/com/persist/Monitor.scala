@@ -21,7 +21,7 @@ import akka.actor.Actor
 import JsonOps._
 import akka.actor.ActorRef
 
-class Monitor(nodeName: String) extends Actor {
+private[persist] class Monitor(nodeName: String) extends Actor {
 
   var tables = JsonObject()
 
