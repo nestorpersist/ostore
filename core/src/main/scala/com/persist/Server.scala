@@ -65,12 +65,17 @@ private[persist] class DatabaseInfo(
   val system: ActorSystem, 
   val serverName: String, 
   val databaseName: String, 
-  var map: NetworkMap, 
+  //var map: NetworkMap,
+  val sendServer:SendServer,
   var config: DatabaseConfig,
   var state: String) {
-  private lazy val serverInfo = map.serverInfo(serverName)
-  def client(databaseName: String) = new SyncTable(databaseName, system, config, serverInfo.sendRef)
-  def aclient(databaseName: String) = new AsyncTable(databaseName, system, serverInfo.sendRef)
+  //private lazy val serverInfo = map.serverInfo(serverName)
+  lazy val sendRef = sendServer.sendRef(serverName, databaseName)
+  lazy val dbRef = sendServer.databaseRef(serverName, databaseName)
+  //def client(databaseName: String) = new SyncTable(databaseName, system, config, serverInfo.sendRef)
+  //def aclient(databaseName: String) = new AsyncTable(databaseName, system, serverInfo.sendRef)
+  def client(databaseName: String) = new SyncTable(databaseName, system, config, sendRef)
+  def aclient(databaseName: String) = new AsyncTable(databaseName, system, sendRef)
 }
 
 private[persist] class Server(serverConfig: Json) extends Actor {
@@ -91,6 +96,7 @@ private[persist] class Server(serverConfig: Json) extends Actor {
   private val f = new File(fname)
   private val exists = f.exists()
   private val system = context.system
+  private val sendServer = new SendServer(system)
   private val store = new Store(context, "@server", fname, ! exists)
   private val storeTable = store.getTable(serverName)
   private val listener = system.actorOf(Props[Listener])
@@ -101,7 +107,7 @@ private[persist] class Server(serverConfig: Json) extends Actor {
   val restPort = jgetInt(serverConfig, "rest")
   if (restPort != 0) {
     RestClient1.system = system
-    // TODO should be better synchronized
+    // TODO restclient should call server actors
     RestClient1.databases = databases
     Http.start(system, restPort)
   }
@@ -117,9 +123,10 @@ private[persist] class Server(serverConfig: Json) extends Actor {
             case None => ""
           }
           val dbConfig = Json(dbConf)
-          val map = new NetworkMap(system, databaseName, dbConfig)
+          //val map = new NetworkMap(system, databaseName, dbConfig)
           val config = DatabaseConfig(databaseName, dbConfig)
-          val info = new DatabaseInfo(system, serverName, databaseName, map, config, "stop")
+          //val info = new DatabaseInfo(system, serverName, databaseName, map, config, "stop")
+          val info = new DatabaseInfo(system, serverName, databaseName, sendServer, config, "stop")
           databases += (databaseName -> info)
           RestClient1.databases = databases // should be better synchronized
           key = storeTable.next(databaseName, false)
@@ -132,14 +139,15 @@ private[persist] class Server(serverConfig: Json) extends Actor {
   def receive = {
     case ("newDatabase", databaseName: String, dbConf: String) => {
       val dbConfig = Json(dbConf)
-      val map = new NetworkMap(system, databaseName, dbConfig)
+      //val map = new NetworkMap(system, databaseName, dbConfig)
       var config = DatabaseConfig(databaseName, dbConfig)
       if (databases.contains(databaseName)) {
         sender ! "AlreadyPresent"
       } else {
         storeTable.putMeta(databaseName, dbConf)
         val database = system.actorOf(Props(new ServerDatabase(config, serverConfig, true)), name = databaseName)
-        val info = new DatabaseInfo(system, serverName, databaseName, map, config, "starting")
+        //val info = new DatabaseInfo(system, serverName, databaseName, map, config, "starting")
+        val info = new DatabaseInfo(system, serverName, databaseName, sendServer, config, "starting")
         databases += (databaseName -> info)
         RestClient1.databases = databases // should be better synchronized
         val f = database ? ("start1")
@@ -152,7 +160,8 @@ private[persist] class Server(serverConfig: Json) extends Actor {
       databases.get(databaseName) match {
         case Some(info) => {
           info.state = "stopping"
-          val database = info.map.serverInfo(serverName).dbRef
+          //val database = info.map.serverInfo(serverName).dbRef
+          val database = info.dbRef
           val f = database ? ("stop1")
           val v = Await.result(f, 5 seconds)
           sender ! Codes.Ok
@@ -166,7 +175,8 @@ private[persist] class Server(serverConfig: Json) extends Actor {
       databases.get(databaseName) match {
         case Some(info) => {
           info.state = "stop"
-          val database = info.map.serverInfo(serverName).dbRef
+          //val database = info.map.serverInfo(serverName).dbRef
+          val database = info.dbRef
           val f = database ? ("stop2")
           val v = Await.result(f, 5 seconds)
           val stopped = gracefulStop(database, 5 seconds)(system)
@@ -197,7 +207,8 @@ private[persist] class Server(serverConfig: Json) extends Actor {
     case ("startDatabase2", databaseName: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
-          val database = info.map.serverInfo(serverName).dbRef
+          //val database = info.map.serverInfo(serverName).dbRef
+          val database = info.dbRef
           val f = database ? ("start2")
           Await.result(f, 5 seconds)
           info.state = "active"
@@ -268,7 +279,7 @@ object Server {
   def start(config: Json):ActorSystem = {
     // TODO get port from config
     system = ActorSystem("ostore", ConfigFactory.load.getConfig("server"))
-    server = system.actorOf(Props(new Server(config)), name = "@svr")
+    server = system.actorOf(Props(new Server(config)), name = "@server")
     val f = server ? ("start")
     Await.result(f,200 seconds)
     system

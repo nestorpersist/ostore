@@ -24,7 +24,7 @@ import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
 
 // Actor Paths
-//       /user/@srv
+//       /user/@server
 //       /user/database
 //       /user/database/@send
 //       /user/database/ring/node
@@ -68,7 +68,7 @@ private[persist] object DatabaseMap {
         var nodes = HashMap[String, NodeMap]()
         // TODO replace pos with next node name -- new loop build pos->nodeName
         for ((nodeName, nodeConfig) <- ringConfig.nodes) {
-          nodes += (nodeName -> NodeMap(databaseName, ringName, nodeName, tableName, nodeConfig.pos, nodeConfig.host, +nodeConfig.port))
+          nodes += (nodeName -> NodeMap(databaseName, ringName, nodeName, tableName, nodeConfig.pos, nodeConfig.server.host, nodeConfig.server.port))
         }
         tables += (tableName -> TableMap(nodes))
       }

@@ -46,7 +46,7 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
   // TODO do in parallel
   for ((ringName,ringConfig)<-config.rings) {
     for ((nodeName,nodeConfig)<-ringConfig.nodes) {
-      if (nodeConfig.serverName == serverName) {
+      if (nodeConfig.server.name == serverName) {
         newNode(ringName, nodeName)
       }
     }

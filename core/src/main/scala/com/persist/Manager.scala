@@ -61,17 +61,17 @@ import scala.collection.JavaConversions._
 // wait for all nodes to become idle
 // sync => stopped
 
-class Manager private[persist](system: ActorSystem, client: Client) {
+class Manager private[persist](system: ActorSystem, client: Client, sendServer:SendServer) {
 
   private implicit val timeout = Timeout(5 seconds)
-
+  
   def createDatabase(databaseName: String, config: Json) {
-    val map = new NetworkMap(system, databaseName, config)
+    //val map = new NetworkMap(system, databaseName, config)
     val conf = DatabaseConfig(databaseName,config)
     var ok = true
     // TODO could be done in parallel
-    for (serverInfo <- map.allServers) {
-      val server = serverInfo.ref
+    for (serverName <- conf.servers.keys) {
+      val server = sendServer.serverRef(serverName)
       val f = server ? ("newDatabase", databaseName, Compact(config))
       val v = Await.result(f, 5 seconds)
       if (v != Codes.Ok) {
@@ -80,9 +80,9 @@ class Manager private[persist](system: ActorSystem, client: Client) {
       }
     }
     if (ok) {
-      client.addDatabase(databaseName, map, conf, "active")
-      for (serverInfo <- client.allServers(databaseName)) {
-        val server = serverInfo.ref
+      client.addDatabase(databaseName, conf, "active")
+      for (serverName <- conf.servers.keys) {
+        val server = sendServer.serverRef(serverName)
         val f = server ? ("startDatabase2", databaseName)
         val v = Await.result(f, 5 seconds)
       }
@@ -94,8 +94,8 @@ class Manager private[persist](system: ActorSystem, client: Client) {
     if (status == "none") throw new Exception("database does not exist")
     if (status != "stop") throw new Exception("database not stopped")
     // TODO could be done in parallel
-    for (serverInfo <- client.allServers(databaseName)) {
-      val server = serverInfo.ref
+    for (serverName <- client.allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
       val f = server ? ("deleteDatabase", databaseName)
       val v = Await.result(f, 5 seconds)
     }
@@ -107,13 +107,13 @@ class Manager private[persist](system: ActorSystem, client: Client) {
     if (status == "none") throw new Exception("database does not exist")
     if (status != "stop") throw new Exception("database not stopped")
     // TODO could be done in parallel
-    for (serverInfo <- client.allServers(databaseName)) {
-      val server = serverInfo.ref
+    for (serverName <- client.allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
       val f = server ? ("startDatabase1", databaseName)
       val v = Await.result(f, 5 seconds)
     }
-    for (serverInfo <- client.allServers(databaseName)) {
-      val server = serverInfo.ref
+    for (serverName <- client.allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
       val f = server ? ("startDatabase2", databaseName)
       val v = Await.result(f, 5 seconds)
     }
@@ -125,13 +125,13 @@ class Manager private[persist](system: ActorSystem, client: Client) {
     if (status == "none") throw new Exception("database does not exist")
     if (status != "active") throw new Exception("database not active")
     // TODO could be done in parallel
-    for (serverInfo <- client.allServers(databaseName)) {
-      val server = serverInfo.ref
+    for (serverName <- client.allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
       val f = server ? ("stopDatabase1", databaseName)
       val v = Await.result(f, 5 seconds)
     }
-    for (serverInfo <- client.allServers(databaseName)) {
-      val server = serverInfo.ref
+    for (serverName <- client.allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
       val f = server ? ("stopDatabase2", databaseName)
       val v = Await.result(f, 5 seconds)
     }

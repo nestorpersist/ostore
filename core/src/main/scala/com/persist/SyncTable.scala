@@ -236,7 +236,7 @@ class SyncTable private[persist] (tableName: String, system: ActorSystem, config
       // TODO could do calls in parallel
       for ((nodeName,nodeConfig)<-ringConfig.nodes) {
         implicit val timeout = Timeout(5 seconds)
-        val monitorRef: ActorRef = system.actorFor("akka://ostore@" + nodeConfig.host + ":" + nodeConfig.port + 
+        val monitorRef: ActorRef = system.actorFor("akka://ostore@" + nodeConfig.server.host + ":" + nodeConfig.server.port + 
             "/user/" + config.name + "/" + ringName + "/" + nodeName + "/@mon")
         val f1 = monitorRef ? ("get", tableName)
         val (code: String, x: String) = Await.result(f1, 5 seconds)

@@ -28,17 +28,22 @@ import akka.dispatch.Await
 class Client(system: ActorSystem, host: String = "127.0.0.1", port: String = "8011") {
   // TODO optional database of client state (list of servers)
   // TODO connect command to add servers 
+  // TODO is client API thread safe????
 
   private implicit val timeout = Timeout(5 seconds)
 
-  private[persist] class DbInfo(val databaseName: String, val map: NetworkMap, config:DatabaseConfig, var status: String) {
+  private val sendServer = new SendServer(system)
+
+
+  private[persist] class DbInfo(val databaseName: String, val config:DatabaseConfig, var status: String) {
     val database = new Database(system, databaseName, config)
   }
 
-  // TODO use software trans memory or agent to sync???
+  // TODO don't pass to RestClient
   private var databases = new TreeMap[String, DbInfo]()
 
-  private val server = system.actorFor("akka://ostore@" + host + ":" + port + "/user/@svr")
+  //private val server = system.actorFor("akka://ostore@" + host + ":" + port + "/user/@svr")
+  private val server = sendServer.serverRef(host + ":" + port)
   private val f = server ? ("databases")
   private val (code: String, s: String) = Await.result(f, 5 seconds)
   private val dblist = jgetArray(Json(s))
@@ -49,9 +54,9 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: String = "80
     val f = server ? ("database", databaseName)
     val (code: String, s: String) = Await.result(f, 5 seconds)
     val config = Json(s)
-    val map = new NetworkMap(system, databaseName, config)
+    //val map = new NetworkMap(system, databaseName, config)
     val conf = DatabaseConfig(databaseName, config)
-    addDatabase(databaseName, map, conf, state)
+    addDatabase(databaseName, conf, state)
   }
   
   def stop() {
@@ -69,7 +74,7 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: String = "80
     result.reverse
   }
 
-  def allServers(databaseName: String) = databases(databaseName).map.allServers
+  def allServers(databaseName: String) = databases(databaseName).config.servers.keys
 
   def getDatabaseStatus(databaseName: String): String = {
     // TODO get status from server???
@@ -80,20 +85,20 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: String = "80
     }
   }
 
-  def setDatabaseStatus(databaseName: String, status: String) {
+  private[persist] def setDatabaseStatus(databaseName: String, status: String) {
     databases(databaseName).status = status
   }
 
-  def addDatabase(databaseName: String, map: NetworkMap, config:DatabaseConfig, status: String) {
-    val info = new DbInfo(databaseName, map, config, status)
+  private[persist] def addDatabase(databaseName: String, config:DatabaseConfig, status: String) {
+    val info = new DbInfo(databaseName, config, status)
     databases += (databaseName -> info)
   }
 
-  def removeDatabase(databaseName: String) {
+  private[persist] def removeDatabase(databaseName: String) {
     databases(databaseName).database.stop()
     databases -= databaseName
   }
 
-  def manager() = new Manager(system, this)
+  def manager() = new Manager(system, this, sendServer)
   def database(databaseName: String) = databases(databaseName).database
 }

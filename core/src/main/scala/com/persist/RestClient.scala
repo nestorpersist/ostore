@@ -180,7 +180,8 @@ private[persist] object RestClient1 {
         case None => throw new BadRequestException("No such database: " + databaseName)
       }
       var result = JsonArray()
-      for (tableName <- info.map.allTables) {
+      for (tableName <- info.config.tables.keys) {
+      //for (tableName <- info.map.allTables) {
         result = tableName +: result
       }
       Some(result.reverse)
@@ -194,7 +195,8 @@ private[persist] object RestClient1 {
         case None => throw new BadRequestException("No such database: " + databaseName)
       }
       var result = JsonArray()
-      for (ringName <- info.map.allRings) {
+      for (ringName <- info.config.rings.keys) {
+      //for (ringName <- info.map.allRings) {
         result = ringName +: result
       }
       Some(result.reverse)
@@ -208,8 +210,10 @@ private[persist] object RestClient1 {
         case None => throw new BadRequestException("No such database: " + databaseName)
       }
       var result = JsonArray()
-      for (serverInfo <- info.map.allServers) {
-        result = serverInfo.name +: result
+      for (serverName <- info.config.servers.keys) {
+      //for (serverInfo <- info.map.allServers) {
+        //result = serverInfo.name +: result
+        result = serverName +: result
       }
       Some(result.reverse)
     }
@@ -218,8 +222,10 @@ private[persist] object RestClient1 {
   private def listNodes(info: DatabaseInfo, ringName: String): Future[Option[Json]] = {
     Future {
       var result = JsonArray()
-      for (nodeInfo <- info.map.allNodes(ringName)) {
-        result = nodeInfo.name +: result
+      for (nodeName <- info.config.rings(ringName).nodes.keys) {
+      //for (nodeInfo <- info.map.allNodes(ringName)) {
+        //result = nodeInfo.name +: result
+        result = nodeName +: result
       }
       Some(result.reverse)
     }

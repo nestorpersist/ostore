@@ -22,6 +22,12 @@ import scala.collection.immutable.TreeMap
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 
+private[persist] case class ServerConfig(
+    val host:String,
+    val port:Int) {
+  val name = host + ":" + port
+}
+
 private[persist] case class RingConfig(
   val name: String,
   // serverName -> ServerConfig
@@ -50,12 +56,13 @@ private[persist] case class RingConfig(
 private[persist] case class NodeConfig(
   val ringName: String,
   val name: String,
-  val host: String,
-  val port: Int,
+  val server:ServerConfig,
+  //val host: String,
+  //val port: Int,
   val pos: Int) {
-  def serverName: String = {
-    host + ":" + port
-  }
+  //def serverName: String = {
+  //  host + ":" + port
+  //}
 }
 
 private[persist] case class TableConfig(
@@ -68,6 +75,7 @@ private[persist] case class TableConfig(
 
 private[persist] object DatabaseConfig {
 
+  /*
   private def nodeInit(node: Json, ringName: String, defaultHost: String, defaultPort: Int, pos:Int): NodeConfig = {
     val name = jgetString(node, "name")
     val host = jget(node, "host") match {
@@ -81,10 +89,10 @@ private[persist] object DatabaseConfig {
     val nodeConfig = new NodeConfig(ringName, name, host, port, pos)
     nodeConfig
   }
+  */
   
   private def getMap(map:Map[String,Map[String,Json]],name:String):Map[String,Json] = {
     if (! map.contains(name)) { Map[String,Json]() } else { map(name) }
-    
   }
 
   def apply(databaseName: String, config: Json): DatabaseConfig = {
@@ -132,6 +140,7 @@ private[persist] object DatabaseConfig {
       tables = tables + (name -> info)
     }
 
+    var servers = Map[String, ServerConfig]()
     // ringName -> RingConfig
     var rings = Map[String, RingConfig]()
     val defaults = jget(config, "defaults")
@@ -144,11 +153,26 @@ private[persist] object DatabaseConfig {
       var pos: Int = 0
       val nodes = jgetArray(ring, "nodes")
       for (node <- nodes) {
-        //val low = pos
-        //val high = if (pos == nodes.size - 1) { 0 } else { pos + 1 }
-        //val lows = keyEncode(low)
-        //val highs = keyEncode(high)
-        val nodeConfig = nodeInit(node, ringName, defaultHost, defaultPort, pos)
+        val name = jgetString(node, "name")
+        val host = jget(node, "host") match {
+          case null => defaultHost
+          case n: Json => jgetString(n)
+        }
+        val port = jget(node, "port") match {
+          case null => defaultPort
+          case n: Int => n
+        }
+        val serverConfig = servers.get(host + ":" + port) match {
+          case Some(sconf) => sconf
+          case None => {
+            val sconf = new ServerConfig(host,port)
+            servers += (sconf.name -> sconf)
+            sconf
+          }
+        }
+        //val serverConfig = new ServerConfig(host,port)
+        val nodeConfig = new NodeConfig(ringName, name, serverConfig, pos)
+    
         val nodeName = nodeConfig.name
         ringMap = ringMap + (nodeName -> nodeConfig)
         ringSeq = ringSeq :+ nodeName
@@ -157,7 +181,7 @@ private[persist] object DatabaseConfig {
       val ringConfig = RingConfig(ringName, ringMap, ringSeq)
       rings = rings + (ringName -> ringConfig)
     }
-    new DatabaseConfig(databaseName, rings, tables)
+    new DatabaseConfig(databaseName, rings, tables, servers)
   }
 }
 
@@ -165,12 +189,13 @@ private[persist] object DatabaseConfig {
 private[persist] class DatabaseConfig(
   val name: String,
   val rings: Map[String, RingConfig],
-  val tables: Map[String, TableConfig]) {
+  val tables: Map[String, TableConfig],
+  val servers: Map[String, ServerConfig]) {
 
   def getRef(system:ActorSystem, ringName:String, nodeName:String, tableName:String):ActorRef = {
     val nodeInfo = rings(ringName).nodes(nodeName)
-    val host = nodeInfo.host
-    val port = nodeInfo.port
+    val host = nodeInfo.server.host
+    val port = nodeInfo.server.port
     val ref: ActorRef = system.actorFor("akka://ostore@" + host + ":" + port + "/user/" + 
             name + "/" + ringName + "/" + nodeName + "/" + tableName)
     ref

@@ -49,7 +49,7 @@ private[persist] class ServerDatabase(config:DatabaseConfig, serverConfig: Json,
   for ((ringName,ringConfig)<-config.rings) {
     var hasRing = false
     for ((nodeName,nodeConfig)<-ringConfig.nodes) {
-      if (nodeConfig.serverName == serverName) {
+      if (nodeConfig.server.name == serverName) {
         hasRing = true
       }
     }
