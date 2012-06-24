@@ -64,19 +64,18 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: String = "80
       info.database.stop()
     }
   }
-
-  def listDatabases(): Json = {
-    var result = JsonArray()
-    for ((name, dbinfo) <- databases) {
-      val db = JsonObject("name" -> name, "status" -> dbinfo.status)
-      result = db +: result
-    }
-    result.reverse
+  
+  // TODO get from server
+  def allDatabases():Traversable[String] = databases.keys
+  
+  // TODO get from server
+  def databaseInfo(databaseName:String,options:JsonObject=emptyJsonObject):Json = {
+    JsonObject("status" -> getDatabaseStatus(databaseName))
   }
 
-  def allServers(databaseName: String) = databases(databaseName).config.servers.keys
+  private[persist] def allServers(databaseName: String) = databases(databaseName).config.servers.keys
 
-  def getDatabaseStatus(databaseName: String): String = {
+  private def getDatabaseStatus(databaseName: String): String = {
     // TODO get status from server???
     if (!databases.contains(databaseName)) {
       "none"
@@ -98,7 +97,80 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: String = "80
     databases(databaseName).database.stop()
     databases -= databaseName
   }
+  
+  def createDatabase(databaseName: String, config: Json) {
+    //val map = new NetworkMap(system, databaseName, config)
+    val conf = DatabaseConfig(databaseName,config)
+    var ok = true
+    // TODO could be done in parallel
+    for (serverName <- conf.servers.keys) {
+      val server = sendServer.serverRef(serverName)
+      val f = server ? ("newDatabase", databaseName, Compact(config))
+      val v = Await.result(f, 5 seconds)
+      if (v != Codes.Ok) {
+        ok = false
+        //println("Create failed: " +v + ":" + serverInfo.name) 
+      }
+    }
+    if (ok) {
+      addDatabase(databaseName, conf, "active")
+      for (serverName <- conf.servers.keys) {
+        val server = sendServer.serverRef(serverName)
+        val f = server ? ("startDatabase2", databaseName)
+        val v = Await.result(f, 5 seconds)
+      }
+    }
+  }
 
-  def manager() = new Manager(system, this, sendServer)
+  def deleteDatabase(databaseName: String) {
+    val status = getDatabaseStatus(databaseName)
+    if (status == "none") throw new Exception("database does not exist")
+    if (status != "stop") throw new Exception("database not stopped")
+    // TODO could be done in parallel
+    for (serverName <- allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
+      val f = server ? ("deleteDatabase", databaseName)
+      val v = Await.result(f, 5 seconds)
+    }
+    removeDatabase(databaseName)
+  }
+
+  def startDatabase(databaseName: String) {
+    val status = getDatabaseStatus(databaseName)
+    if (status == "none") throw new Exception("database does not exist")
+    if (status != "stop") throw new Exception("database not stopped")
+    // TODO could be done in parallel
+    for (serverName <- allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
+      val f = server ? ("startDatabase1", databaseName)
+      val v = Await.result(f, 5 seconds)
+    }
+    for (serverName <- allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
+      val f = server ? ("startDatabase2", databaseName)
+      val v = Await.result(f, 5 seconds)
+    }
+    setDatabaseStatus(databaseName, "active")
+  }
+
+  def stopDataBase(databaseName: String) {
+    val status = getDatabaseStatus(databaseName)
+    if (status == "none") throw new Exception("database does not exist")
+    if (status != "active") throw new Exception("database not active")
+    // TODO could be done in parallel
+    for (serverName <- allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
+      val f = server ? ("stopDatabase1", databaseName)
+      val v = Await.result(f, 5 seconds)
+    }
+    for (serverName <- allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
+      val f = server ? ("stopDatabase2", databaseName)
+      val v = Await.result(f, 5 seconds)
+    }
+    setDatabaseStatus(databaseName, "stop")
+  }
+
+  //def manager() = new Manager(system, this, sendServer)
   def database(databaseName: String) = databases(databaseName).database
 }

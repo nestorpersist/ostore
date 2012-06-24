@@ -39,7 +39,12 @@ For table (get)
         search="a b"
 
 For database (post)
-	request contains commands
+   body contains one of
+        {"cmd"="create","config"=c}
+	{"cmd"="delete"}
+	{"cmd"="start"}
+	{"cmd"="stop"}
+
 
 For item (get)
         get=kvc      multipart return (Key,Value,vector Clock)
@@ -57,6 +62,11 @@ For table (get list of keys)
         includeparent
         reverse
         count=n         REST only, default is 30
+
+For table (post)
+   body contains one of
+	{"cmd"="add"}
+        {"cmd"="delete"}
 
 For item (put)
         create           for opt cc (must not already exist)

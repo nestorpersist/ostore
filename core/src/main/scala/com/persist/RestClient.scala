@@ -85,7 +85,7 @@ private[persist] object RestClient1 {
   var system: ActorSystem = null
   lazy val client = new Client(system, "127.0.0.1", "8011")
 
-  lazy val manager = client.manager()
+  //lazy val manager = client.manager()
   lazy implicit val ec = ExecutionContext.defaultExecutionContext(system)
   implicit val timeout = Timeout(5 seconds)
 
@@ -98,12 +98,10 @@ private[persist] object RestClient1 {
   }
 
   private def listDatabases(): Future[Option[Json]] = {
-    // TODO get=ns name,status
     Future {
-      val list = client.listDatabases()
       var result = JsonArray()
-      for (database <- jgetArray(list)) {
-        result = jgetString(database, "name") +: result
+      for (databaseName <- client.allDatabases()) {
+        result = databaseName +: result
       }
       Some(result.reverse)
     }
@@ -156,11 +154,11 @@ private[persist] object RestClient1 {
       cmd match {
         case "create" => {
           val config = jget(input, "config")
-          manager.createDatabase(databaseName, config)
+          client.createDatabase(databaseName, config)
         }
-        case "delete" => manager.deleteDatabase(databaseName)
-        case "start" => manager.startDatabase(databaseName)
-        case "stop" => manager.stopDataBase(databaseName)
+        case "delete" => client.deleteDatabase(databaseName)
+        case "start" => client.startDatabase(databaseName)
+        case "stop" => client.stopDataBase(databaseName)
         case x => throw new BadRequestException("bad database post cmd: " + x)
       }
       None
@@ -169,10 +167,7 @@ private[persist] object RestClient1 {
 
   private def getDatabaseStatus(databaseName: String): Future[Option[Json]] = {
     Future {
-      // TODO get=trsi tables,rings,servers,info
-      var result = JsonObject()
-      val status = client.getDatabaseStatus(databaseName)
-      result = result + ("status" -> status)
+      var result = client.databaseInfo(databaseName)
       Some(result)
     }
   }

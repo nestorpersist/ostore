@@ -150,7 +150,7 @@ The following setting ensures against
 a single point of failure. 
         fast & w=2 
 
-Optomistic concurrency control is supported.
+Optimistic concurrency control is supported.
   1. Get an item value and vector clock
   2. Create a new value
   3. Put the new value and old vector clock

@@ -46,8 +46,7 @@ class SimpleTest extends FunSuite {
     val system = Server.start(serverConfig)
 
     val client = new Client(system)
-    val manager = client.manager()
-    manager.createDatabase(dbName, databaseConfig)
+    client.createDatabase(dbName, databaseConfig)
 
     val database = client.database(dbName)
     val tab1 = database.syncTable("tab1")
@@ -76,8 +75,8 @@ class SimpleTest extends FunSuite {
     val monitor1 = tab1.monitor()
     println("Monitor:" + Pretty(monitor1))
 
-    manager.stopDataBase(dbName)
-    manager.deleteDatabase(dbName)
+    client.stopDataBase(dbName)
+    client.deleteDatabase(dbName)
     
     client.stop()
 

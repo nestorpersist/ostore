@@ -34,14 +34,47 @@ class Database private[persist](system: ActorSystem, databaseName: String ,confi
   Await.result(f,5 seconds)
   private implicit val executor = system.dispatcher
   
-  def stop() {
+  private[persist] def stop() {
     val f = send ? ("stop")
     Await.result(f, 5 seconds)
     val f1 = gracefulStop(send, 5 seconds)(system)
     Await.result(f1, 5 seconds)
   }
+  
+  // TODO get from server
+  def allTables:Traversable[String] = config.tables.keys
+  
+  // TODO 
+  def tableInfo(tableName:String,options:JsonObject=emptyJsonObject):Json = null
+  
+  def allRings:Traversable[String] = config.rings.keys
+  
+  // TODO
+  def ringInfo(ringName:String,options:JsonObject=emptyJsonObject):Json = null
+  
+  def allNodes(ringName:String):Traversable[String] = config.rings(ringName).nodes.keys
 
-  // TODO list tables, server, rings, nodes (using map)
+  // TODO
+  def nodeInfo(ringName:String,nodeName:String,options:JsonObject=emptyJsonObject):Json = null
+  
+  def allServers:Traversable[String] = config.servers.keys
+  
+  // TODO
+  def serverInfo(serverName:String,option:JsonObject=emptyJsonObject):Json = null
+  
+  // TODO
+  def addTable(tableName:String) {
+    
+  }
+
+  // TODO
+  def deleteTable(tableName:String) {
+    
+  }
+  
+  // TODO (add,remove) (nodes,rings)
+  
   def syncTable(tableName: String) = new SyncTable(tableName, system, config, send)
+
   def asyncTable(tableName: String) = new AsyncTable(tableName, system, send)
 }
