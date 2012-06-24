@@ -170,6 +170,18 @@ class WebClient() {
     e1.consumeContent()
   }
 
+  def conditionalPutItem(databaseName: String, tableName: String, key: JsonKey, cv:Json, value: Json):Boolean = {
+    val put = new HttpPost("http://" + server + "/" + databaseName + "/" + tableName + "/" + keyUriEncode(key))
+    val request = JsonObject("cmd"->"put","v"->value,"c"->cv)
+    val e = new StringEntity(Compact(request))
+    put.setEntity(e)
+    val response = client.execute(put)
+    val code = response.getStatusLine().getStatusCode()
+    val e1 = response.getEntity()
+    e1.consumeContent()
+    code == 200
+  }
+
   def addItem(databaseName: String, tableName: String, key: JsonKey, value: Json):Boolean = {
     val put = new HttpPut("http://" + server + "/" + databaseName + "/" + tableName + "/" + keyUriEncode(key) +"?create")
     val e = new StringEntity(Compact(value))
@@ -187,5 +199,17 @@ class WebClient() {
     val response = client.execute(del)
     val e1 = response.getEntity()
     e1.consumeContent()
+  }
+  
+  def conditionalDeleteItem(databaseName: String, tableName: String, key: JsonKey, cv:Json):Boolean = {
+    val del = new HttpPost("http://" + server + "/" + databaseName + "/" + tableName + "/" + keyUriEncode(key))
+    val request = JsonObject("cmd"->"delete","c"->cv)
+    val e = new StringEntity(Compact(request))
+    del.setEntity(e)
+    val response = client.execute(del)
+    val code = response.getStatusLine().getStatusCode()
+    val e1 = response.getEntity()
+    e1.consumeContent()
+    code == 200
   }
 }

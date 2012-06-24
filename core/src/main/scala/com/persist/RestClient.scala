@@ -37,9 +37,9 @@ import akka.util.duration._
 import akka.dispatch.ExecutionContext
 import akka.dispatch.Promise
 
-private class NotFoundException(val msg: String) extends Exception
-private class BadRequestException(val msg: String) extends Exception
-private class ConflictException(val msg: String) extends Exception
+private[persist] class NotFoundException(val msg: String) extends Exception
+private[persist] class BadRequestException(val msg: String) extends Exception
+private[persist] class ConflictException(val msg: String) extends Exception
 
 private[persist] class QParse extends JavaTokenParsers {
   private def decode(a: Any): String = {
@@ -119,18 +119,15 @@ private[persist] object RestClient1 {
     }
   }
 
-  private def doPut(aclient: AsyncTable, key: JsonKey, value: Json, options: JsonObject): Future[Option[Json]] = {
-    if (jgetBoolean(options, "create")) {
-      aclient.create(key, value, options - "create") map { success =>
-        if (!success) throw new ConflictException("Item already exists: " + Compact(key))
+  private def doPut(aclient: AsyncTable, key: JsonKey, cv:Json, value: Json, options: JsonObject): Future[Option[Json]] = {
+    if (cv != null) {
+      aclient.conditionalPut(key, value, cv, options - "update") map { success =>
+        if (!success) throw new ConflictException("Item has changed: " + Compact(key))
         None
       }
-    } else if (jgetBoolean(options, "update")) {
-      // TODO verify both v and c exist
-      val v = jget(value, "v")
-      val c = jget(value, "c")
-      aclient.conditionalPut(key, v, c, options - "update" - "v" - "c") map { success =>
-        if (!success) throw new ConflictException("Item has changed: " + Compact(key))
+    } else if (jgetBoolean(options, "create")) {
+      aclient.create(key, value, options - "create") map { success =>
+        if (!success) throw new ConflictException("Item already exists: " + Compact(key))
         None
       }
     } else {
@@ -140,9 +137,16 @@ private[persist] object RestClient1 {
     }
   }
 
-  private def doDelete(aclient: AsyncTable, key: JsonKey, options: JsonObject): Future[Option[Json]] = {
-    aclient.delete(key, options) map { x =>
-      None
+  private def doDelete(aclient: AsyncTable, key: JsonKey, cv:Json, value: Json, options: JsonObject): Future[Option[Json]] = {
+    if (cv != null) {
+      aclient.conditionalDelete(key, cv, options - "update") map { success =>
+        if (!success) throw new ConflictException("Item has changed: " + Compact(key))
+        None
+      }
+    } else {
+      aclient.delete(key, options) map { x =>
+        None
+      }
     }
   }
 
@@ -181,7 +185,7 @@ private[persist] object RestClient1 {
       }
       var result = JsonArray()
       for (tableName <- info.config.tables.keys) {
-      //for (tableName <- info.map.allTables) {
+        //for (tableName <- info.map.allTables) {
         result = tableName +: result
       }
       Some(result.reverse)
@@ -196,7 +200,7 @@ private[persist] object RestClient1 {
       }
       var result = JsonArray()
       for (ringName <- info.config.rings.keys) {
-      //for (ringName <- info.map.allRings) {
+        //for (ringName <- info.map.allRings) {
         result = ringName +: result
       }
       Some(result.reverse)
@@ -211,7 +215,7 @@ private[persist] object RestClient1 {
       }
       var result = JsonArray()
       for (serverName <- info.config.servers.keys) {
-      //for (serverInfo <- info.map.allServers) {
+        //for (serverInfo <- info.map.allServers) {
         //result = serverInfo.name +: result
         result = serverName +: result
       }
@@ -223,7 +227,7 @@ private[persist] object RestClient1 {
     Future {
       var result = JsonArray()
       for (nodeName <- info.config.rings(ringName).nodes.keys) {
-      //for (nodeInfo <- info.map.allNodes(ringName)) {
+        //for (nodeInfo <- info.map.allNodes(ringName)) {
         //result = nodeInfo.name +: result
         result = nodeName +: result
       }
@@ -345,12 +349,29 @@ private[persist] object RestClient1 {
   private def doParts3(databaseName: String, info: DatabaseInfo, tableName: String, keyString: String, method: String, input: Json, options: JsonObject): Future[Option[Json]] = {
     var key = keyUriDecode(keyString)
     try {
-      method match {
-        case "get" => doGet(info.aclient(tableName), key, options)
-        case "put" => doPut(info.aclient(tableName), key, input, options)
-        case "delete" => doDelete(info.aclient(tableName), key, options)
-        case x => {
-          Promise.failed(new Exception("bad method"))
+      if (method == "post") {
+        // TODO verify c and v exist
+        val cmd = jgetString(input, "cmd")
+        val cv = jget(input, "c")
+        cmd match {
+          case "put" => {
+
+            val v = jget(input, "v")
+            doPut(info.aclient(tableName), key, cv, v, options)
+          }
+          case "delete" => doDelete(info.aclient(tableName), key, cv, input, options)
+          case x => {
+            Promise.failed(new Exception("bad cmd"))
+          }
+        }
+      } else {
+        method match {
+          case "get" => doGet(info.aclient(tableName), key, options)
+          case "put" => doPut(info.aclient(tableName), key, null, input, options)
+          case "delete" => doDelete(info.aclient(tableName), key, null, input, options)
+          case x => {
+            Promise.failed(new Exception("bad method"))
+          }
         }
       }
     } catch {

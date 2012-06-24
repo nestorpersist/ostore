@@ -89,7 +89,7 @@ class AsyncTable private[persist] (tableName: String, system: ActorSystem, send:
   }
 
   /**
-   * Provides optomistic concurrency control.
+   * Provides optimistic concurrency control.
    * Modifies the value of an item only if its vector clock on the server matches
    * the vector clock passed in.
    *
@@ -132,6 +132,7 @@ class AsyncTable private[persist] (tableName: String, system: ActorSystem, send:
   }
 
   /**
+   * 
    * Deletes an item. Has no effect if the item does not exist
    *
    * @param key the key.
@@ -147,8 +148,9 @@ class AsyncTable private[persist] (tableName: String, system: ActorSystem, send:
   def delete(key: JsonKey, options: JsonObject = emptyJsonObject): Future[Unit] = {
     val ring = jgetString(options, "ring")
     val options1 = options - "ring"
+    val request = JsonObject("o"->options1)
     var f1 = new DefaultPromise[Any]
-    send ! ("delete", ring, f1, tableName, keyEncode(key), Compact(options1))
+    send ! ("delete", ring, f1, tableName, keyEncode(key), Compact(request))
     val f2 = f1.map { x =>
       {
         val (code: String, v1: String) = x
@@ -159,6 +161,45 @@ class AsyncTable private[persist] (tableName: String, system: ActorSystem, send:
     }
     f2
   }
+      
+  /**
+   * 
+   * Provides optimistic concurrency control.
+   * Deletes the item only if its vector clock on the server matches
+   * the vector clock passed in.
+   *
+   * @param key the key.
+   * @param vectorClock the vector clock to match. This would typically have been returned by a previous get
+   * call.
+   * @param options optional json object containing options.
+   *  - '''"w"=n''' write at least n rings before returning. Default is 1.
+   *  - '''fast=true''' if true, returns when the item has been updated in server memory.
+   *        If false, returns only after item has also been written to server disk. Default is false.
+   *  - '''"ring"="ringName"''' write to this ring.
+   *
+   *  @return a future whose value upon completion is
+   *  true if the item was deleted (vector clock matched). False if item was not deleted (vector
+   *  clock did not match).
+   *
+   */
+  def conditionalDelete(key: JsonKey, vectorClock:Json, options: JsonObject = emptyJsonObject): Future[Boolean] = {
+        val ring = jgetString(options, "ring")
+    val options1 = options - "ring"
+    val request = JsonObject("c"->vectorClock,"o"->options1)
+    var f1 = new DefaultPromise[Any]
+    send ! ("delete", ring, f1, tableName, keyEncode(key), Compact(request))
+    val f2 = f1.map { x =>
+      {
+        val (code: String, v1: String) = x
+        if (code != Codes.Ok) {
+          throw new Exception(code)
+        }
+        code != Codes.NoPut
+      }
+    }
+    f2
+  }
+
 
   /**
    * Gets information about an item with a specified key.

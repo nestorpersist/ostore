@@ -94,7 +94,7 @@ class SyncTable private[persist] (tableName: String, system: ActorSystem, config
   }
 
   /**
-   * Provides optomistic concurrency control.
+   * Provides optimistic concurrency control.
    * Modifies the value of an item only if its vector clock on the server matches
    * the vector clock passed in.
    *
@@ -148,6 +148,31 @@ class SyncTable private[persist] (tableName: String, system: ActorSystem, config
    */
   def delete(key: JsonKey, options: JsonObject = emptyJsonObject): Unit = {
     val f1 = asyncClient.delete(key, options)
+    Await.result(f1, 5 seconds)
+  }
+      
+  /**
+   * 
+   * Provides optimistic concurrency control.
+   * Deletes the item only if its vector clock on the server matches
+   * the vector clock passed in.
+   *
+   * @param key the key.
+   * @param vectorClock the vector clock to match. This would typically have been returned by a previous get
+   * call.
+   * @param options optional json object containing options.
+   *  - '''"w"=n''' write at least n rings before returning. Default is 1.
+   *  - '''fast=true''' if true, returns when the item has been updated in server memory.
+   *        If false, returns only after item has also been written to server disk. Default is false.
+   *  - '''"ring"="ringName"''' write to this ring.
+   *
+   *  @return 
+   *  true if the item was deleted (vector clock matched). False if item was not deleted (vector
+   *  clock did not match).
+   *
+   */
+  def conditionalDelete(key: JsonKey, vectorClock:Json, options: JsonObject = emptyJsonObject): Boolean = {
+    val f1 = asyncClient.conditionalDelete(key, vectorClock, options)
     Await.result(f1, 5 seconds)
   }
 

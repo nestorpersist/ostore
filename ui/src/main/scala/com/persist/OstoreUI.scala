@@ -206,6 +206,7 @@ class Act(app: Application, client: WebClient, all: All, top: Top, left: Left, r
   private val itemCount = 20
   
   private var key: JsonKey = null
+  private var cv: Json = null
   private var ringName: String = ""
   private var nodeName: String = ""
   private var itemVal: Json = null
@@ -355,14 +356,24 @@ class Act(app: Application, client: WebClient, all: All, top: Top, left: Left, r
   val i1 = new Button("Delete Item")
   i1.addListener(new ClickListener {
     def buttonClick(e: Button#ClickEvent) = {
-      client.deleteItem(databaseName, tableName, key)
-      toKeys(databaseName, tableName, false)
+      def finish(delete:Boolean) = {
+        if (delete) {
+          client.deleteItem(databaseName, tableName, key)
+        }
+        toKeys(databaseName, tableName, false)
+      }
+      val ok = client.conditionalDeleteItem(databaseName, tableName, key, cv)
+      if (ok) {
+        finish(false)
+      } else {
+        EditWindow.test(finish,all.all, "Conflict Detected", "Item has changed","Delete","Cancel")
+      }
     }
   })
   val i2 = new Button("Edit Item")
   i2.addListener(new ClickListener {
     def buttonClick(e: Button#ClickEvent) = {
-      EditWindow.edit(act, all.all, databaseName, tableName, key, itemVal, client)
+      EditWindow.edit(act, all.all, databaseName, tableName, key, cv, itemVal, client)
     }
   })
   right.itemButtons.addComponent(i1)
@@ -667,6 +678,7 @@ class Act(app: Application, client: WebClient, all: All, top: Top, left: Left, r
     this.databaseName = databaseName
     this.tableName = tableName
     this.key = key
+    this.cv = cv
     right.setName("Item: " + Compact(key))
     right.setMode("item")
     right.ta.setReadOnly(false)

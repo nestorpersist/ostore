@@ -145,7 +145,6 @@ private[persist] trait ServerOpsComponent { this: ServerTableAssembly =>
           return (Codes.NoPut, "null")
         }
       }
-      ///val d = System.currentTimeMillis()
       val d = info.uidGen.get
       val cv = ClockVector.incr(oldcv, info.ringName, d)
       val newMeta = JsonObject("c" -> cv)
@@ -154,7 +153,6 @@ private[persist] trait ServerOpsComponent { this: ServerTableAssembly =>
       if (sync.hasSync) sync.msgOut(key, oldMetaS, oldvS, newMetaS, value)
       if (mr.hasMap) mr.mapOut(key, oldMetaS, oldvS, newMetaS, value)
       if (mr.hasReduce) mr.reduceOut(key, oldMetaS, oldvS, newMetaS, value)
-      //mr.doMR(key, oldMetaS, oldvS, newMetaS, value)
       (Codes.Ok, "null")
     }
 
@@ -182,19 +180,22 @@ private[persist] trait ServerOpsComponent { this: ServerTableAssembly =>
         case None => "null"
       }
       val oldcv = jget(Json(oldMetaS), "c")
-      //val d = System.currentTimeMillis()
+      val requestcv = jget(request, "c")
+      if (requestcv != null) {
+        if (ClockVector.compare(oldcv, requestcv) != '=') {
+          // Opt delete and value has changed
+          return (Codes.NoPut, "null")
+        }
+      }
       val d = info.uidGen.get
       val cv = ClockVector.incr(oldcv, info.ringName, d)
       val newMeta = JsonObject("c" -> cv, "d" -> true)
       val newMetaS = Compact(newMeta)
       // if fast, commit will run in background
-      //val f = info.storeTable.putBothF(key, newMetaS, value, fast)
       info.storeTable.putBothF1(key, newMetaS, value, fast)
       sync.msgOut(key, oldMetaS, oldvS, newMetaS, value)
       mr.doMR(key, oldMetaS, oldvS, newMetaS, value)
-      //f map { x =>
-        (Codes.Ok, "null")
-      //}
+      (Codes.Ok, "null")
     }
 
     def next(kind: String, key: String, os: String): (String, Any) = {

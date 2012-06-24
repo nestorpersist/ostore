@@ -1,23 +1,6 @@
-Json is widely used. Keys and values are both represented in JSON.
-Many other data structures also use Json.
-Json is handled using a modified version of 
-the Odersky/Twitter Json parser with immutable Scala native types.
-
-Json Type aliases
-   type Json = Any
-   type JsonKey = Any
-   type JsonObject = Map[String,Json] (default HashMap[String,Json])
-   type JsonArray = Seq[Json]         (default List[Json])
-
-Other Json Types
-   String
-   Boolean
-   Int, Long, BigDecimal
-   null
-
 Rest URL's
    http://host:port/database/table/key
-   for PUT body must be JSON value
+   for PUT or POST body must be JSON value
 
 Rest form of keys
    23 => 23
@@ -44,7 +27,7 @@ REST apis. (* = NYI)
 
 For all
         pretty          REST only
-        *ring=r1
+        ring=r1
 
 For database (get)
         rings
@@ -76,12 +59,17 @@ For table (get list of keys)
         count=n         REST only, default is 30
 
 For item (put)
-        update           for opt cc (body includes c, c must not have changed)
         create           for opt cc (must not already exist)
         *w=n             default 1
         fast
         *expires=t
 
+For item (post)
+    body contains one of 
+
+	{"cmd"="put","v"=v,"c"=c} for opt cc (c must not have changed)
+	{"cmd"="delete", "c"=c}      for opt cc (c must not have changed)
+
+
 For item (delete)
 	fast
-	* update	for opt cc (body includes c, c must not have changed)

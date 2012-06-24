@@ -76,7 +76,7 @@ object EditWindow {
   }
 
   private def popup(act: Act, w: Window, databaseName: String, tableName: String,
-    key: JsonKey, value: Json, client: WebClient, add: Boolean) {
+    key: JsonKey, cv:Json, value: Json, client: WebClient, add: Boolean) {
     val title = if (add) {
       "Add New Item"
     } else {
@@ -176,8 +176,18 @@ object EditWindow {
           checkJson(error, v, false) match {
             case Some(j) => {
               w.removeWindow(editWin)
-              client.putItem(databaseName, tableName, key, j)
-              act.toItem(databaseName, tableName, key)
+              def finish(put:Boolean) {
+                if (put) {
+                  client.putItem(databaseName, tableName, key, j)
+                }
+                act.toItem(databaseName, tableName, key)
+              }
+              val ok = client.conditionalPutItem(databaseName, tableName, key, cv, j)
+              if (ok) {
+                finish(false)
+              } else {
+                  test(finish,w, "Conflict Detected", "Item has changed","Save","Cancel")
+              }
             }
             case None =>
           }
@@ -230,12 +240,12 @@ object EditWindow {
     })
   }
 
-  def edit(act: Act, w: Window, databaseName: String, tableName: String, key: JsonKey, value: Json, client: WebClient) {
-    popup(act, w, databaseName, tableName, key, value, client, false)
+  def edit(act: Act, w: Window, databaseName: String, tableName: String, key: JsonKey, cv:Json, value: Json, client: WebClient) {
+    popup(act, w, databaseName, tableName, key, cv, value, client, false)
   }
 
   def add(act: Act, w: Window, databaseName: String, tableName: String, client: WebClient) {
-    popup(act, w, databaseName, tableName, null, null, client, true)
+    popup(act, w, databaseName, tableName, null,null,  null, client, true)
   }
 
 }
