@@ -5,6 +5,7 @@
 .project
 .settings
 .classpath
+.idea*
 data
 .cache
 WebContent
