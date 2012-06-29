@@ -212,4 +212,26 @@ class WebClient() {
     e1.consumeContent()
     code == 200
   }
+  
+  def addTable(databaseName: String, tableName:String) {
+    val del = new HttpPost("http://" + server + "/" + databaseName + "/" + tableName )
+    val request = JsonObject("cmd"->"add")
+    val e = new StringEntity(Compact(request))
+    del.setEntity(e)
+    val response = client.execute(del)
+    val code = response.getStatusLine().getStatusCode()
+    val e1 = response.getEntity()
+    e1.consumeContent()
+  }
+   
+  def deleteTable(databaseName: String, tableName:String) {
+    val del = new HttpPost("http://" + server + "/" + databaseName + "/" + tableName )
+    val request = JsonObject("cmd"->"delete")
+    val e = new StringEntity(Compact(request))
+    del.setEntity(e)
+    val response = client.execute(del)
+    val code = response.getStatusLine().getStatusCode()
+    val e1 = response.getEntity()
+    e1.consumeContent()
+  }
 }

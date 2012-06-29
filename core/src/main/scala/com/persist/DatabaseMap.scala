@@ -81,6 +81,10 @@ private[persist] object DatabaseMap {
   }
 }
 
+/* DatabaseMap contains mutable data and should be used by only
+ * a single thread (typically actor Send)
+ */
+// TODO get rid of config, move relevant ops to here
 private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[String, RingMap], val config:DatabaseConfig) {
 
   private def nodeMax(nodes: HashMap[String, NodeMap], n1: String, n2: String): String = {

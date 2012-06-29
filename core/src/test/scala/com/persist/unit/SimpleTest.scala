@@ -15,13 +15,15 @@
  *  limitations under the License.
 */
 
-package com.persist
+package com.persist.unit
 
+import com.persist._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import JsonOps._
 import org.scalatest.FunSuite
 import akka.actor.ActorSystem
+import com.typesafe.config.ConfigFactory
 
 @RunWith(classOf[JUnitRunner])
 class SimpleTest extends FunSuite {
@@ -30,7 +32,7 @@ class SimpleTest extends FunSuite {
     val dbName = "testdb"
     val serverConfig = Json("""
     {
-     "path":"data",
+     "path":"/tmp/simple",
      "host":"127.0.0.1", "port":8011
     }        
     """)
@@ -43,13 +45,15 @@ class SimpleTest extends FunSuite {
      """)
 
     println("Starting Server")
-    val system = Server.start(serverConfig)
+    val system1 = Server.start(serverConfig, true)
 
+    val system = ActorSystem("ostoreclient", ConfigFactory.load.getConfig("client"))
     val client = new Client(system)
     client.createDatabase(dbName, databaseConfig)
 
     val database = client.database(dbName)
     val tab1 = database.syncTable("tab1")
+    println("tab1")
     tab1.put("key1", "val1")
     tab1.put("key2", "val2")
     tab1.put("key3", "val3")
@@ -70,9 +74,9 @@ class SimpleTest extends FunSuite {
       println("bwd:" + k)
     }
 
-    val report1 = tab1.report()
+    val report1 = database.report("tab1")
     println("Report:" + Pretty(report1))
-    val monitor1 = tab1.monitor()
+    val monitor1 = database.monitor("tab1")
     println("Monitor:" + Pretty(monitor1))
 
     client.stopDataBase(dbName)

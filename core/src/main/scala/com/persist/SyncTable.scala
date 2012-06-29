@@ -34,21 +34,18 @@ import scala.collection.Traversable
 /**
  * Instances of this class are returned by the [[com.persist.SyncTable]] all method.
  */
-trait AllItems {
-  def foreach(body: Json => Unit)
-}
+//trait AllItems extends Traversable[Json] {
+  //def foreach(body: Json => T)
+//}
 
 
 private object SyncAllItems {
   def apply(client: AsyncTable, options: JsonObject) = new SyncAllItems(client, options)
 }
 
-/**
- * Instances of this class are returned by the [[com.persist.SyncTable]] all method.
- */
-private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: JsonObject) extends AllItems {
+private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: JsonObject) extends Traversable[Json] {
   // TODO fix so only 1 wait for entire loop
-  def foreach(body: Json => Unit) = {
+  def foreach[T](body: Json => T) = {
     var f = asyncClient.all(options)
     var done = false
     while (!done) {
@@ -68,13 +65,9 @@ private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: J
  * This is the synchronous interface to OStore tables.
  * Instances of this class are created by the [[com.persist.Database]] syncTable method.
  */
-class SyncTable private[persist] (tableName: String, system: ActorSystem, config:DatabaseConfig, send: ActorRef) {
+class SyncTable private[persist] (databaseName:String, tableName: String, asyncClient:AsyncTable) {
   // TODO pass in config rather than default to first ring
   // TODO option to get config from remote server
-
-  private implicit val executor = system.dispatcher
-
-  private val asyncClient = new AsyncTable(tableName, system, send)
 
   /**
    * Modifies the value of an item. If the item does not exist it is created.
@@ -166,8 +159,7 @@ class SyncTable private[persist] (tableName: String, system: ActorSystem, config
    *        If false, returns only after item has also been written to server disk. Default is false.
    *  - '''"ring"="ringName"''' write to this ring.
    *
-   *  @return 
-   *  true if the item was deleted (vector clock matched). False if item was not deleted (vector
+   *  @return true if the item was deleted (vector clock matched). False if item was not deleted (vector
    *  clock did not match).
    *
    */
@@ -198,9 +190,9 @@ class SyncTable private[persist] (tableName: String, system: ActorSystem, config
 
   /**
    *
-   * Returns an iterator that iterates over items in the table.
-   * If options are not specified it will iterate over all items
-   * in the table returning their keys.
+   * Returns items in the table.
+   * If options are not specified it will return the keys of all items
+   * in the table.
    *
    * @param options optional json object containing options.
    *    Options can modify what items are returned and what information is
@@ -226,49 +218,7 @@ class SyncTable private[persist] (tableName: String, system: ActorSystem, config
    *  @return the iterator.
    *
    */
-  def all(options: JsonObject = emptyJsonObject): AllItems = {
+  def all[T](options: JsonObject = emptyJsonObject): Traversable[Json] = {
     SyncAllItems(asyncClient, options)
-  }
-
-  /**
-   * Temporary debugging method.
-   */
-  def report(): Json = {
-    var result = JsonObject()
-    for ((ringName,ringConfig) <- config.rings) {
-      var ro = JsonObject()
-      val dest = Map("ring" -> ringName)
-      // TODO could do calls in parallel
-      for (nodeName<- ringConfig.nodes.keys) {
-        val dest1 = dest + ("node" -> nodeName)
-        var f1 = new DefaultPromise[Any]
-        send ! ("report", dest1, f1, tableName, "", "")
-        val (code: String, x: String) = Await.result(f1, 5 seconds)
-        ro = ro + (nodeName -> Json(x))
-      }
-      result = result + (ringName -> ro)
-    }
-    result
-  }
-
-  /**
-   * Temporary debugging method
-   */
-  def monitor(): Json = {
-    var result = JsonObject()
-    for ((ringName,ringConfig) <- config.rings) {
-      var ro = JsonObject()
-      // TODO could do calls in parallel
-      for ((nodeName,nodeConfig)<-ringConfig.nodes) {
-        implicit val timeout = Timeout(5 seconds)
-        val monitorRef: ActorRef = system.actorFor("akka://ostore@" + nodeConfig.server.host + ":" + nodeConfig.server.port + 
-            "/user/" + config.name + "/" + ringName + "/" + nodeName + "/@mon")
-        val f1 = monitorRef ? ("get", tableName)
-        val (code: String, x: String) = Await.result(f1, 5 seconds)
-        ro = ro + (nodeName -> Json(x))
-      }
-      result = result + (ringName -> ro)
-    }
-    result
   }
 }

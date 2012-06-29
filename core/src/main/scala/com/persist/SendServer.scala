@@ -47,7 +47,6 @@ private[persist] class SendServer(system:ActorSystem) {
           refs
         }
       }
-      
     }
   }
   
@@ -64,7 +63,6 @@ private[persist] class SendServer(system:ActorSystem) {
   
   def serverRef(serverName:String) = {
     getServer(serverName).serverRef
-    
   }
   
   def sendRef(serverName:String,databaseName:String) = {
@@ -73,7 +71,11 @@ private[persist] class SendServer(system:ActorSystem) {
   
   def databaseRef(serverName:String,databaseName:String) = {
     getServer(serverName).getDatabase(databaseName).databaseRef
-    
   }
+  
+  // server send msg
+  // serverName:String,future,cmd:String,name:String,options:Json
+  // request (cmd,uid,name,options)
+  //response (code,json)
 
 }

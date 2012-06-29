@@ -15,8 +15,9 @@
  *  limitations under the License.
 */
 
-package com.persist
+package com.persist.time
 
+import com.persist._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import JsonOps._
@@ -113,7 +114,7 @@ class TimeTest extends FunSuite {
     val t2 = System.currentTimeMillis()
     println("Total=" + (t2 - t1))
 
-    val monitor1 = tab1.monitor()
+    val monitor1 = database.monitor("tab1")
     println("Monitor:" + Pretty(monitor1))
 
     client.stopDataBase(dbName)

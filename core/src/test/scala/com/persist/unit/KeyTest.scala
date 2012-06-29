@@ -15,8 +15,9 @@
  *  limitations under the License.
 */
 
-package com.persist
+package com.persist.unit
 
+import com.persist._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import JsonOps._

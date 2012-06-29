@@ -57,13 +57,7 @@ private[persist] case class NodeConfig(
   val ringName: String,
   val name: String,
   val server:ServerConfig,
-  //val host: String,
-  //val port: Int,
-  val pos: Int) {
-  //def serverName: String = {
-  //  host + ":" + port
-  //}
-}
+  val pos: Int) 
 
 private[persist] case class TableConfig(
   val tableName: String,
@@ -74,22 +68,6 @@ private[persist] case class TableConfig(
   val fromReduce: Map[String, Json])
 
 private[persist] object DatabaseConfig {
-
-  /*
-  private def nodeInit(node: Json, ringName: String, defaultHost: String, defaultPort: Int, pos:Int): NodeConfig = {
-    val name = jgetString(node, "name")
-    val host = jget(node, "host") match {
-      case null => defaultHost
-      case n: Json => jgetString(n)
-    }
-    val port = jget(node, "port") match {
-      case null => defaultPort
-      case n: Int => n
-    }
-    val nodeConfig = new NodeConfig(ringName, name, host, port, pos)
-    nodeConfig
-  }
-  */
   
   private def getMap(map:Map[String,Map[String,Json]],name:String):Map[String,Json] = {
     if (! map.contains(name)) { Map[String,Json]() } else { map(name) }
@@ -192,6 +170,7 @@ private[persist] class DatabaseConfig(
   val tables: Map[String, TableConfig],
   val servers: Map[String, ServerConfig]) {
 
+  // TODO move to DatabaseMap and Send
   def getRef(system:ActorSystem, ringName:String, nodeName:String, tableName:String):ActorRef = {
     val nodeInfo = rings(ringName).nodes(nodeName)
     val host = nodeInfo.server.host

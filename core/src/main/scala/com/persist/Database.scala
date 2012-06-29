@@ -26,55 +26,101 @@ import akka.util.Timeout
 import akka.dispatch.Await
 import akka.util.duration._
 import akka.pattern._
+import akka.dispatch.ExecutionContext
 
-class Database private[persist](system: ActorSystem, databaseName: String ,config:DatabaseConfig) {
+class Database private[persist](system: ActorSystem, databaseName: String , clientActor:ActorRef) {
   private implicit val timeout = Timeout(5 seconds)
-  private val send = system.actorOf(Props(new Send(system,config)))
-  private val f = send ? ("start")
-  Await.result(f,5 seconds)
-  private implicit val executor = system.dispatcher
+  private lazy implicit val ec = ExecutionContext.defaultExecutionContext(system)
   
-  private[persist] def stop() {
-    val f = send ? ("stop")
-    Await.result(f, 5 seconds)
-    val f1 = gracefulStop(send, 5 seconds)(system)
-    Await.result(f1, 5 seconds)
+  def allTables:Traversable[String] = {
+    var p = new DefaultPromise[Traversable[String]]
+    clientActor ? ("allTables", p, databaseName)
+    val v = Await.result(p, 5 seconds)
+    v
   }
-  
-  // TODO get from server
-  def allTables:Traversable[String] = config.tables.keys
   
   // TODO 
   def tableInfo(tableName:String,options:JsonObject=emptyJsonObject):Json = null
   
-  def allRings:Traversable[String] = config.rings.keys
+  def allRings:Traversable[String] = {
+    var p = new DefaultPromise[Traversable[String]]
+    clientActor ? ("allRings", p, databaseName)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
   
   // TODO
   def ringInfo(ringName:String,options:JsonObject=emptyJsonObject):Json = null
   
-  def allNodes(ringName:String):Traversable[String] = config.rings(ringName).nodes.keys
+  def allNodes(ringName:String):Traversable[String] = {
+    var p = new DefaultPromise[Traversable[String]]
+    clientActor ? ("allNodes", p, databaseName, ringName)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
 
   // TODO
   def nodeInfo(ringName:String,nodeName:String,options:JsonObject=emptyJsonObject):Json = null
   
-  def allServers:Traversable[String] = config.servers.keys
+  def allServers:Traversable[String] = {
+    var p = new DefaultPromise[Traversable[String]]
+    clientActor ? ("allServers", p, databaseName)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
   
   // TODO
   def serverInfo(serverName:String,option:JsonObject=emptyJsonObject):Json = null
   
-  // TODO
   def addTable(tableName:String) {
-    
+    var p = new DefaultPromise[String]
+    clientActor ? ("addTable", p, databaseName, tableName)
+    val v = Await.result(p, 5 seconds)
+
   }
 
-  // TODO
   def deleteTable(tableName:String) {
-    
+    var p = new DefaultPromise[String]
+    clientActor ? ("deleteTable", p, databaseName, tableName)
+    val v = Await.result(p, 5 seconds)
+  }
+  
+  
+  /**
+   * Temporary debugging method.
+   */
+  def report(tableName: String): Json = {
+    var p = new DefaultPromise[Json]
+    clientActor ? ("report", p, databaseName, tableName)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
+
+  /**
+   * Temporary debugging method
+   */
+  def monitor(tableName:String): Json = {
+    var p = new DefaultPromise[Json]
+    clientActor ? ("monitor", p, databaseName, tableName)
+    val v = Await.result(p, 5 seconds)
+    v
   }
   
   // TODO (add,remove) (nodes,rings)
   
-  def syncTable(tableName: String) = new SyncTable(tableName, system, config, send)
+  // TODO make sure table exists local (if not local check remote)
+  def syncTable(tableName: String) = {
+    var p = new DefaultPromise[SyncTable]
+    clientActor ? ("syncTable", p, databaseName, tableName)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
 
-  def asyncTable(tableName: String) = new AsyncTable(tableName, system, send)
+  // TODO make sure table exists local (if not local check remote)
+  def asyncTable(tableName: String) = {
+    var p = new DefaultPromise[AsyncTable]
+    clientActor ? ("asyncTable", p, databaseName, tableName)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
 }

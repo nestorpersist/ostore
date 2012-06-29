@@ -42,8 +42,7 @@ import scala.io.Source
 // TODO 6. get rid of most returns
 // TODO 7. add logging
 // TODO 8. break out client as sep project (jsonops, send,synclient,asyncclient)
-// TODO 9. time skew of nodes in ring, time always increments
-// TODO 10. fix up timeouts (special debug settings)
+// TODO 9. fix up timeouts (special debug settings)
 
 
 private class Listener extends Actor {
@@ -62,23 +61,11 @@ private class Listener extends Actor {
 }
 
 private[persist] class DatabaseInfo(
-  val system: ActorSystem, 
-  val serverName: String, 
-  val databaseName: String, 
-  //var map: NetworkMap,
-  val sendServer:SendServer,
+  var dbRef:ActorRef,
   var config: DatabaseConfig,
-  var state: String) {
-  //private lazy val serverInfo = map.serverInfo(serverName)
-  lazy val sendRef = sendServer.sendRef(serverName, databaseName)
-  lazy val dbRef = sendServer.databaseRef(serverName, databaseName)
-  //def client(databaseName: String) = new SyncTable(databaseName, system, config, serverInfo.sendRef)
-  //def aclient(databaseName: String) = new AsyncTable(databaseName, system, serverInfo.sendRef)
-  def client(databaseName: String) = new SyncTable(databaseName, system, config, sendRef)
-  def aclient(databaseName: String) = new AsyncTable(databaseName, system, sendRef)
-}
+  var state: String)
 
-private[persist] class Server(serverConfig: Json) extends Actor {
+private[persist] class Server(serverConfig: Json, create:Boolean) extends Actor {
   private implicit val timeout = Timeout(5 seconds)
 
   private def deletePath(f: File) {
@@ -90,14 +77,16 @@ private[persist] class Server(serverConfig: Json) extends Actor {
     f.delete();
   }
 
-  private val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
+  private val host = jgetString(serverConfig, "host")
+  private val port = jgetInt(serverConfig, "port")
+  private val serverName = host + ":" + port
   private val path = jgetString(serverConfig, "path")
   private val fname = path + "/" + "@server" +"/" + serverName
   private val f = new File(fname)
   private val exists = f.exists()
   private val system = context.system
   private val sendServer = new SendServer(system)
-  private val store = new Store(context, "@server", fname, ! exists)
+  private val store = new Store(context, "@server", fname, ! exists || create)
   private val storeTable = store.getTable(serverName)
   private val listener = system.actorOf(Props[Listener])
   system.eventStream.subscribe(listener, classOf[DeadLetter])
@@ -107,8 +96,7 @@ private[persist] class Server(serverConfig: Json) extends Actor {
   val restPort = jgetInt(serverConfig, "rest")
   if (restPort != 0) {
     RestClient1.system = system
-    // TODO restclient should call server actors
-    RestClient1.databases = databases
+    // TODO restclient might call server Manager and Send actors
     Http.start(system, restPort)
   }
 
@@ -123,12 +111,9 @@ private[persist] class Server(serverConfig: Json) extends Actor {
             case None => ""
           }
           val dbConfig = Json(dbConf)
-          //val map = new NetworkMap(system, databaseName, dbConfig)
           val config = DatabaseConfig(databaseName, dbConfig)
-          //val info = new DatabaseInfo(system, serverName, databaseName, map, config, "stop")
-          val info = new DatabaseInfo(system, serverName, databaseName, sendServer, config, "stop")
+          val info = new DatabaseInfo(null, config, "stop")
           databases += (databaseName -> info)
-          RestClient1.databases = databases // should be better synchronized
           key = storeTable.next(databaseName, false)
         }
         case None => done = true
@@ -138,18 +123,16 @@ private[persist] class Server(serverConfig: Json) extends Actor {
 
   def receive = {
     case ("newDatabase", databaseName: String, dbConf: String) => {
+      println("newDatabase")
       val dbConfig = Json(dbConf)
-      //val map = new NetworkMap(system, databaseName, dbConfig)
       var config = DatabaseConfig(databaseName, dbConfig)
       if (databases.contains(databaseName)) {
         sender ! "AlreadyPresent"
       } else {
         storeTable.putMeta(databaseName, dbConf)
         val database = system.actorOf(Props(new ServerDatabase(config, serverConfig, true)), name = databaseName)
-        //val info = new DatabaseInfo(system, serverName, databaseName, map, config, "starting")
-        val info = new DatabaseInfo(system, serverName, databaseName, sendServer, config, "starting")
+        val info = new DatabaseInfo(database, config, "starting")
         databases += (databaseName -> info)
-        RestClient1.databases = databases // should be better synchronized
         val f = database ? ("start1")
         val x = Await.result(f,5 seconds)
         sender ! Codes.Ok
@@ -160,7 +143,6 @@ private[persist] class Server(serverConfig: Json) extends Actor {
       databases.get(databaseName) match {
         case Some(info) => {
           info.state = "stopping"
-          //val database = info.map.serverInfo(serverName).dbRef
           val database = info.dbRef
           val f = database ? ("stop1")
           val v = Await.result(f, 5 seconds)
@@ -175,13 +157,13 @@ private[persist] class Server(serverConfig: Json) extends Actor {
       databases.get(databaseName) match {
         case Some(info) => {
           info.state = "stop"
-          //val database = info.map.serverInfo(serverName).dbRef
           val database = info.dbRef
           val f = database ? ("stop2")
           val v = Await.result(f, 5 seconds)
           val stopped = gracefulStop(database, 5 seconds)(system)
           Await.result(stopped, 5 seconds)
           sender ! Codes.Ok
+          info.dbRef = null
           println("Database stopped " + databaseName)
         }
         case None => {
@@ -196,6 +178,7 @@ private[persist] class Server(serverConfig: Json) extends Actor {
           val f = database ? ("start1")
           Await.result(f, 5 seconds)
           info.state = "starting"
+          info.dbRef = database
           sender ! Codes.Ok
           println("Database starting " + databaseName)
         }
@@ -207,7 +190,6 @@ private[persist] class Server(serverConfig: Json) extends Actor {
     case ("startDatabase2", databaseName: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
-          //val database = info.map.serverInfo(serverName).dbRef
           val database = info.dbRef
           val f = database ? ("start2")
           Await.result(f, 5 seconds)
@@ -229,7 +211,6 @@ private[persist] class Server(serverConfig: Json) extends Actor {
           val f = new File(fname)
           deletePath(f)
           databases -= databaseName
-          RestClient1.databases = databases // should be better synchronized
           sender ! Codes.Ok
           storeTable.remove(databaseName)
           println("Database deleted " + databaseName)
@@ -276,10 +257,10 @@ object Server {
   private var server:ActorRef = null
   private var system:ActorSystem = null
   
-  def start(config: Json):ActorSystem = {
+  def start(config: Json, create:Boolean = false):ActorSystem = {
     // TODO get port from config
     system = ActorSystem("ostore", ConfigFactory.load.getConfig("server"))
-    server = system.actorOf(Props(new Server(config)), name = "@server")
+    server = system.actorOf(Props(new Server(config, create)), name = "@server")
     val f = server ? ("start")
     Await.result(f,200 seconds)
     system

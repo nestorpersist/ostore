@@ -247,5 +247,12 @@ object EditWindow {
   def add(act: Act, w: Window, databaseName: String, tableName: String, client: WebClient) {
     popup(act, w, databaseName, tableName, null,null,  null, client, true)
   }
+  
+  def addTable(act:Act, w: Window, databaseName:String, tableName:String, client: WebClient) {
+    println("UI Add table: " + databaseName +":" + tableName)
+    // popup to get table name
+    // call client t0 do the add
+    // call act to reset ui
+  }
 
 }

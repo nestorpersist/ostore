@@ -324,6 +324,8 @@ class Act(app: Application, client: WebClient, all: All, top: Top, left: Left, r
   val t3 = new Button("Delete Table")
   t3.addListener(new ClickListener {
     def buttonClick(e: Button#ClickEvent) = {
+      client.deleteTable(databaseName, tableName)
+      toTables(databaseName)
     }
   })
   val t4 = new Button("Upload")
@@ -458,7 +460,7 @@ class Act(app: Application, client: WebClient, all: All, top: Top, left: Left, r
         toTable(databaseName, tableName)
       }
     },
-      _ => {})
+      _ => {/* ADD Table */ })
     left.clear()
     for (table <- jgetArray(tables)) {
       left.add(jgetString(table))

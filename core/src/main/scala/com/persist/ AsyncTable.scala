@@ -34,9 +34,7 @@ import akka.util.Timeout
  * This is the asynchronous interface to OStore tables.
  * Instances of this class are created by the [[com.persist.Database]] asyncTable method.
  */
-class AsyncTable private[persist] (tableName: String, system: ActorSystem, send: ActorRef) {
-  // TODO pass in config rather than default to ring r1
-  // TODO option to get config from remote server
+class AsyncTable private[persist] (databaseName:String, tableName: String, system: ActorSystem, send: ActorRef) {
 
   private implicit val executor = system.dispatcher
 
