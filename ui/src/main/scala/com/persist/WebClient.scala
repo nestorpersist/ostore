@@ -38,7 +38,8 @@ import org.apache.http.impl.conn.SingleClientConnManager
 import org.apache.http.client.methods.HttpPost
 
 class WebClient() {
-    val server = "127.0.0.1:8081"
+  
+  val server = "127.0.0.1:8081"
 
   // Note GWT uses old version of apache commons http client
   val params = new BasicHttpParams();

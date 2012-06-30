@@ -28,7 +28,7 @@ import akka.util.Timeout
 import scala.collection.immutable.TreeMap
 import JsonOps._
 
-private[persist] class ServerNode(databaseName: String, ringName: String, nodeName: String, send: ActorRef, config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
+private[persist] class ServerNode(databaseName: String, ringName: String, nodeName: String, send: ActorRef, var config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
   
   private val monitor = context.actorOf(Props(new Monitor(nodeName)), name = "@mon")
   implicit val timeout = Timeout(5 seconds)
@@ -84,6 +84,21 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       Await.result(f, 5 seconds)
       store.close()
       sender ! Codes.Ok
+    }
+    case ("addTable1", tableName:String) => {
+      newTable(tableName)
+    }
+    case ("addTable2", tableName:String) => {
+      val tableInfo = tables(tableName)
+      val f = tableInfo.table ? ("start2")
+      Await.result(f, 5 seconds)
+      sender ! Codes.Ok
+    }
+    case ("deleteTable1", tableName:String) => {
+      println("deleteTable1 NYI " + tableName)
+    }
+    case ("deleteTable2", tableName:String) => {
+      println("deleteTable1 NYI " + tableName)
     }
   }
 }

@@ -109,7 +109,7 @@ object EditWindow {
     val error = new Label("")
     c.addComponent(error)
 
-    val keyTa = new TextArea("Key")
+   val keyTa = new TextArea("Key")
     if (add) {
       keyTa.setSizeFull()
       c.addComponent(keyTa)
@@ -202,6 +202,48 @@ object EditWindow {
     })
   }
 
+  def getName(finish:(Option[String])=>Unit,w:Window,title:String, name:String) {
+    val getWin = new Window(title)
+    getWin.getContent().setSizeFull()
+    getWin.setReadOnly(true)
+    val c = new VerticalLayout()
+    c.setSizeFull()
+    getWin.addComponent(c)
+    val h1 = w.getHeight()
+    val h1u = w.getHeightUnits()
+    val w1 = w.getWidth()
+    val w1u = w.getWidthUnits()
+    getWin.setPositionX(100)
+    getWin.setPositionY(100)
+    getWin.setHeight(h1 * 0.6f, h1u)
+    getWin.setWidth(w1 * 0.6f, w1u)
+    val buttons = new HorizontalLayout()
+    val b1 = new Button("Add")
+    buttons.addComponent(b1)
+    val b2 = new Button("Cancel")
+    buttons.addComponent(b2)
+    c.addComponent(buttons)
+    val namea = new TextField(name)
+    c.addComponent(namea)
+    val l = new Label("")
+    c.addComponent(l)
+    c.setExpandRatio(l, 10.f)
+    w.addWindow(getWin)
+    b2.addListener(new ClickListener {
+      def buttonClick(e: Button#ClickEvent) = {
+        val n = namea.getValue().asInstanceOf[String]
+        w.removeWindow(getWin)
+        finish(Some(n))
+      }
+    })
+    b2.addListener(new ClickListener {
+      def buttonClick(e: Button#ClickEvent) = {
+        w.removeWindow(getWin)
+        finish(None)
+      }
+    })
+  }
+
   def test(finish:(Boolean)=>Unit,w: Window, title: String, msg: String, yes: String, no: String) {
     val testWin = new Window(title)
     testWin.getContent().setSizeFull()
@@ -248,11 +290,18 @@ object EditWindow {
     popup(act, w, databaseName, tableName, null,null,  null, client, true)
   }
   
-  def addTable(act:Act, w: Window, databaseName:String, tableName:String, client: WebClient) {
-    println("UI Add table: " + databaseName +":" + tableName)
-    // popup to get table name
-    // call client t0 do the add
-    // call act to reset ui
+  def addTable(act:Act, w: Window, databaseName:String, client: WebClient) {
+    def add(name:Option[String]) {
+      name match {
+        case Some(n:String) => {
+          client.addTable(databaseName, n)
+          act.toTable(databaseName,n)
+        }
+        case None =>
+      }
+      
+    }
+    getName(add,w, "Add a New Table","Table Name")
   }
 
 }

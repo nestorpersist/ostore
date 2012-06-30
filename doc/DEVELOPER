@@ -1,0 +1,10 @@
+1. Use Scala formatter with default settings for all code.
+
+2. Before checkin
+ 
+        a. all code (core and ui) must compile
+
+        b. all unit tests must pass. In core run
+
+               sbt 
+               test-only com.persist.unit.*

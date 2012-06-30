@@ -80,8 +80,37 @@ private[persist] class ServerDatabase(config:DatabaseConfig, serverConfig: Json,
       }
       val f = send ? ("stop")
       Await.result(f, 5 seconds)
-      //val stopped = gracefulStop(send, 5 seconds)(context.system)
-      //Await.result(stopped, 5 seconds)
+      sender ! Codes.Ok
+    }
+    case ("addTable1", tableName:String) => {
+      for ((ringName, ringInfo) <- rings) {
+        val f = ringInfo.ring ? ("addTable1", tableName)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+      
+    }
+    case ("addTable2", tableName:String) => {
+      for ((ringName, ringInfo) <- rings) {
+        val f = ringInfo.ring ? ("addTable2", tableName)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+      
+    }
+    case ("deleteTable1", tableName:String) => {
+      for ((ringName, ringInfo) <- rings) {
+        val f = ringInfo.ring ? ("deleteTable1", tableName)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+      
+    }
+    case ("deleteTable2", tableName:String) => {
+      for ((ringName, ringInfo) <- rings) {
+        val f = ringInfo.ring ? ("deleteTable2", tableName)
+        val v = Await.result(f, 5 seconds)
+      }
       sender ! Codes.Ok
     }
   }

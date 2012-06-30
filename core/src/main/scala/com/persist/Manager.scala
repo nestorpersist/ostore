@@ -199,6 +199,40 @@ class Manager(host: String, port: Int) extends CheckedActor {
   }
   
     
+  private def addTable(databaseName: String, tableName: String) {
+    val status = getDatabaseStatus(databaseName)
+    if (status == "none") throw new Exception("database does not exist")
+    if (status != "stop") throw new Exception("database not stopped")
+    // TODO could be done in parallel
+    for (serverName <- allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
+      val f = server ? ("addTable1", databaseName, tableName)
+      val v = Await.result(f, 5 seconds)
+    }
+    for (serverName <- allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
+      val f = server ? ("addTable2", databaseName, tableName)
+      val v = Await.result(f, 5 seconds)
+    }
+  }
+
+  private def deleteTable(databaseName: String, tableName: String) {
+    val status = getDatabaseStatus(databaseName)
+    if (status == "none") throw new Exception("database does not exist")
+    if (status != "active") throw new Exception("database not active")
+    // TODO could be done in parallel
+    for (serverName <- allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
+      val f = server ? ("deleteTable1", databaseName, tableName)
+      val v = Await.result(f, 5 seconds)
+    }
+    for (serverName <- allServers(databaseName)) {
+      val server = sendServer.serverRef(serverName)
+      val f = server ? ("deleteTable2", databaseName, tableName)
+      val v = Await.result(f, 5 seconds)
+    }
+  }
+  
   /**
    * Temporary debugging method.
    */
@@ -302,7 +336,6 @@ class Manager(host: String, port: Int) extends CheckedActor {
       }
     }
     case ("createDatabase", p: Promise[String], databaseName: String, config: Json) => {
-    //case ("createDatabase", p: Any, databaseName: String, config: Json) => {
       complete(p) {
         createDatabase(databaseName, config)
         Codes.Ok
@@ -328,6 +361,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
     }
     case ("addTable", p: Promise[String], databaseName: String, tableName:String) => {
       complete(p) {
+        addTable(databaseName, tableName)
         // TODO
         // TODO update local config and map
         println("Add table: "+ databaseName +":" + tableName)
@@ -336,6 +370,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
     }
     case ("deleteTable", p: Promise[String], databaseName: String, tableName:String) => {
       complete(p) {
+        deleteTable(databaseName, tableName)
         // TODO
         // TODO update local config and map
         println("Delete table: "+ databaseName +":" + tableName)

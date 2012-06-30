@@ -78,6 +78,34 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
+    case ("addTable1", tableName:String) => {
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("addTable1", tableName)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender !  Codes.Ok 
+    }
+    case ("addTable2", tableName:String) => {
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("addTable2", tableName)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender !  Codes.Ok 
+    }
+    case ("deleteTable1", tableName:String) => {
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("deleteTable1", tableName)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender !  Codes.Ok 
+    }
+    case ("deleteTable2", tableName:String) => {
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("deleteTable2", tableName)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender !  Codes.Ok 
+    }
   }
 
 }

@@ -460,7 +460,9 @@ class Act(app: Application, client: WebClient, all: All, top: Top, left: Left, r
         toTable(databaseName, tableName)
       }
     },
-      _ => {/* ADD Table */ })
+      _ => {
+        EditWindow.addTable(act, all.all, databaseName, client)
+      })
     left.clear()
     for (table <- jgetArray(tables)) {
       left.add(jgetString(table))

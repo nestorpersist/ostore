@@ -239,6 +239,63 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
         case None => sender ! (Codes.NotPresent, "")
       }
     }
+    case ("addTable1", databaseName: String, tableName: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val database = info.dbRef
+          val f = database ? ("addTable1", tableName)
+          val v = Await.result(f, 5 seconds)
+          sender ! Codes.Ok
+        }
+        case None => {
+          sender ! "exist"
+        }
+      }
+    }
+    case ("addTable2", databaseName: String, tableName: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val database = info.dbRef
+          val f = database ? ("addTable2", tableName)
+          val v = Await.result(f, 5 seconds)
+          val stopped = gracefulStop(database, 5 seconds)(system)
+          Await.result(stopped, 5 seconds)
+          sender ! Codes.Ok
+        }
+        case None => {
+          sender ! "exist"
+        }
+      }
+    }
+    case ("deleteTable1", databaseName: String, tableName: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val database = info.dbRef
+          val f = database ? ("deleteTable1", tableName)
+          val v = Await.result(f, 5 seconds)
+          sender ! Codes.Ok
+        }
+        case None => {
+          sender ! "exist"
+        }
+      }
+    }
+    case ("deleteTable2", databaseName: String, tableName: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val database = info.dbRef
+          val f = database ? ("deleteTable2", tableName)
+          val v = Await.result(f, 5 seconds)
+          val stopped = gracefulStop(database, 5 seconds)(system)
+          Await.result(stopped, 5 seconds)
+          sender ! Codes.Ok
+        }
+        case None => {
+          sender ! "exist"
+        }
+      }
+    }
+   
     case ("start") => {
       sender ! Codes.Ok
     }
