@@ -21,7 +21,6 @@ import java.io.File
 import net.kotek.jdbm.DBMaker
 import java.util.SortedMap
 import akka.actor.ActorSystem
-import akka.actor.Actor
 import akka.util.duration._
 import akka.actor.Props
 import akka.pattern._
@@ -29,7 +28,7 @@ import akka.util.Timeout
 import akka.dispatch.Await
 import akka.actor.ActorContext
 
-private[persist] class StoreCommit(db: DB) extends Actor {
+private[persist] class StoreCommit(db: DB) extends CheckedActor {
   val system = context.system
   val maxCnt = 500
   val maxTime: Long = 1000 // 1 second
@@ -45,7 +44,7 @@ private[persist] class StoreCommit(db: DB) extends Actor {
     cnt = 0
     lastCommit = t
   }
-  def receive = {
+  def rec = {
     case "start" => {
       sender ! Codes.Ok
     }
@@ -79,7 +78,6 @@ private[persist] class StoreCommit(db: DB) extends Actor {
         }
       }
     }
-    case x => println("timer fail:"+ x)
   }
 }
 

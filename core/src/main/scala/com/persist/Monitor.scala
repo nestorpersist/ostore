@@ -17,15 +17,14 @@
 
 package com.persist
 
-import akka.actor.Actor
 import JsonOps._
 import akka.actor.ActorRef
 
-private[persist] class Monitor(nodeName: String) extends Actor {
+private[persist] class Monitor(nodeName: String) extends CheckedActor {
 
   var tables = JsonObject()
 
-  def receive = {
+  def rec = {
     case ("report", tableName: String, toNext: Long, fromPrev: Long, sync: Long, msg: Long, size: Long) => {
       var info = jgetObject(tables,tableName)
       info = info ++ List("msg" -> msg, "size" -> size, "toNext" -> toNext, "fromPrev" -> fromPrev,

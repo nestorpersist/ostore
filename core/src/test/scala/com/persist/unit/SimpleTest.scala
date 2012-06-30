@@ -45,7 +45,7 @@ class SimpleTest extends FunSuite {
      """)
 
     println("Starting Server")
-    val system1 = Server.start(serverConfig, true)
+    Server.start(serverConfig, true)
 
     val system = ActorSystem("ostoreclient", ConfigFactory.load.getConfig("client"))
     val client = new Client(system)
@@ -66,12 +66,19 @@ class SimpleTest extends FunSuite {
     val v3 = tab1.get("key3")
     println("key3:" + v3)
 
+    var expect = List("key1", "key2", "key4", "key5")
+    var expectr = expect.reverse
+
     for (k <- tab1.all()) {
       println("fwd:" + k)
+      assert(k == expect.head, "forward failed")
+      expect = expect.tail
     }
     println("")
-    for (k <- tab1.all(JsonObject("reverse" -> true))) {
+        for (k <- tab1.all(JsonObject("reverse" -> true))) {
       println("bwd:" + k)
+      assert(k == expectr.head, "backward failed")
+      expectr = expectr.tail
     }
 
     val report1 = database.report("tab1")
@@ -81,7 +88,7 @@ class SimpleTest extends FunSuite {
 
     client.stopDataBase(dbName)
     client.deleteDatabase(dbName)
-    
+
     client.stop()
 
     println("Stopping Server")

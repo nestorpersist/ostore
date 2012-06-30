@@ -24,14 +24,13 @@ import akka.util.Timeout
 import akka.pattern._
 import akka.util.duration._
 import akka.dispatch.Await
-import akka.actor.Actor
 import akka.dispatch.Future
 import akka.dispatch.Promise
 import akka.actor.Props
 import akka.dispatch.DefaultPromise
 import akka.actor.ActorRef
 
-class Manager(host: String, port: Int) extends Actor {
+class Manager(host: String, port: Int) extends CheckedActor {
   private val system = context.system
   private implicit val timeout = Timeout(5 seconds)
   private implicit val executor = system.dispatcher
@@ -255,7 +254,7 @@ class Manager(host: String, port: Int) extends Actor {
     p.complete(v)
   }
 
-  def receive = {
+  def rec = {
     case ("database", p: Promise[(String, Database)], databaseName: String) => {
       complete(p) {
         // TODO make sure database exists
@@ -359,7 +358,5 @@ class Manager(host: String, port: Int) extends Actor {
         Codes.Ok
       }
     }
-    case x  => println("ManagerFail:" + x)
-
   }
 }

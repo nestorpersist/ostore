@@ -19,7 +19,6 @@ package com.persist
 
 import scala.collection.immutable.TreeMap
 import JsonOps._
-import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
@@ -31,7 +30,7 @@ import akka.util.duration._
 import akka.dispatch._
 import akka.actor.Cancellable
 
-private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Actor {
+private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends CheckedActor {
   
   val databaseMap = DatabaseMap(config)
   
@@ -152,7 +151,7 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ac
     sendDirect(info.kind, ring, nodeMap, self, info.uid, info.tab, info.key, info.value)
   }
 
-  def receive = {
+  def rec = {
     case ("start") => {
       sender ! Codes.Ok
     }
@@ -249,9 +248,6 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ac
         }
       }
       setTimer
-    }
-    case x: Any => {
-      println("BAD SEND:" + x)
     }
   }
 

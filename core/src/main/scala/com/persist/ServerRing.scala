@@ -18,7 +18,6 @@
 package com.persist
 
 import akka.actor.ActorSystem
-import akka.actor.Actor
 import akka.actor.Props
 import akka.actor.ActorRef
 import JsonOps._
@@ -30,7 +29,7 @@ import scala.collection.immutable.TreeMap
 
 private[persist] class NodeInfo(val name: String, val node: ActorRef)
 
-private[persist] class ServerRing(databaseName:String, ringName:String, send:ActorRef, config:DatabaseConfig, serverConfig: Json, create: Boolean) extends Actor {
+private[persist] class ServerRing(databaseName:String, ringName:String, send:ActorRef, config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
   val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
   var nodes = TreeMap[String, NodeInfo]()
   implicit val timeout = Timeout(5 seconds)
@@ -52,7 +51,7 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
     }
   }
 
-  def receive = {
+  def rec = {
     case ("start1") => {
       sender !  Codes.Ok 
     }
@@ -79,7 +78,6 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case x => println("databaseFail:" + x)
   }
 
 }

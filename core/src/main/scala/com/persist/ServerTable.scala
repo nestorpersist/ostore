@@ -17,7 +17,6 @@
 
 package com.persist
 
-import akka.actor.Actor
 import akka.actor.ActorRef
 import JsonOps._
 import akka.dispatch.Future
@@ -29,9 +28,9 @@ import akka.dispatch.Promise
 private[persist] trait ServerTableAssembly extends ServerMapReduceComponent with ServerSyncComponent
   with ServerBalanceComponent with ServerOpsComponent with ServerTableInfoComponent
 
-private [persist] class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
-  store: Store, monitor: ActorRef, send: ActorRef, config: DatabaseConfig) extends Actor {
-  
+private[persist] class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
+  store: Store, monitor: ActorRef, send: ActorRef, config: DatabaseConfig) extends CheckedActor {
+
   object all extends ServerTableAssembly {
     val info = new ServerTableInfo(databaseName, ringName, nodeName, tableName,
       config, send, store, monitor)
@@ -235,19 +234,12 @@ private [persist] class ServerTable(databaseName: String, ringName: String, node
     }
   }
 
-  def receive = {
+  def rec = {
     case cmd => {
-      try {
-        doCommand(cmd)
-        if (bal.canSend) bal.sendToNext
-        if (bal.canReport) bal.reportToPrev
-        monitor ! ("report", tableName, bal.cntToNext, bal.cntFromPrev, sync.cntSync, ops.cntMsg, info.storeTable.size())
-      } catch {
-        case ex: Exception => {
-          println("Table internal error: " + cmd + ":" + ex.toString())
-          ex.printStackTrace()
-        }
-      }
+      doCommand(cmd)
+      if (bal.canSend) bal.sendToNext
+      if (bal.canReport) bal.reportToPrev
+      monitor ! ("report", tableName, bal.cntToNext, bal.cntFromPrev, sync.cntSync, ops.cntMsg, info.storeTable.size())
     }
   }
 }

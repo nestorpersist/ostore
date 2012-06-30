@@ -26,7 +26,6 @@ import akka.pattern._
 import akka.util.Timeout
 import akka.util.duration._
 import akka.dispatch._
-import akka.actor.Actor
 import akka.remote.RemoteClientError
 import akka.remote.RemoteClientWriteFailed
 import akka.actor.DeadLetter
@@ -45,8 +44,8 @@ import scala.io.Source
 // TODO 9. fix up timeouts (special debug settings)
 
 
-private class Listener extends Actor {
-  def receive = {
+private class Listener extends CheckedActor {
+  def rec = {
     case r: RemoteClientError => {
       println("*****Remote Client Error:" + r.getCause().getMessage() + ":" + r.getRemoteAddress())
     }
@@ -65,7 +64,7 @@ private[persist] class DatabaseInfo(
   var config: DatabaseConfig,
   var state: String)
 
-private[persist] class Server(serverConfig: Json, create:Boolean) extends Actor {
+private[persist] class Server(serverConfig: Json, create:Boolean) extends CheckedActor {
   private implicit val timeout = Timeout(5 seconds)
 
   private def deletePath(f: File) {
@@ -121,7 +120,7 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Actor 
     } while (!done)
   }
 
-  def receive = {
+  def rec = {
     case ("newDatabase", databaseName: String, dbConf: String) => {
       println("newDatabase")
       val dbConfig = Json(dbConf)
@@ -257,13 +256,12 @@ object Server {
   private var server:ActorRef = null
   private var system:ActorSystem = null
   
-  def start(config: Json, create:Boolean = false):ActorSystem = {
+  def start(config: Json, create:Boolean = false) {
     // TODO get port from config
     system = ActorSystem("ostore", ConfigFactory.load.getConfig("server"))
     server = system.actorOf(Props(new Server(config, create)), name = "@server")
     val f = server ? ("start")
     Await.result(f,200 seconds)
-    system
   }
   
   def stop {
@@ -272,6 +270,7 @@ object Server {
     Await.result(f, 5 seconds)
     val f1 = gracefulStop(server, 5 seconds)(system) // will stop all its children too!
     Await.result(f1,5 seconds)
+    system.shutdown()
   }
   
   def main(args: Array[String]) {

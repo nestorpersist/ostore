@@ -36,6 +36,7 @@ import akka.dispatch.Promise
 import akka.actor.Props
 import akka.dispatch.Await
 import akka.pattern._
+import com.typesafe.config.ConfigFactory
 
 @RunWith(classOf[JUnitRunner])
 class TimeTest extends FunSuite {
@@ -92,8 +93,9 @@ class TimeTest extends FunSuite {
      """)
 
     println("Starting Server")
-    val system = Server.start(serverConfig)
+    Server.start(serverConfig)
 
+    val system = ActorSystem("ostoreclient", ConfigFactory.load.getConfig("client"))
     val client = new Client(system)
     client.createDatabase(dbName, databaseConfig)
 

@@ -18,7 +18,6 @@
 package com.persist
 
 import akka.actor.ActorSystem
-import akka.actor.Actor
 import akka.actor.Props
 import akka.actor.ActorRef
 import JsonOps._
@@ -30,7 +29,7 @@ import scala.collection.immutable.TreeMap
 
 private[persist] class RingInfo(val name: String, val ring: ActorRef)
 
-private[persist] class ServerDatabase(config:DatabaseConfig, serverConfig: Json, create: Boolean) extends Actor {
+private[persist] class ServerDatabase(config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
   val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
   val databaseName = config.name
   val send = context.actorOf(Props(new Send(context.system,config)), name = "@send")
@@ -56,7 +55,7 @@ private[persist] class ServerDatabase(config:DatabaseConfig, serverConfig: Json,
     if (hasRing) newRing(ringName)
   }
 
-  def receive = {
+  def rec = {
     case ("start1") => {
       sender !  Codes.Ok 
     }
@@ -85,7 +84,6 @@ private[persist] class ServerDatabase(config:DatabaseConfig, serverConfig: Json,
       //Await.result(stopped, 5 seconds)
       sender ! Codes.Ok
     }
-    case x => println("databaseFail:" + x)
   }
 
 }

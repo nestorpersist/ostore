@@ -18,7 +18,6 @@
 package com.persist
 
 import akka.actor.ActorSystem
-import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
 import akka.dispatch.Await
@@ -29,7 +28,7 @@ import akka.util.Timeout
 import scala.collection.immutable.TreeMap
 import JsonOps._
 
-private[persist] class ServerNode(databaseName: String, ringName: String, nodeName: String, send: ActorRef, config:DatabaseConfig, serverConfig: Json, create: Boolean) extends Actor {
+private[persist] class ServerNode(databaseName: String, ringName: String, nodeName: String, send: ActorRef, config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
   
   private val monitor = context.actorOf(Props(new Monitor(nodeName)), name = "@mon")
   implicit val timeout = Timeout(5 seconds)
@@ -58,7 +57,7 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
     newTable(tableName)
   }
 
-  def receive = {
+  def rec = {
     case ("start1") => {
       sender ! Codes.Ok
     }
@@ -86,6 +85,5 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       store.close()
       sender ! Codes.Ok
     }
-    case x => println("nodefail:" + x)
   }
 }
