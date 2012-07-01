@@ -29,7 +29,7 @@ import scala.collection.immutable.TreeMap
 
 private[persist] class RingInfo(val name: String, val ring: ActorRef)
 
-private[persist] class ServerDatabase(config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
+private[persist] class ServerDatabase(var config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
   val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
   val databaseName = config.name
   val send = context.actorOf(Props(new Send(context.system,config)), name = "@send")
@@ -82,11 +82,12 @@ private[persist] class ServerDatabase(config:DatabaseConfig, serverConfig: Json,
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case ("addTable1", tableName:String) => {
+    case ("addTable1", tableName:String, config:DatabaseConfig) => {
       for ((ringName, ringInfo) <- rings) {
-        val f = ringInfo.ring ? ("addTable1", tableName)
+        val f = ringInfo.ring ? ("addTable1", tableName, config)
         val v = Await.result(f, 5 seconds)
       }
+      this.config = config
       sender ! Codes.Ok
       
     }
@@ -98,11 +99,12 @@ private[persist] class ServerDatabase(config:DatabaseConfig, serverConfig: Json,
       sender ! Codes.Ok
       
     }
-    case ("deleteTable1", tableName:String) => {
+    case ("deleteTable1", tableName:String,config:DatabaseConfig) => {
       for ((ringName, ringInfo) <- rings) {
-        val f = ringInfo.ring ? ("deleteTable1", tableName)
+        val f = ringInfo.ring ? ("deleteTable1", tableName, config)
         val v = Await.result(f, 5 seconds)
       }
+      this.config = config
       sender ! Codes.Ok
       
     }

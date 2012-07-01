@@ -85,8 +85,14 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       store.close()
       sender ! Codes.Ok
     }
-    case ("addTable1", tableName:String) => {
+    case ("addTable1", tableName:String, config:DatabaseConfig) => {
+      for ((tableName, tableInfo) <- tables) {
+        val f = tableInfo.table ? ("setConfig", config)
+        Await.result(f, 5 seconds)
+      }
+      this.config = config
       newTable(tableName)
+      // TODO pass config to all other tables???
     }
     case ("addTable2", tableName:String) => {
       val tableInfo = tables(tableName)
@@ -94,7 +100,7 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case ("deleteTable1", tableName:String) => {
+    case ("deleteTable1", tableName:String, config:DatabaseConfig) => {
       println("deleteTable1 NYI " + tableName)
     }
     case ("deleteTable2", tableName:String) => {

@@ -42,7 +42,7 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
   
   val defaultRing = config.rings.keys.head
 
-  class MsgAction(val ring: String, val nodeMap: NodeMap, val table: String, val when: Long, val why: String)
+  class MsgAction(val ring: String, val nodeMap: TableNodeMap, val table: String, val when: Long, val why: String)
   
   private val noDest = Map[String,String]()
 
@@ -104,7 +104,7 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
     msgs = msgs - info.uid
   }
 
-  private def sendDirect(kind: String, ring: String, nodeMap:NodeMap, client: ActorRef, uid: Long, tab: String, key: String, value: Any) {
+  private def sendDirect(kind: String, ring: String, nodeMap:TableNodeMap, client: ActorRef, uid: Long, tab: String, key: String, value: Any) {
     //val dest = networkMap.get(ring, server, tab)
     val ref = nodeMap.getRef(system)
     ref ! (kind, uid, key, value)
@@ -198,7 +198,7 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
             val lastEvent = info.history.head
             //println("handoff:"+lastEvent.ring+":"+lastEvent.server+" ["+low+","+high+"]")
             //networkMap.setRange(lastEvent.ring, lastEvent.node, lastEvent.table, low, high)
-            databaseMap.setLowHigh(lastEvent.ring, lastEvent.nodeMap.nodeName, lastEvent.table, low, high)
+            databaseMap.setLowHigh(lastEvent.ring, lastEvent.nodeMap.node.nodeName, lastEvent.table, low, high)
             //val newUid = Await.result(uidGen ? "get",5 seconds).asInstanceOf[Long]
             val newUid = uidGen.get
             val newInfo = new MsgInfo(info.kind, info.dest, info.client, newUid, info.tab, info.key, info.value)

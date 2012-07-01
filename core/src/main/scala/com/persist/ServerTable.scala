@@ -29,7 +29,7 @@ private[persist] trait ServerTableAssembly extends ServerMapReduceComponent with
   with ServerBalanceComponent with ServerOpsComponent with ServerTableInfoComponent
 
 private[persist] class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
-  store: Store, monitor: ActorRef, send: ActorRef, config: DatabaseConfig) extends CheckedActor {
+  store: Store, monitor: ActorRef, send: ActorRef, var config: DatabaseConfig) extends CheckedActor {
 
   object all extends ServerTableAssembly {
     val info = new ServerTableInfo(databaseName, ringName, nodeName, tableName,
@@ -191,6 +191,9 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
       //}
       case ("fromNext", response: String) => {
         bal.fromNext(response)
+      }
+      case ("setConfig", config:DatabaseConfig) => {
+        this.config = config
       }
       case (kind: String, uid: Long, key: String, value: Any) => {
         //val sender1 = sender  // must preserve sender for futures

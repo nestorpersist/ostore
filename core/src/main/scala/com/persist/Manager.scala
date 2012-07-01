@@ -56,6 +56,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
         sendRef = null
       }
     }
+    
     lazy val database = new Database(system, databaseName, self)
     // TODO cache syncTable and asyncTable values ???
     // could also be used to check table exists
@@ -63,7 +64,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
     def asyncTable(tableName:String) = new AsyncTable(databaseName, tableName, system, send)
   }
 
-  // TODO don't pass to RestClient
+  // TODO get from server 
   private var databases = new TreeMap[String, DbInfo]()
 
   private val server = sendServer.serverRef(host + ":" + port)

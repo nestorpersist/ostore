@@ -35,10 +35,9 @@ private[persist] trait ServerMapReduceComponent { this: ServerTableAssembly =>
     var reduces: List[ReduceInfo] = Nil
     var prefixes = new HashMap[String, PrefixInfo]()
 
-    //val tinfo = info.map.tableInfo(info.tableName)
     val tconfig = info.config.tables(info.tableName)
-    val hasMap = tconfig.toMap.size > 0
-    val hasReduce = tconfig.toReduce.size > 0
+    val hasMap = tconfig.fromMap.size > 0
+    val hasReduce = tconfig.fromReduce.size > 0
 
     for (p <- tconfig.prefix) {
       val name = jgetString(p, "name")
@@ -47,14 +46,14 @@ private[persist] trait ServerMapReduceComponent { this: ServerTableAssembly =>
       prefixes = prefixes + (name -> PrefixInfo(size, info.store.getTable(pname)))
     }
 
-    for ((to, map) <- tconfig.toMap) {
+    for ((to, map) <- tconfig.fromMap) {
       val mi = MapInfo(to, getMap(map))
       maps = mi :: maps
     }
-    if (tconfig.fromMap.keySet.size > 0) {
+    if (tconfig.toMap.keySet.size > 0) {
       ops.canWrite = false
     }
-    for ((to, reduce) <- tconfig.toReduce) {
+    for ((to, reduce) <- tconfig.fromReduce) {
       val rtname = info.tableName + "@" + to
       val reduceStore = info.store.getTable(rtname)
       val ri = ReduceInfo(to, getReduce(reduce), reduceStore)

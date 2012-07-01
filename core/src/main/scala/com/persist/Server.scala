@@ -43,6 +43,13 @@ import scala.io.Source
 // TODO 8. break out client as sep project (jsonops, send,synclient,asyncclient)
 // TODO 9. fix up timeouts (special debug settings)
 
+// Server Actor Paths
+//       /user/@server
+//       /user/database
+//       /user/database/@send
+//       /user/database/ring/node
+//       /user/database/ring/node/@mon
+//       /user/database/ring/node/table
 
 private class Listener extends CheckedActor {
   def rec = {
@@ -242,8 +249,9 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
     case ("addTable1", databaseName: String, tableName: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
+          info.config = info.config.addTable(tableName)
           val database = info.dbRef
-          val f = database ? ("addTable1", tableName)
+          val f = database ? ("addTable1", tableName, info.config)
           val v = Await.result(f, 5 seconds)
           sender ! Codes.Ok
         }
@@ -271,7 +279,8 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
       databases.get(databaseName) match {
         case Some(info) => {
           val database = info.dbRef
-          val f = database ? ("deleteTable1", tableName)
+          info.config = info.config.deleteTable(tableName)
+          val f = database ? ("deleteTable1", tableName, info.config)
           val v = Await.result(f, 5 seconds)
           sender ! Codes.Ok
         }

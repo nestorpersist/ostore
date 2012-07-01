@@ -29,7 +29,7 @@ import scala.collection.immutable.TreeMap
 
 private[persist] class NodeInfo(val name: String, val node: ActorRef)
 
-private[persist] class ServerRing(databaseName:String, ringName:String, send:ActorRef, config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
+private[persist] class ServerRing(databaseName:String, ringName:String, send:ActorRef, var config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
   val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
   var nodes = TreeMap[String, NodeInfo]()
   implicit val timeout = Timeout(5 seconds)
@@ -78,11 +78,12 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case ("addTable1", tableName:String) => {
+    case ("addTable1", tableName:String, config:DatabaseConfig) => {
       for ((nodeName, nodeInfo) <- nodes) {
-        val f = nodeInfo.node ? ("addTable1", tableName)
+        val f = nodeInfo.node ? ("addTable1", tableName, config)
         val v = Await.result(f, 5 seconds)
       }
+      this.config = config
       sender !  Codes.Ok 
     }
     case ("addTable2", tableName:String) => {
@@ -92,11 +93,12 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
       }
       sender !  Codes.Ok 
     }
-    case ("deleteTable1", tableName:String) => {
+    case ("deleteTable1", tableName:String, config:DatabaseConfig) => {
       for ((nodeName, nodeInfo) <- nodes) {
-        val f = nodeInfo.node ? ("deleteTable1", tableName)
+        val f = nodeInfo.node ? ("deleteTable1", tableName, config)
         val v = Await.result(f, 5 seconds)
       }
+      this.config = config
       sender !  Codes.Ok 
     }
     case ("deleteTable2", tableName:String) => {

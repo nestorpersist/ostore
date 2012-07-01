@@ -23,8 +23,8 @@ import akka.actor.ActorRef
 import akka.actor.ActorSystem
 
 private[persist] case class ServerConfig(
-    val host:String,
-    val port:Int) {
+  val host: String,
+  val port: Int) {
   val name = host + ":" + port
 }
 
@@ -40,14 +40,14 @@ private[persist] case class RingConfig(
   }
 
   def nextNodeName(nodeName: String): String = {
-    val pos = nodes(nodeName).pos  + 1
+    val pos = nodes(nodeName).pos + 1
     val pos1 = if (pos == nodeSeq.size) 0 else pos
     nodeSeq(pos1)
   }
 
   def prevNodeName(nodeName: String): String = {
-    val pos = nodes(nodeName).pos  - 1
-    val pos1 = if (pos < 0) nodeSeq.size-1 else pos
+    val pos = nodes(nodeName).pos - 1
+    val pos1 = if (pos < 0) nodeSeq.size - 1 else pos
     nodeSeq(pos1)
   }
 
@@ -56,8 +56,8 @@ private[persist] case class RingConfig(
 private[persist] case class NodeConfig(
   val ringName: String,
   val name: String,
-  val server:ServerConfig,
-  val pos: Int) 
+  val server: ServerConfig,
+  val pos: Int)
 
 private[persist] case class TableConfig(
   val tableName: String,
@@ -68,9 +68,9 @@ private[persist] case class TableConfig(
   val fromReduce: Map[String, Json])
 
 private[persist] object DatabaseConfig {
-  
-  private def getMap(map:Map[String,Map[String,Json]],name:String):Map[String,Json] = {
-    if (! map.contains(name)) { Map[String,Json]() } else { map(name) }
+
+  private def getMap(map: Map[String, Map[String, Json]], name: String): Map[String, Json] = {
+    if (!map.contains(name)) { Map[String, Json]() } else { map(name) }
   }
 
   def apply(databaseName: String, config: Json): DatabaseConfig = {
@@ -86,23 +86,23 @@ private[persist] object DatabaseConfig {
       map match {
         case a: JsonArray => {
           for (m <- a) {
-            val from = jgetString(map, "from")
-            toMap = toMap + (to -> (getMap(toMap,to) + (from -> m)))
-            fromMap = fromMap + (from -> (getMap(fromMap,from) + (to -> m)))
+            val from = jgetString(m, "from")
+            toMap = toMap + (to -> (getMap(toMap, to) + (from -> m)))
+            fromMap = fromMap + (from -> (getMap(fromMap, from) + (to -> m)))
           }
         }
         case m: JsonObject => {
-          val from = jgetString(map, "from")
-          toMap = toMap + (to -> (getMap(toMap,to) + (from -> m)))
-          fromMap = fromMap + (from -> (getMap(fromMap,from) + (to -> m)))
+          val from = jgetString(m, "from")
+          toMap = toMap + (to -> (getMap(toMap, to) + (from -> m)))
+          fromMap = fromMap + (from -> (getMap(fromMap, from) + (to -> m)))
         }
         case x =>
       }
       val reduce = jget(tab, "reduce")
       if (reduce != null) {
         val from = jgetString(reduce, "from")
-        toReduce = toReduce + (to -> (getMap(toReduce,to) + (from -> reduce)))
-        fromReduce = fromReduce + (from -> (getMap(fromReduce,from) + (to -> reduce)))
+        toReduce = toReduce + (to -> (getMap(toReduce, to) + (from -> reduce)))
+        fromReduce = fromReduce + (from -> (getMap(fromReduce, from) + (to -> reduce)))
       }
     }
 
@@ -114,7 +114,7 @@ private[persist] object DatabaseConfig {
         case obj: JsonObject => JsonArray(obj)
         case x => JsonArray()
       }
-      val info = TableConfig(name, prefix, getMap(toMap,name), getMap(fromMap,name), getMap(toReduce,name), getMap(fromReduce,name))
+      val info = TableConfig(name, prefix, getMap(toMap, name), getMap(fromMap, name), getMap(toReduce, name), getMap(fromReduce, name))
       tables = tables + (name -> info)
     }
 
@@ -143,14 +143,14 @@ private[persist] object DatabaseConfig {
         val serverConfig = servers.get(host + ":" + port) match {
           case Some(sconf) => sconf
           case None => {
-            val sconf = new ServerConfig(host,port)
+            val sconf = new ServerConfig(host, port)
             servers += (sconf.name -> sconf)
             sconf
           }
         }
         //val serverConfig = new ServerConfig(host,port)
         val nodeConfig = new NodeConfig(ringName, name, serverConfig, pos)
-    
+
         val nodeName = nodeConfig.name
         ringMap = ringMap + (nodeName -> nodeConfig)
         ringSeq = ringSeq :+ nodeName
@@ -170,16 +170,29 @@ private[persist] class DatabaseConfig(
   val tables: Map[String, TableConfig],
   val servers: Map[String, ServerConfig]) {
 
+  val emptyMap = Map[String, Json]()
+
   // TODO move to DatabaseMap and Send
-  def getRef(system:ActorSystem, ringName:String, nodeName:String, tableName:String):ActorRef = {
+  def getRef(system: ActorSystem, ringName: String, nodeName: String, tableName: String): ActorRef = {
     val nodeInfo = rings(ringName).nodes(nodeName)
     val host = nodeInfo.server.host
     val port = nodeInfo.server.port
-    val ref: ActorRef = system.actorFor("akka://ostore@" + host + ":" + port + "/user/" + 
-            name + "/" + ringName + "/" + nodeName + "/" + tableName)
+    val ref: ActorRef = system.actorFor("akka://ostore@" + host + ":" + port + "/user/" +
+      name + "/" + ringName + "/" + nodeName + "/" + tableName)
     ref
   }
-  
+
+  def addTable(tableName: String): DatabaseConfig = {
+    val config = TableConfig(tableName, JsonArray(), emptyMap, emptyMap, emptyMap, emptyMap)
+    val tables1 = tables + (tableName -> config)
+    new DatabaseConfig(name, rings, tables, servers)
+  }
+
+  def deleteTable(tableName: String): DatabaseConfig = {
+    val tables1 = tables - tableName
+    new DatabaseConfig(name, rings, tables1, servers)
+  }
+
   def toJson: Json = {
     // TODO
     JsonObject()

@@ -23,61 +23,101 @@ import scala.collection.immutable.TreeMap
 import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
 
-// Actor Paths
-//       /user/@server
-//       /user/database
-//       /user/database/@send
-//       /user/database/ring/node
-//       /user/database/ring/node/@mon
-//       /user/database/ring/node/table
+private[persist] case class RingMap(
+    var tables: HashMap[String, TableMap],
+    // TODO nodeconfig => nodeMap
+    // NodeMap => TableNodeMap
+    var nodes: Map[String, NodeMap],
+    // server names
+    val nodeSeq: List[String]) {
+  
+  def nodePosition(nodeName: String): Int = {
+    nodes(nodeName).pos
+  }
 
-private[persist] case class RingMap(var tables: HashMap[String, TableMap])
+  def nextNodeName(nodeName: String): String = {
+    val pos = nodes(nodeName).pos + 1
+    val pos1 = if (pos == nodeSeq.size) 0 else pos
+    nodeSeq(pos1)
+  }
+
+  def prevNodeName(nodeName: String): String = {
+    val pos = nodes(nodeName).pos - 1
+    val pos1 = if (pos < 0) nodeSeq.size - 1 else pos
+    nodeSeq(pos1)
+  }
+
+}
 
 private[persist] case class TableMap(
   // all nodes
-  var nodes: HashMap[String, NodeMap]) {
+  var nodes: HashMap[String, TableNodeMap]) {
 
   // low -> Set(nodeName)
   // only contains nodes with known low and high values
   var keys = new TreeMap[String, HashSet[String]]()
 }
 
-private[persist] case class NodeMap(databaseName: String, ringName: String, nodeName: String, tableName: String,
-  var posx: Int, host: String, port: Int) {
+private[persist] case class NodeMap(val databaseName: String,val ringName: String, val nodeName: String,
+  var pos: Int, val host: String, val port: Int)
+
+private[persist] case class TableNodeMap(val tableName:String, val node:NodeMap) {
   var known: Boolean = false
   var low: String = ""
   var high: String = ""
+   
   private var ref: ActorRef = null
-  
+
   def getRef(system: ActorSystem): ActorRef = {
     if (ref == null) {
-      ref = system.actorFor("akka://ostore@" + host + ":" + port + "/user/" +
-        databaseName + "/" + ringName + "/" + nodeName + "/" + tableName)
+      ref = system.actorFor("akka://ostore@" + node.host + ":" + node.port + "/user/" +
+        node.databaseName + "/" + node.ringName + "/" + node.nodeName + "/" + tableName)
     }
     ref
   }
 }
 
 private[persist] object DatabaseMap {
+  
+  def addTable(map:DatabaseMap, tableName:String)  {
+    for ((ringName, ringMap) <- map.rings) {
+      var nodes = HashMap[String, TableNodeMap]()
+      for ((nodeName,nodeMap) <- ringMap.nodes) {
+        nodes += (nodeName -> TableNodeMap(tableName, nodeMap))
+      }
+      ringMap.tables += (tableName -> TableMap(nodes))
+    }
+  }
+  
   def apply(config: DatabaseConfig): DatabaseMap = {
     val databaseName = config.name
     var rings = HashMap[String, RingMap]()
     for ((ringName, ringConfig) <- config.rings) {
-      var tables = HashMap[String, TableMap]()
-      for ((tableName, tableConfig) <- config.tables) {
-        var nodes = HashMap[String, NodeMap]()
-        // TODO replace pos with next node name -- new loop build pos->nodeName
-        for ((nodeName, nodeConfig) <- ringConfig.nodes) {
-          nodes += (nodeName -> NodeMap(databaseName, ringName, nodeName, tableName, nodeConfig.pos, nodeConfig.server.host, nodeConfig.server.port))
-        }
-        tables += (tableName -> TableMap(nodes))
-      }
+      var nodes = Map[String, NodeMap]()
+      var nodeSeq = ringConfig.nodeSeq
       for ((nodeName,nodeConfig) <- ringConfig.nodes) {
-        
+        val nodeMap = NodeMap(databaseName, ringName, nodeName, nodeConfig.pos, 
+            nodeConfig.server.host: String, nodeConfig.server.port: Int)
+        nodes += (nodeName -> nodeMap)
       }
-      rings += (ringName -> RingMap(tables))
+      var tables = HashMap[String, TableMap]()
+      /*
+      for ((tableName, tableConfig) <- config.tables) {
+        var tnodes = HashMap[String, TableNodeMap]()
+        for ((nodeName, nodeConfig) <- ringConfig.nodes) {
+          val nodeMap = nodes(nodeName)
+          tnodes += (nodeName -> TableNodeMap(tableName, nodeMap))
+        }
+        tables += (tableName -> TableMap(tnodes))
+      }
+      */
+      rings += (ringName -> RingMap(tables,nodes,nodeSeq))
     }
-    new DatabaseMap(databaseName, rings,config)
+    val map = new DatabaseMap(databaseName, rings)
+    for ((tableName, tableConfig) <- config.tables) {
+        addTable(map, tableName)
+    }
+    map
   }
 }
 
@@ -85,9 +125,9 @@ private[persist] object DatabaseMap {
  * a single thread (typically actor Send)
  */
 // TODO get rid of config, move relevant ops to here
-private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[String, RingMap], val config:DatabaseConfig) {
+private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[String, RingMap]) {
 
-  private def nodeMax(nodes: HashMap[String, NodeMap], n1: String, n2: String): String = {
+  private def nodeMax(nodes: HashMap[String, TableNodeMap], n1: String, n2: String): String = {
     if (n1 == "") {
       n2
     } else {
@@ -139,7 +179,7 @@ private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[
     }
   }
 
-  private def inNode(node: NodeMap, key: String, less: Boolean): Boolean = {
+ private def inNode(node: TableNodeMap, key: String, less: Boolean): Boolean = {
     if (!node.known) {
       true
     } else if (node.low <= node.high) {
@@ -157,48 +197,65 @@ private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[
     }
   }
 
-  def get(ringName: String, tableName: String, key: String, less: Boolean): (NodeMap, NodeMap) = {
+  def get(ringName: String, tableName: String, key: String, less: Boolean): (TableNodeMap, TableNodeMap) = {
     val ringMap = rings(ringName)
-    val tableMap = ringMap.tables(tableName)
-    val nodes = tableMap.nodes
-    if (nodes.size == 1) {
-      // only one node, so use it
-      val (nodeName, n) = nodes.head
-      (n, n)
-    } else {
-      val nodeName = bestFit(tableMap, key, less)
-      val n = nodes(nodeName)
-      if (inNode(n, key, less)) {
+    val tmap = ringMap.tables.get(tableName)
+    tmap match {
+      case Some(tableMap: TableMap) => {
+        val nodes = tableMap.nodes
+        if (nodes.size == 1) {
+          // only one node, so use it
+          val (nodeName, n) = nodes.head
+          (n, n)
+        } else {
+          val nodeName = bestFit(tableMap, key, less)
+          val n = nodes(nodeName)
+          if (inNode(n, key, less)) {
+            (n, n)
+          } else {
+            // possible in-transit 
+            val nextNodeName = rings(ringName).nextNodeName(nodeName)
+            val next = nodes(nextNodeName)
+            (n, next)
+          }
+        }
+      }
+      case None => {
+        // May or may not exist, so lets
+        // pick a node and see if it has the table
+        // TODO should log this
+        val (nodeName, nodeMap) = rings(ringName).nodes.head
+        val n = TableNodeMap(tableName, nodeMap)
         (n, n)
-      } else {
-        // possible in-transit 
-        val nextNodeName = config.rings(ringName).nextNodeName(nodeName)
-        val next = nodes(nextNodeName)
-        (n, next)
       }
     }
   }
 
   def setLowHigh(ringName: String, nodeName: String, tableName: String, low: String, high: String) {
     val ringMap = rings(ringName)
+    if (ringMap.tables.get(tableName) == None) {
+      // Table is new so create it 
+      // TODO log it
+      DatabaseMap.addTable(this, tableName)
+    }
     val tableMap = ringMap.tables(tableName)
-    val nodeMap = tableMap.nodes(nodeName)
-    if (nodeMap.known) {
+    val tableNodeMap = tableMap.nodes(nodeName)
+    if (tableNodeMap.known) {
       // remove old value
-      val oldSet: HashSet[String] = tableMap.keys.getOrElse(nodeMap.low, new HashSet[String]()) - nodeName
+      val oldSet: HashSet[String] = tableMap.keys.getOrElse(tableNodeMap.low, new HashSet[String]()) - nodeName
       if (oldSet.size == 0) {
-        tableMap.keys -= nodeMap.low
+        tableMap.keys -= tableNodeMap.low
       } else {
-        tableMap.keys += (nodeMap.low -> oldSet)
+        tableMap.keys += (tableNodeMap.low -> oldSet)
       }
     }
     // insert new value
     val newSet: HashSet[String] = tableMap.keys.getOrElse(low, new HashSet[String]()) + nodeName
     tableMap.keys += (low -> newSet)
 
-    nodeMap.low = low
-    nodeMap.high = high
-    nodeMap.known = true
+    tableNodeMap.low = low
+    tableNodeMap.high = high
+    tableNodeMap.known = true
   }
 
 }
