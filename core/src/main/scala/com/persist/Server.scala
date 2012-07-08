@@ -77,10 +77,10 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
   private def deletePath(f: File) {
     if (f.isDirectory()) {
       for (f1: File <- f.listFiles()) {
-        deletePath(f1);
+        deletePath(f1)
       }
     }
-    f.delete();
+    f.delete()
   }
 
   private val host = jgetString(serverConfig, "host")
@@ -306,9 +306,11 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
     }
    
     case ("start") => {
+      log.info("Starting server.")
       sender ! Codes.Ok
     }
     case ("stop") => {
+      log.info("Stopping server.")
       if (restPort != 0) Http.stop
       storeTable.close()
       sender ! Codes.Ok
