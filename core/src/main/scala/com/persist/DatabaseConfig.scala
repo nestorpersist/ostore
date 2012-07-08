@@ -167,7 +167,7 @@ private[persist] object DatabaseConfig {
 private[persist] class DatabaseConfig(
   val name: String,
   val rings: Map[String, RingConfig],
-  val tables: Map[String, TableConfig],
+  val tables: TreeMap[String, TableConfig],
   val servers: Map[String, ServerConfig]) {
 
   val emptyMap = Map[String, Json]()
@@ -185,7 +185,7 @@ private[persist] class DatabaseConfig(
   def addTable(tableName: String): DatabaseConfig = {
     val config = TableConfig(tableName, JsonArray(), emptyMap, emptyMap, emptyMap, emptyMap)
     val tables1 = tables + (tableName -> config)
-    new DatabaseConfig(name, rings, tables, servers)
+    new DatabaseConfig(name, rings, tables1, servers)
   }
 
   def deleteTable(tableName: String): DatabaseConfig = {
@@ -194,7 +194,37 @@ private[persist] class DatabaseConfig(
   }
 
   def toJson: Json = {
-    // TODO
-    JsonObject()
+    var jtables = JsonArray()
+    for ((tableName,tableConfig)<-tables) {
+      var jtable = JsonObject(("name"->tableName))
+      var jmap = JsonArray()
+      for ((from,jm)<-tableConfig.toMap) {
+        jmap = jm +: jmap
+      }
+      if (jsize(jmap) == 1) {
+        jtable = jtable + ("map"->jget(jmap,0))
+      } else if (jsize(jmap) > 1) {
+        jtable = jtable + ("map"->jmap.reverse)
+      }
+      var jreduce = JsonArray()
+      for ((from,jr)<-tableConfig.toReduce) {
+        jreduce = jr +: jreduce
+      }
+      if (jsize(jreduce) == 1) {
+        jtable = jtable + ("reduce"->jget(jreduce,0))
+      } else if (jsize(jreduce) > 1) {
+        jtable = jtable + ("reduce"->jreduce.reverse)
+      }
+      jtables = jtable +: jtables
+    }
+    var jrings = JsonArray()
+    for ((ringName,ringConfig)<-rings) {
+      var jnodes = JsonArray()
+      for ((nodeName,nodeConfig)<-ringConfig.nodes) {
+        jnodes = JsonObject(("name"->nodeName),("host"->nodeConfig.server.host),("port"->nodeConfig.server.port)) +: jnodes
+      }
+      jrings = JsonObject("name"->ringName,"nodes"->jnodes.reverse) +: jrings
+    }
+    JsonObject(("tables"->jtables.reverse),("rings"->jrings.reverse))
   }
 }

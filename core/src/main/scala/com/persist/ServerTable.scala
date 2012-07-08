@@ -194,6 +194,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
       }
       case ("setConfig", config:DatabaseConfig) => {
         this.config = config
+        sender ! Codes.Ok
       }
       case (kind: String, uid: Long, key: String, value: Any) => {
         //val sender1 = sender  // must preserve sender for futures

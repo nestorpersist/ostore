@@ -47,6 +47,7 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
     val table = context.actorOf(
       Props(new ServerTable(databaseName, ringName, nodeName, tableName,
         store, monitor, send, config)), name = tableName)
+    println(tableName +":" + table)
     var f = table ? ("start1")
     Await.result(f, 5 seconds)
     tables += (tableName -> new TableInfo(tableName, table))
@@ -63,6 +64,7 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
     }
     case ("start2") => {
       for ((tableName, tableInfo) <- tables) {
+          println("start:"+tableInfo.table)
         val f = tableInfo.table ? ("start2")
         Await.result(f, 5 seconds)
       }
@@ -70,6 +72,7 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
     }
     case ("stop1") => {
       for ((tableName, tableInfo) <- tables) {
+          println("stop:"+tableInfo.table)
         val f = tableInfo.table ? ("stop1")
         Await.result(f, 5 seconds)
       }
@@ -92,7 +95,7 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       }
       this.config = config
       newTable(tableName)
-      // TODO pass config to all other tables???
+      sender ! Codes.Ok
     }
     case ("addTable2", tableName:String) => {
       val tableInfo = tables(tableName)
@@ -101,10 +104,12 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       sender ! Codes.Ok
     }
     case ("deleteTable1", tableName:String, config:DatabaseConfig) => {
-      println("deleteTable1 NYI " + tableName)
+      //println("deleteTable1 NYI " + tableName)
+      sender ! Codes.Ok
     }
     case ("deleteTable2", tableName:String) => {
-      println("deleteTable1 NYI " + tableName)
+      //println("deleteTable2 NYI " + tableName)
+      sender ! Codes.Ok
     }
   }
 }

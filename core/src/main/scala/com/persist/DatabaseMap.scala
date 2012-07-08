@@ -78,17 +78,7 @@ private[persist] case class TableNodeMap(val tableName:String, val node:NodeMap)
 }
 
 private[persist] object DatabaseMap {
-  
-  def addTable(map:DatabaseMap, tableName:String)  {
-    for ((ringName, ringMap) <- map.rings) {
-      var nodes = HashMap[String, TableNodeMap]()
-      for ((nodeName,nodeMap) <- ringMap.nodes) {
-        nodes += (nodeName -> TableNodeMap(tableName, nodeMap))
-      }
-      ringMap.tables += (tableName -> TableMap(nodes))
-    }
-  }
-  
+
   def apply(config: DatabaseConfig): DatabaseMap = {
     val databaseName = config.name
     var rings = HashMap[String, RingMap]()
@@ -101,21 +91,11 @@ private[persist] object DatabaseMap {
         nodes += (nodeName -> nodeMap)
       }
       var tables = HashMap[String, TableMap]()
-      /*
-      for ((tableName, tableConfig) <- config.tables) {
-        var tnodes = HashMap[String, TableNodeMap]()
-        for ((nodeName, nodeConfig) <- ringConfig.nodes) {
-          val nodeMap = nodes(nodeName)
-          tnodes += (nodeName -> TableNodeMap(tableName, nodeMap))
-        }
-        tables += (tableName -> TableMap(tnodes))
-      }
-      */
       rings += (ringName -> RingMap(tables,nodes,nodeSeq))
     }
     val map = new DatabaseMap(databaseName, rings)
     for ((tableName, tableConfig) <- config.tables) {
-        addTable(map, tableName)
+        map.addTable(tableName)
     }
     map
   }
@@ -124,9 +104,18 @@ private[persist] object DatabaseMap {
 /* DatabaseMap contains mutable data and should be used by only
  * a single thread (typically actor Send)
  */
-// TODO get rid of config, move relevant ops to here
 private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[String, RingMap]) {
-
+  
+  def addTable(tableName:String)  {
+    for ((ringName, ringMap) <- rings) {
+      var nodes = HashMap[String, TableNodeMap]()
+      for ((nodeName,nodeMap) <- ringMap.nodes) {
+        nodes += (nodeName -> TableNodeMap(tableName, nodeMap))
+      }
+      ringMap.tables += (tableName -> TableMap(nodes))
+    }
+  }
+  
   private def nodeMax(nodes: HashMap[String, TableNodeMap], n1: String, n2: String): String = {
     if (n1 == "") {
       n2
@@ -236,7 +225,7 @@ private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[
     if (ringMap.tables.get(tableName) == None) {
       // Table is new so create it 
       // TODO log it
-      DatabaseMap.addTable(this, tableName)
+      addTable(tableName)
     }
     val tableMap = ringMap.tables(tableName)
     val tableNodeMap = tableMap.nodes(nodeName)

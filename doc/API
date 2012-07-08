@@ -25,6 +25,15 @@ Rest get list url forms
 There are special options available via both Scala and
 REST apis. (* = NYI)
 
+For ring (get)
+        info=hp		Host, Port
+
+For node (get)
+        info=
+
+For server (get)
+        info=
+
 For all
         pretty          REST only
         ring=r1
@@ -32,18 +41,21 @@ For all
 For database (get)
         rings
         servers
+	info=sc   State("stop","starting","active","stopping"
+		    Config (Json)
 
 For table (get)
         monitor
         report
         search="a b"
+        info=
 
 For database (post)
    body contains one of
-        {"cmd"="create","config"=c}
-	{"cmd"="delete"}
-	{"cmd"="start"}
-	{"cmd"="stop"}
+        {"cmd":"create","config":c}
+	{"cmd":"delete"}
+	{"cmd":"start"}
+	{"cmd":"stop"}
 
 
 For item (get)
@@ -65,8 +77,8 @@ For table (get list of keys)
 
 For table (post)
    body contains one of
-	{"cmd"="add"}
-        {"cmd"="delete"}
+	{"cmd":"add"}
+        {"cmd":"delete"}
 
 For item (put)
         create           for opt cc (must not already exist)
@@ -77,8 +89,8 @@ For item (put)
 For item (post)
     body contains one of 
 
-	{"cmd"="put","v"=v,"c"=c} for opt cc (c must not have changed)
-	{"cmd"="delete", "c"=c}      for opt cc (c must not have changed)
+	{"cmd":"put","v":v,"c":c} for opt cc (c must not have changed)
+	{"cmd":"delete", "c":c}      for opt cc (c must not have changed)
 
 
 For item (delete)

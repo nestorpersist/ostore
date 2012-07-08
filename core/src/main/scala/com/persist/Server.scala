@@ -47,6 +47,7 @@ import scala.io.Source
 //       /user/@server
 //       /user/database
 //       /user/database/@send
+//       /user/database/ring
 //       /user/database/ring/node
 //       /user/database/ring/node/@mon
 //       /user/database/ring/node/table
@@ -67,11 +68,11 @@ private class Listener extends CheckedActor {
 }
 
 private[persist] class DatabaseInfo(
-  var dbRef:ActorRef,
+  var dbRef: ActorRef,
   var config: DatabaseConfig,
   var state: String)
 
-private[persist] class Server(serverConfig: Json, create:Boolean) extends CheckedActor {
+private[persist] class Server(serverConfig: Json, create: Boolean) extends CheckedActor {
   private implicit val timeout = Timeout(5 seconds)
 
   private def deletePath(f: File) {
@@ -87,22 +88,25 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
   private val port = jgetInt(serverConfig, "port")
   private val serverName = host + ":" + port
   private val path = jgetString(serverConfig, "path")
-  private val fname = path + "/" + "@server" +"/" + serverName
+  private val fname = path + "/" + "@server" + "/" + serverName
   private val f = new File(fname)
   private val exists = f.exists()
   private val system = context.system
   private val sendServer = new SendServer(system)
-  private val store = new Store(context, "@server", fname, ! exists || create)
+  private val store = new Store(context, "@server", fname, !exists || create)
   private val storeTable = store.getTable(serverName)
   private val listener = system.actorOf(Props[Listener])
   system.eventStream.subscribe(listener, classOf[DeadLetter])
   system.eventStream.subscribe(listener, classOf[RemoteLifeCycleEvent])
 
-  var databases = TreeMap[String, DatabaseInfo]()
-  val restPort = jgetInt(serverConfig, "rest")
+  private var databases = TreeMap[String, DatabaseInfo]()
+
+  // databaseName -> locking guid or "" if unlocked
+  private var locks = TreeMap[String, String]()
+
+  private val restPort = jgetInt(serverConfig, "rest")
   if (restPort != 0) {
     RestClient1.system = system
-    // TODO restclient might call server Manager and Send actors
     Http.start(system, restPort)
   }
 
@@ -128,8 +132,95 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
   }
 
   def rec = {
+    case ("lock", databaseName: String, guid: String, getInfo:Boolean) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val lock = locks.getOrElse(databaseName, "")
+          if (lock == "" || lock == guid) {
+            if (lock == "") locks += (databaseName -> guid)
+            val result = if (getInfo) {
+              var servers = JsonArray()
+              for (name <- info.config.servers.keys) {
+                servers = name +: servers
+              }
+              JsonObject(("s" -> info.state), ("servers" -> servers.reverse))
+            } else {
+               emptyJsonObject
+            }
+            sender ! ((Codes.Ok, Compact(result)))
+          } else {
+            sender ! ((Codes.Locked, ""))
+          }
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }
+    }
+    case ("unlock", databaseName: String, guid: String) => {
+      val lock = locks.getOrElse(databaseName, "")
+      if (lock == "") {
+        sender ! ((Codes.Ok, ""))
+      } else if (lock == guid) {
+        locks -= databaseName
+        sender ! ((Codes.Ok, ""))
+      } else {
+        sender ! ((Codes.Locked, ""))
+      }
+    }
+    case ("databaseinfo", databaseName: String, os: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val options = Json(os)
+          val infos = jgetString(options, "info")
+          var result = emptyJsonObject
+          if (infos.contains("s")) {
+            result += ("s" -> info.state)
+          }
+          if (infos.contains("c")) {
+            result += ("c" -> info.config.toJson)
+          }
+          sender ! (Codes.Ok, Compact(result))
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }
+    }
+    case ("tableinfo", databaseName: String, tableName: String, os: String) => {
+      val options = Json(os)
+      sender ! (Codes.Ok, Compact(emptyJsonObject))
+    }
+    case ("ringinfo", databaseName: String, ringName: String, os: String) => {
+      val options = Json(os)
+      sender ! (Codes.Ok, Compact(emptyJsonObject))
+    }
+    case ("serverinfo", databaseName: String, serverNAme: String, os: String) => {
+      val options = Json(os)
+      sender ! (Codes.Ok, Compact(emptyJsonObject))
+    }
+    case ("nodeinfo", databaseName: String, ringName: String, nodeName: String, os: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val config = info.config
+          val options = Json(os)
+          val infos = jgetString(options, "info")
+          var result = emptyJsonObject
+          if (infos.contains("h")) {
+            result += ("h" -> config.rings(ringName).nodes(nodeName).server.host)
+          }
+          if (infos.contains("p")) {
+            result += ("p" -> config.rings(ringName).nodes(nodeName).server.port)
+          }
+          sender ! (Codes.Ok, Compact(result))
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+
+        }
+      }
+    }
     case ("newDatabase", databaseName: String, dbConf: String) => {
-      println("newDatabase")
       val dbConfig = Json(dbConf)
       var config = DatabaseConfig(databaseName, dbConfig)
       if (databases.contains(databaseName)) {
@@ -140,7 +231,7 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
         val info = new DatabaseInfo(database, config, "starting")
         databases += (databaseName -> info)
         val f = database ? ("start1")
-        val x = Await.result(f,5 seconds)
+        val x = Await.result(f, 5 seconds)
         sender ! Codes.Ok
         println("Created Database " + databaseName)
       }
@@ -152,10 +243,10 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
           val database = info.dbRef
           val f = database ? ("stop1")
           val v = Await.result(f, 5 seconds)
-          sender ! Codes.Ok
+          sender ! (Codes.Ok,"")
         }
         case None => {
-          sender ! "exist"
+          sender ! (Codes.Exist,"")
         }
       }
     }
@@ -168,12 +259,12 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
           val v = Await.result(f, 5 seconds)
           val stopped = gracefulStop(database, 5 seconds)(system)
           Await.result(stopped, 5 seconds)
-          sender ! Codes.Ok
+          sender ! (Codes.Ok,"")
           info.dbRef = null
           println("Database stopped " + databaseName)
         }
         case None => {
-          sender ! "exist"
+          sender ! (Codes.Exist,"")
         }
       }
     }
@@ -185,11 +276,11 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
           Await.result(f, 5 seconds)
           info.state = "starting"
           info.dbRef = database
-          sender ! Codes.Ok
+          sender ! (Codes.Ok,"")
           println("Database starting " + databaseName)
         }
         case None => {
-          sender ! "exist"
+          sender ! (Codes.Exist,"")
         }
       }
     }
@@ -200,11 +291,11 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
           val f = database ? ("start2")
           Await.result(f, 5 seconds)
           info.state = "active"
-          sender ! Codes.Ok
+          sender ! (Codes.Ok,"")
           println("Database started " + databaseName)
         }
         case None => {
-          sender ! "exist"
+          sender ! (Codes.Exist,"")
         }
       }
     }
@@ -217,39 +308,91 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
           val f = new File(fname)
           deletePath(f)
           databases -= databaseName
-          sender ! Codes.Ok
+          sender ! (Codes.Ok,"")
           storeTable.remove(databaseName)
           println("Database deleted " + databaseName)
         }
         case None => {
-          sender ! "exist"
+          sender ! (Codes.Exist,"")
         }
       }
     }
-    case ("databases") => {
+    case ("allDatabases") => {
       var result = JsonArray()
       for ((name, info) <- databases) {
-        val o = JsonObject("name" -> name, "state" -> info.state)
-        result = o +: result
+        //val o = JsonObject("name" -> name, "state" -> info.state)
+        result = name +: result
       }
       sender ! (Codes.Ok, Compact(result.reverse))
     }
-    case ("database", databaseName: String) => {
+    case ("alltables", databaseName: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
-          val meta = storeTable.getMeta(databaseName) match {
-            case Some(s: String) => s
-            case None => ""
+          var result = JsonArray()
+          for (name <- info.config.tables.keys) {
+            result = name +: result
           }
-          sender ! (Codes.Ok, meta)
+          sender ! (Codes.Ok, Compact(result.reverse))
         }
-        case None => sender ! (Codes.NotPresent, "")
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }
+    }
+    case ("allservers", databaseName: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          var result = JsonArray()
+          for (name <- info.config.servers.keys) {
+            result = name +: result
+          }
+          sender ! (Codes.Ok, Compact(result.reverse))
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }
+    }
+    case ("allrings", databaseName: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          var result = JsonArray()
+          for (name <- info.config.rings.keys) {
+            result = name +: result
+          }
+          sender ! (Codes.Ok, Compact(result.reverse))
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }
+    }
+    case ("allnodes", databaseName: String, ringName: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          info.config.rings.get(ringName) match {
+            case Some(info) => {
+              var result = JsonArray()
+              for (name <- info.nodes.keys) {
+                result = name +: result
+              }
+              sender ! (Codes.Ok, Compact(result.reverse))
+            }
+            case None => {
+              sender ! (Codes.Exist, "ring:" + databaseName + "/" + ringName)
+            }
+          }
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
       }
     }
     case ("addTable1", databaseName: String, tableName: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
           info.config = info.config.addTable(tableName)
+          storeTable.putMeta(databaseName, Compact(info.config.toJson))
           val database = info.dbRef
           val f = database ? ("addTable1", tableName, info.config)
           val v = Await.result(f, 5 seconds)
@@ -266,8 +409,6 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
           val database = info.dbRef
           val f = database ? ("addTable2", tableName)
           val v = Await.result(f, 5 seconds)
-          val stopped = gracefulStop(database, 5 seconds)(system)
-          Await.result(stopped, 5 seconds)
           sender ! Codes.Ok
         }
         case None => {
@@ -304,7 +445,7 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
         }
       }
     }
-   
+
     case ("start") => {
       sender ! Codes.Ok
     }
@@ -319,28 +460,28 @@ private[persist] class Server(serverConfig: Json, create:Boolean) extends Checke
 
 object Server {
   private implicit val timeout = Timeout(200 seconds)
-  private var server:ActorRef = null
-  private var system:ActorSystem = null
-  
-  def start(config: Json, create:Boolean = false) {
+  private var server: ActorRef = null
+  private var system: ActorSystem = null
+
+  def start(config: Json, create: Boolean = false) {
     // TODO get port from config
     system = ActorSystem("ostore", ConfigFactory.load.getConfig("server"))
     server = system.actorOf(Props(new Server(config, create)), name = "@server")
     val f = server ? ("start")
-    Await.result(f,200 seconds)
+    Await.result(f, 200 seconds)
   }
-  
+
   def stop {
     // TODO make sure server is started and no active databases
     val f = server ? ("stop")
     Await.result(f, 5 seconds)
     val f1 = gracefulStop(server, 5 seconds)(system) // will stop all its children too!
-    Await.result(f1,5 seconds)
+    Await.result(f1, 5 seconds)
     system.shutdown()
   }
-  
+
   def main(args: Array[String]) {
-    val fname = if (args.size > 0) { args(0)} else { "config/server.json"}
+    val fname = if (args.size > 0) { args(0) } else { "config/server.json" }
     println("Server Starting")
     val config = Source.fromFile(fname).mkString
     start(Json(config))

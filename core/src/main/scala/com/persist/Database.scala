@@ -28,70 +28,85 @@ import akka.util.duration._
 import akka.pattern._
 import akka.dispatch.ExecutionContext
 
-class Database private[persist](system: ActorSystem, databaseName: String , clientActor:ActorRef) {
+class Database private[persist] (system: ActorSystem, databaseName: String, manager: ActorRef) {
   private implicit val timeout = Timeout(5 seconds)
   private lazy implicit val ec = ExecutionContext.defaultExecutionContext(system)
-  
-  def allTables:Traversable[String] = {
+
+  def allTables: Traversable[String] = {
     var p = new DefaultPromise[Traversable[String]]
-    clientActor ? ("allTables", p, databaseName)
-    val v = Await.result(p, 5 seconds)
-    v
-  }
-  
-  // TODO 
-  def tableInfo(tableName:String,options:JsonObject=emptyJsonObject):Json = null
-  
-  def allRings:Traversable[String] = {
-    var p = new DefaultPromise[Traversable[String]]
-    clientActor ? ("allRings", p, databaseName)
-    val v = Await.result(p, 5 seconds)
-    v
-  }
-  
-  // TODO
-  def ringInfo(ringName:String,options:JsonObject=emptyJsonObject):Json = null
-  
-  def allNodes(ringName:String):Traversable[String] = {
-    var p = new DefaultPromise[Traversable[String]]
-    clientActor ? ("allNodes", p, databaseName, ringName)
+    manager ? ("allTables", p, databaseName)
     val v = Await.result(p, 5 seconds)
     v
   }
 
-  // TODO
-  def nodeInfo(ringName:String,nodeName:String,options:JsonObject=emptyJsonObject):Json = null
-  
-  def allServers:Traversable[String] = {
-    var p = new DefaultPromise[Traversable[String]]
-    clientActor ? ("allServers", p, databaseName)
+  def tableInfo(tableName: String, options: JsonObject = emptyJsonObject): Json = {
+    var p = new DefaultPromise[Traversable[Json]]
+    manager ! ("tableInfo", p, databaseName, tableName, options)
     val v = Await.result(p, 5 seconds)
     v
   }
-  
-  // TODO
-  def serverInfo(serverName:String,option:JsonObject=emptyJsonObject):Json = null
-  
-  def addTable(tableName:String) {
+
+  def allRings: Traversable[String] = {
+    var p = new DefaultPromise[Traversable[String]]
+    manager ? ("allRings", p, databaseName)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
+
+  def ringInfo(ringName: String, options: JsonObject = emptyJsonObject): Json = {
+    var p = new DefaultPromise[Traversable[Json]]
+    manager ! ("ringInfo", p, databaseName, ringName, options)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
+
+  def allNodes(ringName: String): Traversable[String] = {
+    var p = new DefaultPromise[Traversable[String]]
+    manager ? ("allNodes", p, databaseName, ringName)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
+
+  def nodeInfo(ringName: String, nodeName: String, options: JsonObject = emptyJsonObject): Json = {
+    var p = new DefaultPromise[Traversable[Json]]
+    manager ! ("nodeInfo", p, databaseName, ringName, nodeName, options)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
+
+  def allServers: Traversable[String] = {
+    var p = new DefaultPromise[Traversable[String]]
+    manager ? ("allServers", p, databaseName)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
+
+  def serverInfo(serverName: String, options: JsonObject = emptyJsonObject): Json = {
+    var p = new DefaultPromise[Traversable[Json]]
+    manager ! ("nodeInfo", p, databaseName, serverName, options)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
+
+  def addTable(tableName: String) {
     var p = new DefaultPromise[String]
-    clientActor ? ("addTable", p, databaseName, tableName)
+    manager ? ("addTable", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)
 
   }
 
-  def deleteTable(tableName:String) {
+  def deleteTable(tableName: String) {
     var p = new DefaultPromise[String]
-    clientActor ? ("deleteTable", p, databaseName, tableName)
+    manager ? ("deleteTable", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)
   }
-  
-  
+
   /**
    * Temporary debugging method.
    */
   def report(tableName: String): Json = {
     var p = new DefaultPromise[Json]
-    clientActor ? ("report", p, databaseName, tableName)
+    manager ? ("report", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)
     v
   }
@@ -99,19 +114,19 @@ class Database private[persist](system: ActorSystem, databaseName: String , clie
   /**
    * Temporary debugging method
    */
-  def monitor(tableName:String): Json = {
+  def monitor(tableName: String): Json = {
     var p = new DefaultPromise[Json]
-    clientActor ? ("monitor", p, databaseName, tableName)
+    manager ? ("monitor", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)
     v
   }
-  
+
   // TODO (add,remove) (nodes,rings)
-  
+
   // TODO make sure table exists local (if not local check remote)
   def syncTable(tableName: String) = {
     var p = new DefaultPromise[SyncTable]
-    clientActor ? ("syncTable", p, databaseName, tableName)
+    manager ? ("syncTable", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)
     v
   }
@@ -119,7 +134,7 @@ class Database private[persist](system: ActorSystem, databaseName: String , clie
   // TODO make sure table exists local (if not local check remote)
   def asyncTable(tableName: String) = {
     var p = new DefaultPromise[AsyncTable]
-    clientActor ? ("asyncTable", p, databaseName, tableName)
+    manager ? ("asyncTable", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)
     v
   }

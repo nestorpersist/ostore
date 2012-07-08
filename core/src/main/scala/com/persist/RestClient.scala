@@ -81,11 +81,9 @@ private[persist] object QParser extends QParse {
 
 private[persist] object RestClient1 {
 
-  //var databases = Map[String, DatabaseInfo]()
   var system: ActorSystem = null
-  //val manager:ActorRef = null // TODO set to path
 
-  // TODO should user server manager and sends
+  // TODO should use server manager and sends
   lazy val client = new Client(system, "127.0.0.1", 8011)
 
   //lazy val manager = client.manager()
@@ -168,22 +166,43 @@ private[persist] object RestClient1 {
     }
   }
 
-  private def getDatabaseStatus(databaseName: String): Future[Option[Json]] = {
+  private def getDatabaseInfo(databaseName: String, options: JsonObject): Future[Option[Json]] = {
     Future {
-      val result = client.databaseInfo(databaseName)
-      //var result = client.databaseInfo(databaseName)
+      val result = client.databaseInfo(databaseName, options)
+      Some(result)
+    }
+  }
+
+  private def getTableInfo(database: Database, tableName: String, options: JsonObject): Future[Option[Json]] = {
+    Future {
+      val result = database.tableInfo(tableName, options)
+      Some(result)
+    }
+  }
+
+  private def getRingInfo(database: Database, ringName: String, options: JsonObject): Future[Option[Json]] = {
+    Future {
+      val result = database.ringInfo(ringName, options)
+      Some(result)
+    }
+  }
+
+  private def getServerInfo(database: Database, serverName: String, options: JsonObject): Future[Option[Json]] = {
+    Future {
+      val result = database.tableInfo(serverName, options)
+      Some(result)
+    }
+  }
+
+  private def getNodeInfo(database: Database, ringName: String, nodeName: String, options: JsonObject): Future[Option[Json]] = {
+    Future {
+      val result = database.nodeInfo(ringName, nodeName, options)
       Some(result)
     }
   }
 
   private def listTables(database: Database): Future[Option[Json]] = {
     Future {
-      /*
-      val info = databases.get(databaseName) match {
-        case Some(info) => info
-        case None => throw new BadRequestException("No such database: " + databaseName)
-      }
-      */
       var result = JsonArray()
       for (tableName <- database.allTables) {
         result = tableName +: result
@@ -194,12 +213,6 @@ private[persist] object RestClient1 {
 
   private def listRings(database: Database): Future[Option[Json]] = {
     Future {
-      /*
-      val info = databases.get(databaseName) match {
-        case Some(info) => info
-        case None => throw new BadRequestException("No such database: " + databaseName)
-      }
-      */
       var result = JsonArray()
       for (ringName <- database.allRings) {
         result = ringName +: result
@@ -210,12 +223,6 @@ private[persist] object RestClient1 {
 
   private def listServers(database: Database): Future[Option[Json]] = {
     Future {
-      /*
-      val info = databases.get(databaseName) match {
-        case Some(info) => info
-        case None => throw new BadRequestException("No such database: " + databaseName)
-      }
-      */
       var result = JsonArray()
       for (serverName <- database.allServers) {
         result = serverName +: result
@@ -236,12 +243,6 @@ private[persist] object RestClient1 {
 
   private def monitor(database: Database, tableName: String): Future[Option[Json]] = {
     Future {
-      /*
-      val info = databases.get(databaseName) match {
-        case Some(info) => info
-        case None => throw new BadRequestException("No such database: " + databaseName)
-      }
-      */
       val result = database.monitor(tableName)
       Some(result)
     }
@@ -249,12 +250,6 @@ private[persist] object RestClient1 {
 
   private def report(database: Database, tableName: String): Future[Option[Json]] = {
     Future {
-      /*
-      val info = databases.get(databaseName) match {
-        case Some(info) => info
-        case None => throw new BadRequestException("No such database: " + databaseName)
-      }
-      */
       val result = database.report(tableName)
       Some(result)
     }
@@ -307,7 +302,7 @@ private[persist] object RestClient1 {
     if (method == "post") {
       databaseAct(databaseName, input)
     } else {
-      val get = jgetString(options, "get")
+      val info = jgetString(options, "info")
       val rings = jgetBoolean(options, "rings")
       val servers = jgetBoolean(options, "servers")
       if (rings) {
@@ -316,8 +311,8 @@ private[persist] object RestClient1 {
       } else if (servers) {
         val database = client.database(databaseName)
         listServers(database)
-      } else if (get != "") {
-        getDatabaseStatus(databaseName)
+      } else if (info != "") {
+        getDatabaseInfo(databaseName, options)
       } else {
         // list tables
         val database = client.database(databaseName)
@@ -330,36 +325,55 @@ private[persist] object RestClient1 {
     val parts = name.split(":")
     val numParts = parts.size
     if (numParts == 2) {
-      val ringName = parts(1)
-      listNodes(database, ringName)
+      if (parts(0) == "server") {
+        val info = jgetString(options, "info")
+        if (info != "") {
+          getServerInfo(database, parts(1), options)
+        } else {
+          Promise.failed(new Exception("bad cmd"))
+        }
+
+      } else if (parts(0) == "ring") {
+        val info = jgetString(options, "info")
+        if (info != "") {
+          getRingInfo(database, parts(1), options)
+        } else {
+          val ringName = parts(1)
+          listNodes(database, ringName)
+        }
+      } else {
+        Promise.failed(new Exception("bad cmd"))
+      }
     } else {
       val tableName = parts(0)
       if (method == "post") {
-          val cmd = jgetString(input, "cmd")
-          cmd match {
-            case "add" => {
-              Future {
-                Some(database.addTable(tableName))
-              }
-            }
-            case "delete" => {
-              Future {
-                Some(database.deleteTable(tableName))
-              }
-            }
-            case x=> {
-              Promise.failed(new Exception("bad cmd"))
+        val cmd = jgetString(input, "cmd")
+        cmd match {
+          case "add" => {
+            Future {
+              Some(database.addTable(tableName))
             }
           }
+          case "delete" => {
+            Future {
+              Some(database.deleteTable(tableName))
+            }
+          }
+          case x => {
+            Promise.failed(new Exception("bad cmd"))
+          }
+        }
       } else {
-
         val isMonitor = jgetBoolean(options, "monitor")
         val isReport = jgetBoolean(options, "report")
         val searchString = jgetString(options, "search")
+        val info = jgetString(options, "info")
         if (isMonitor) {
           monitor(database, tableName)
         } else if (isReport) {
           report(database, tableName)
+        } else if (info != "") {
+          getTableInfo(database, tableName, options)
         } else if (searchString != "") {
           // Full text search test code
           search(database, tableName, searchString)
@@ -371,41 +385,47 @@ private[persist] object RestClient1 {
   }
 
   private def doParts3(database: Database, tableName: String, keyString: String, method: String, input: Json, options: JsonObject): Future[Option[Json]] = {
-    var key = keyUriDecode(keyString)
-    try {
-      val asyncTable = database.asyncTable(tableName)
-      if (method == "post") {
-        // TODO verify c and v exist
-        val cmd = jgetString(input, "cmd")
-        val cv = jget(input, "c")
-        cmd match {
-          case "put" => {
+    val parts = tableName.split(":")
+    val numParts = parts.size
+    if (numParts == 2) {
+      getNodeInfo(database, tableName, parts(1), options)
+    } else {
+      var key = keyUriDecode(keyString)
+      try {
+        val asyncTable = database.asyncTable(tableName)
+        if (method == "post") {
+          // TODO verify c and v exist
+          val cmd = jgetString(input, "cmd")
+          val cv = jget(input, "c")
+          cmd match {
+            case "put" => {
 
-            val v = jget(input, "v")
-            doPut(asyncTable, key, cv, v, options)
+              val v = jget(input, "v")
+              doPut(asyncTable, key, cv, v, options)
+            }
+            case "delete" => doDelete(asyncTable, key, cv, input, options)
+            case x => {
+              Promise.failed(new Exception("bad cmd"))
+            }
           }
-          case "delete" => doDelete(asyncTable, key, cv, input, options)
-          case x => {
-            Promise.failed(new Exception("bad cmd"))
+        } else {
+          method match {
+            case "get" => doGet(asyncTable, key, options)
+            case "put" => doPut(asyncTable, key, null, input, options)
+            case "delete" => doDelete(asyncTable, key, null, input, options)
+            case x => {
+              Promise.failed(new Exception("bad method"))
+            }
           }
         }
-      } else {
-        method match {
-          case "get" => doGet(asyncTable, key, options)
-          case "put" => doPut(asyncTable, key, null, input, options)
-          case "delete" => doDelete(asyncTable, key, null, input, options)
-          case x => {
-            Promise.failed(new Exception("bad method"))
+      } catch {
+        case ex: Exception => {
+          ex.getMessage() match {
+            case "bad table" => {
+              Promise.failed(new BadRequestException("No such table: " + tableName))
+            }
+            case x => Promise.failed(ex)
           }
-        }
-      }
-    } catch {
-      case ex: Exception => {
-        ex.getMessage() match {
-          case "bad table" => {
-            Promise.failed(new BadRequestException("No such table: " + tableName))
-          }
-          case x => Promise.failed(ex)
         }
       }
     }
@@ -425,12 +445,6 @@ private[persist] object RestClient1 {
         doParts1(databaseName, method, input, options)
       } else {
         val tableName = parts(1)
-        /*
-        val info = databases.get(databaseName) match {
-          case Some(info) => info
-          case None => throw new BadRequestException("No such database: " + databaseName)
-        }
-        */
         val database = client.database(databaseName)
         if (numParts == 2) {
           doParts2(database, tableName, method, input, options)

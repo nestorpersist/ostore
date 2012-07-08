@@ -22,10 +22,7 @@ private[persist] object Codes {
     final val Ok = "Ok"
     final val NotPresent = "NotPresent"
     final val NoPut = "NoPut"    // opt put failed
-    final val NotAvailable = "NotAvailable"
-    final val ReadOnly = "ReadOnly"
-    final val BadRequest = "BadRequest"
-    final val InternalError = "InternalError"
+    final val Locked = "Locked"  // already locked by different guid
 
     // Handoffs
     final val Handoff = "Handoff"
@@ -35,4 +32,9 @@ private[persist] object Codes {
     final val Done = "Done"
       
     // Failures 
+    final val NotAvailable = "NotAvailable"
+    final val ReadOnly = "ReadOnly"
+    final val BadRequest = "BadRequest"
+    final val InternalError = "InternalError"
+    final val Exist = "Exist"
 }

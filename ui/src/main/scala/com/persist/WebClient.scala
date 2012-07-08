@@ -36,6 +36,10 @@ import org.apache.http.conn.scheme.PlainSocketFactory
 import org.apache.http.params.HttpConnectionParams
 import org.apache.http.impl.conn.SingleClientConnManager
 import org.apache.http.client.methods.HttpPost
+import org.apache.http.client.methods.HttpGet
+import org.apache.http.HttpEntity
+import java.io.InputStreamReader
+import java.io.BufferedReader
 
 class WebClient() {
   
@@ -63,9 +67,9 @@ class WebClient() {
   }
 
   def getDatabaseStatus(databaseName: String): String = {
-    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "?get=i")).mkString
+    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "?info=s")).mkString
     val jinfo = Json(info)
-    jgetString(jinfo, "status")
+    jgetString(jinfo, "s")
   }
 
   def startDatabase(databaseName: String) {
@@ -100,7 +104,6 @@ class WebClient() {
   }
 
   def deleteDatabase(databaseName: String) {
-    // TODO
     val post = new HttpPost("http://" + server + "/" + databaseName)
     val e = new StringEntity("""{"cmd":"delete"}""")
     post.setEntity(e)
@@ -110,10 +113,31 @@ class WebClient() {
     e1.consumeContent()
   }
 
-  def getTables(databaseName: String): Json = {
-    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName)).mkString
-    Json(info)
+  private def getContent(e:HttpEntity):String = {
+    val rd = new BufferedReader(new InputStreamReader(e.getContent()))
+    val sb = new StringBuffer()
+    var line = ""
+    while (true) {
+      val line = rd.readLine()
+      if (line == null) {
+        rd.close()
+        return sb.toString()
+      }
+      sb.append(line + "\n")
+    }
+    ""
   }
+  
+  def getTables(databaseName: String): Json = {
+    //val info = Source.fromURL(new URL("http://" + server + "/" + databaseName)).mkString
+    val get = new HttpGet("http://" + server + "/" + databaseName)
+    val response = client.execute(get)
+    val e1 = response.getEntity()
+    val info = getContent(e1)
+    //e1.consumeContent()
+    //println("CLIENT:"+info)
+    Json(info)
+}
 
   def getKeys(databaseName: String, tableName: String, count:Int, lowKey:Json, highKey:Json): (Boolean, Json) = {
     val low = if (lowKey == null) { "" } else { ",low=" + keyUriEncode(lowKey) }
@@ -223,6 +247,7 @@ class WebClient() {
     val code = response.getStatusLine().getStatusCode()
     val e1 = response.getEntity()
     e1.consumeContent()
+    //println("CLIENT ADD TABLE:"+tableName)
   }
    
   def deleteTable(databaseName: String, tableName:String) {

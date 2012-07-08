@@ -453,6 +453,7 @@ class Act(app: Application, client: WebClient, all: All, top: Top, left: Left, r
 
   def toTables(databaseName: String) {
     val tables = client.getTables(databaseName)
+    //println("TABLES:"+Pretty(tables))
     setDatabase(databaseName)
     left.setName("Table")
     left.setAct((tableName: String) => {

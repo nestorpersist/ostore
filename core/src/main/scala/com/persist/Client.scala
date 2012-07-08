@@ -55,7 +55,7 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: Int = 8011) 
   
   def databaseInfo(databaseName:String,options:JsonObject=emptyJsonObject):Json = {
     var p = new DefaultPromise[Traversable[Json]]
-    manager ! ("databaseInfo", p, databaseName)
+    manager ! ("databaseInfo", p, databaseName,options)
     val v = Await.result(p, 5 seconds)
     v
   }
@@ -84,10 +84,10 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: Int = 8011) 
     val v = Await.result(p, 5 seconds)
   }
 
-  def database(databaseName: String) = {
-    var p = new DefaultPromise[(String,Database)]
+  def database(databaseName: String):Database = {
+    var p = new DefaultPromise[Database]
     manager ! ("database", p, databaseName)
-    val (code,database) = Await.result(p, 5 seconds)
+    val database = Await.result(p, 5 seconds)
     database
   }
 }

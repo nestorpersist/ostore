@@ -229,7 +229,7 @@ object EditWindow {
     c.addComponent(l)
     c.setExpandRatio(l, 10.f)
     w.addWindow(getWin)
-    b2.addListener(new ClickListener {
+    b1.addListener(new ClickListener {
       def buttonClick(e: Button#ClickEvent) = {
         val n = namea.getValue().asInstanceOf[String]
         w.removeWindow(getWin)
@@ -295,7 +295,7 @@ object EditWindow {
       name match {
         case Some(n:String) => {
           client.addTable(databaseName, n)
-          act.toTable(databaseName,n)
+          act.toTables(databaseName)
         }
         case None =>
       }

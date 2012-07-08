@@ -132,7 +132,7 @@ object JsonOps {
   /**
    *
    * A Json unparser. It produces a multiple line form
-   * design for human readability.
+   * designed for human readability.
    *
    */
   def Pretty(j: Json): String = {

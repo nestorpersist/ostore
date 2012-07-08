@@ -89,7 +89,6 @@ private[persist] class ServerDatabase(var config:DatabaseConfig, serverConfig: J
       }
       this.config = config
       sender ! Codes.Ok
-      
     }
     case ("addTable2", tableName:String) => {
       for ((ringName, ringInfo) <- rings) {
@@ -97,7 +96,6 @@ private[persist] class ServerDatabase(var config:DatabaseConfig, serverConfig: J
         val v = Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
-      
     }
     case ("deleteTable1", tableName:String,config:DatabaseConfig) => {
       for ((ringName, ringInfo) <- rings) {
@@ -106,7 +104,6 @@ private[persist] class ServerDatabase(var config:DatabaseConfig, serverConfig: J
       }
       this.config = config
       sender ! Codes.Ok
-      
     }
     case ("deleteTable2", tableName:String) => {
       for ((ringName, ringInfo) <- rings) {
