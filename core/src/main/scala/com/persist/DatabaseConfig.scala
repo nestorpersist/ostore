@@ -187,7 +187,7 @@ private[persist] class DatabaseConfig(
     val tables1 = tables + (tableName -> config)
     new DatabaseConfig(name, rings, tables1, servers)
   }
-
+  
   def deleteTable(tableName: String): DatabaseConfig = {
     val tables1 = tables - tableName
     new DatabaseConfig(name, rings, tables1, servers)

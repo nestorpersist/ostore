@@ -131,41 +131,63 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
     } while (!done)
   }
 
-  def rec = {
-    case ("lock", databaseName: String, guid: String, getInfo:Boolean) => {
-      databases.get(databaseName) match {
-        case Some(info) => {
-          val lock = locks.getOrElse(databaseName, "")
-          if (lock == "" || lock == guid) {
-            if (lock == "") locks += (databaseName -> guid)
-            val result = if (getInfo) {
-              var servers = JsonArray()
-              for (name <- info.config.servers.keys) {
-                servers = name +: servers
-              }
-              JsonObject(("s" -> info.state), ("servers" -> servers.reverse))
-            } else {
-               emptyJsonObject
-            }
-            sender ! ((Codes.Ok, Compact(result)))
-          } else {
-            sender ! ((Codes.Locked, ""))
+  private def doLock(databaseName: String, request: Json): (String,String) = {
+    val getInfo = jgetBoolean(request, "getinfo")
+    val tableName = jgetString(request, "table")
+    databases.get(databaseName) match {
+      case Some(info) => {
+        val result = if (getInfo) {
+          var servers = JsonArray()
+          for (name <- info.config.servers.keys) {
+            servers = name +: servers
           }
+          var result = JsonObject(("s" -> info.state), ("servers" -> servers.reverse))
+          if (tableName != "") {
+            info.config.tables.get(tableName) match {
+              case Some(tinfo) => {}
+              case None => {
+                result += ("tableAbsent" -> true)
+              }
+            }
+          }
+          result
+        } else {
+          emptyJsonObject
         }
-        case None => {
-          sender ! (Codes.Exist, "database:" + databaseName)
-        }
+        (Codes.Ok, Compact(result))
+      }
+      case None => {
+        var result = JsonObject(("s" -> "none"))
+        (Codes.Ok, Compact(result))
       }
     }
-    case ("unlock", databaseName: String, guid: String) => {
+  }
+
+  def rec = {
+    case ("lock", databaseName: String, rs: String) => {
+      val request = Json(rs)
+      val guid = jgetString(request, "guid")
       val lock = locks.getOrElse(databaseName, "")
       if (lock == "") {
-        sender ! ((Codes.Ok, ""))
+        locks += (databaseName -> guid)
+        sender ! doLock(databaseName, request)
+      } else if (lock == guid) {
+        sender ! doLock(databaseName, request)
+      } else {
+        sender ! (Codes.Locked, "")
+      }
+    }
+    case ("unlock", databaseName: String, rs: String) => {
+      val request = Json(rs)
+      val guid = jgetString(request, "guid")
+      val lock = locks.getOrElse(databaseName, "")
+      if (lock == "") {
+        sender ! (Codes.Ok, "")
       } else if (lock == guid) {
         locks -= databaseName
-        sender ! ((Codes.Ok, ""))
+        sender ! (Codes.Ok, "")
       } else {
-        sender ! ((Codes.Locked, ""))
+        sender ! (Codes.Locked, "")
       }
     }
     case ("databaseinfo", databaseName: String, os: String) => {
@@ -220,37 +242,39 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         }
       }
     }
-    case ("newDatabase", databaseName: String, dbConf: String) => {
-      val dbConfig = Json(dbConf)
-      var config = DatabaseConfig(databaseName, dbConfig)
+    case ("newDatabase", databaseName: String, rs: String) => {
       if (databases.contains(databaseName)) {
-        sender ! "AlreadyPresent"
+        sender ! ("AlreadyPresent", "")
       } else {
+        val request = Json(rs)
+        val dbConfig = jget(request, "config")
+        val dbConf = Compact(dbConfig)
+        var config = DatabaseConfig(databaseName, dbConfig)
         storeTable.putMeta(databaseName, dbConf)
         val database = system.actorOf(Props(new ServerDatabase(config, serverConfig, true)), name = databaseName)
         val info = new DatabaseInfo(database, config, "starting")
         databases += (databaseName -> info)
         val f = database ? ("start1")
         val x = Await.result(f, 5 seconds)
-        sender ! Codes.Ok
+        sender ! (Codes.Ok, "")
         println("Created Database " + databaseName)
       }
     }
-    case ("stopDatabase1", databaseName: String) => {
+    case ("stopDatabase1", databaseName: String, rs: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
           info.state = "stopping"
           val database = info.dbRef
           val f = database ? ("stop1")
           val v = Await.result(f, 5 seconds)
-          sender ! (Codes.Ok,"")
+          sender ! (Codes.Ok, "")
         }
         case None => {
-          sender ! (Codes.Exist,"")
+          sender ! (Codes.Exist, "")
         }
       }
     }
-    case ("stopDatabase2", databaseName: String) => {
+    case ("stopDatabase2", databaseName: String, rs: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
           info.state = "stop"
@@ -259,16 +283,16 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           val v = Await.result(f, 5 seconds)
           val stopped = gracefulStop(database, 5 seconds)(system)
           Await.result(stopped, 5 seconds)
-          sender ! (Codes.Ok,"")
+          sender ! (Codes.Ok, "")
           info.dbRef = null
           println("Database stopped " + databaseName)
         }
         case None => {
-          sender ! (Codes.Exist,"")
+          sender ! (Codes.Exist, "")
         }
       }
     }
-    case ("startDatabase1", databaseName: String) => {
+    case ("startDatabase1", databaseName: String, rs: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
           val database = system.actorOf(Props(new ServerDatabase(info.config, serverConfig, false)), name = databaseName)
@@ -276,30 +300,30 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           Await.result(f, 5 seconds)
           info.state = "starting"
           info.dbRef = database
-          sender ! (Codes.Ok,"")
+          sender ! (Codes.Ok, "")
           println("Database starting " + databaseName)
         }
         case None => {
-          sender ! (Codes.Exist,"")
+          sender ! (Codes.Exist, "")
         }
       }
     }
-    case ("startDatabase2", databaseName: String) => {
+    case ("startDatabase2", databaseName: String, rs: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
           val database = info.dbRef
           val f = database ? ("start2")
           Await.result(f, 5 seconds)
           info.state = "active"
-          sender ! (Codes.Ok,"")
+          sender ! (Codes.Ok, "")
           println("Database started " + databaseName)
         }
         case None => {
-          sender ! (Codes.Exist,"")
+          sender ! (Codes.Exist, "")
         }
       }
     }
-    case ("deleteDatabase", databaseName: String) => {
+    case ("deleteDatabase", databaseName: String, rs: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
           println("Deleting database " + databaseName)
@@ -308,12 +332,12 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           val f = new File(fname)
           deletePath(f)
           databases -= databaseName
-          sender ! (Codes.Ok,"")
+          sender ! (Codes.Ok, "")
           storeTable.remove(databaseName)
           println("Database deleted " + databaseName)
         }
         case None => {
-          sender ! (Codes.Exist,"")
+          sender ! (Codes.Exist, "")
         }
       }
     }
@@ -388,7 +412,9 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         }
       }
     }
-    case ("addTable1", databaseName: String, tableName: String) => {
+    case ("addTable1", databaseName: String, rs: String) => {
+      val request = Json(rs)
+      val tableName = jgetString(request, "table")
       databases.get(databaseName) match {
         case Some(info) => {
           info.config = info.config.addTable(tableName)
@@ -396,52 +422,59 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           val database = info.dbRef
           val f = database ? ("addTable1", tableName, info.config)
           val v = Await.result(f, 5 seconds)
-          sender ! Codes.Ok
+          sender ! (Codes.Ok, "")
+          println("Added table " + tableName)
         }
         case None => {
-          sender ! "exist"
+          sender ! (Codes.Exist, "")
         }
       }
     }
-    case ("addTable2", databaseName: String, tableName: String) => {
+    case ("addTable2", databaseName: String, rs: String) => {
+      val request = Json(rs)
+      val tableName = jgetString(request, "table")
       databases.get(databaseName) match {
         case Some(info) => {
           val database = info.dbRef
           val f = database ? ("addTable2", tableName)
           val v = Await.result(f, 5 seconds)
-          sender ! Codes.Ok
+          sender ! (Codes.Ok, "")
         }
         case None => {
-          sender ! "exist"
+          sender ! (Codes.Exist, "")
         }
       }
     }
-    case ("deleteTable1", databaseName: String, tableName: String) => {
+    case ("deleteTable1", databaseName: String, rs: String) => {
+      val request = Json(rs)
+      val tableName = jgetString(request, "table")
       databases.get(databaseName) match {
         case Some(info) => {
           val database = info.dbRef
           info.config = info.config.deleteTable(tableName)
+          storeTable.putMeta(databaseName, Compact(info.config.toJson))
           val f = database ? ("deleteTable1", tableName, info.config)
           val v = Await.result(f, 5 seconds)
-          sender ! Codes.Ok
+          sender ! (Codes.Ok, "")
+          println("Deleted table " + tableName)
         }
         case None => {
-          sender ! "exist"
+          sender ! (Codes.Exist, "")
         }
       }
     }
-    case ("deleteTable2", databaseName: String, tableName: String) => {
+    case ("deleteTable2", databaseName: String, rs: String) => {
+      val request = Json(rs)
+      val tableName = jgetString(request, "table")
       databases.get(databaseName) match {
         case Some(info) => {
           val database = info.dbRef
           val f = database ? ("deleteTable2", tableName)
           val v = Await.result(f, 5 seconds)
-          val stopped = gracefulStop(database, 5 seconds)(system)
-          Await.result(stopped, 5 seconds)
-          sender ! Codes.Ok
+          sender ! (Codes.Ok, "")
         }
         case None => {
-          sender ! "exist"
+          sender ! (Codes.Exist, "")
         }
       }
     }

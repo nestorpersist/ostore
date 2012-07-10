@@ -47,7 +47,6 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
     val table = context.actorOf(
       Props(new ServerTable(databaseName, ringName, nodeName, tableName,
         store, monitor, send, config)), name = tableName)
-    println(tableName +":" + table)
     var f = table ? ("start1")
     Await.result(f, 5 seconds)
     tables += (tableName -> new TableInfo(tableName, table))
@@ -104,11 +103,25 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       sender ! Codes.Ok
     }
     case ("deleteTable1", tableName:String, config:DatabaseConfig) => {
-      //println("deleteTable1 NYI " + tableName)
+      for ((tableName1, tableInfo) <- tables) {
+        if (tableName1 != tableName) {
+          val f = tableInfo.table ? ("setConfig", config)
+          Await.result(f, 5 seconds)
+        }
+      }
+      this.config = config
+      val tableInfo = tables(tableName)
+      val f = tableInfo.table ? ("stop1")
+      Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
     case ("deleteTable2", tableName:String) => {
-      //println("deleteTable2 NYI " + tableName)
+      val tableInfo = tables(tableName)
+      val f = tableInfo.table ? ("stop2")
+      Await.result(f, 5 seconds)
+      val stopped = gracefulStop(tableInfo.table, 5 seconds)(system)
+      Await.result(stopped, 5 seconds)
+      tables = tables - tableName
       sender ! Codes.Ok
     }
   }

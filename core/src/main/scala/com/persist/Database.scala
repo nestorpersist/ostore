@@ -88,16 +88,54 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     v
   }
 
+  // TODO remove
   def addTable(tableName: String) {
     var p = new DefaultPromise[String]
     manager ? ("addTable", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)
-
   }
 
+  // TODO remove
   def deleteTable(tableName: String) {
     var p = new DefaultPromise[String]
     manager ? ("deleteTable", p, databaseName, tableName)
+    val v = Await.result(p, 5 seconds)
+  }
+  
+  def addTables(config: Json) {
+    var p = new DefaultPromise[String]
+    manager ? ("addTables", p, databaseName, config)
+    val v = Await.result(p, 5 seconds)
+  }
+
+  def deleteTables(config: Json) {
+    var p = new DefaultPromise[String]
+    manager ? ("deleteTables", p, databaseName, config)
+    val v = Await.result(p, 5 seconds)
+  }
+ 
+  def addNodes(config: Json) {
+    var p = new DefaultPromise[String]
+    manager ? ("addNodes", p, databaseName, config)
+    val v = Await.result(p, 5 seconds)
+  }
+  
+  def deleteNodes(config: Json) {
+    var p = new DefaultPromise[String]
+    manager ? ("deleteNodes", p, databaseName, config)
+    val v = Await.result(p, 5 seconds)
+  }
+  
+    
+  def addRings(config: Json) {
+    var p = new DefaultPromise[String]
+    manager ? ("addRings", p, databaseName, config)
+    val v = Await.result(p, 5 seconds)
+  }
+  
+  def deleteRings(config: Json) {
+    var p = new DefaultPromise[String]
+    manager ? ("deleteRings", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
   }
 
@@ -121,9 +159,6 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     v
   }
 
-  // TODO (add,remove) (nodes,rings)
-
-  // TODO make sure table exists local (if not local check remote)
   def syncTable(tableName: String) = {
     var p = new DefaultPromise[SyncTable]
     manager ? ("syncTable", p, databaseName, tableName)
@@ -131,7 +166,6 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     v
   }
 
-  // TODO make sure table exists local (if not local check remote)
   def asyncTable(tableName: String) = {
     var p = new DefaultPromise[AsyncTable]
     manager ? ("asyncTable", p, databaseName, tableName)

@@ -38,6 +38,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
   private implicit val executor = system.dispatcher
 
   private val sendServer = new SendServer(system)
+  private val server = sendServer.serverRef(host + ":" + port)
 
   private var sends = new TreeMap[String, ActorRef]()
   private var databases = new TreeMap[String, Database]()
@@ -74,16 +75,6 @@ class Manager(host: String, port: Int) extends CheckedActor {
     }
   }
 
-  private val server = sendServer.serverRef(host + ":" + port)
-  for (databaseName <- allDatabases) {
-    val options = JsonObject(("info"->"c"))
-    val info = databaseInfo(databaseName,options)
-    //val f = server ? ("databaseInfo", databaseName)
-    //val (code: String, s: String) = Await.result(f, 5 seconds)
-    //val config = Json(s)
-    val conf = DatabaseConfig(databaseName, jget(info,"c"))
-  }
-
   private def stop() {
     for ((databaseName, sendRef) <- sends) {
       val f = sendRef ? ("stop")
@@ -94,68 +85,91 @@ class Manager(host: String, port: Int) extends CheckedActor {
   }
 
   private case class DatabaseActions(databaseName: String) {
+    
     private val guid = UUID.randomUUID().toString()
+    private val request0 = JsonObject(("guid"->guid))
     private var servers:JsonArray = emptyJsonArray
-    private var state:String = ""
 
-    private def lock(databaseName: String,guid:String):Boolean = {
-      val f = server ? ("lock", databaseName, guid, true)
-      val (code, s:String) = Await.result(f, 5 seconds)
-      if (code != Codes.Ok) {
-        if (code == Codes.Exist) throw new Exception("Database: " + databaseName + " does not exist")
-      }
-      val info = Json(s)
-      servers = jgetArray(info,"servers")
-      state = jgetString(info, "s")
+    private def doAll(cmd:String, request:JsonObject):Boolean = {
+      val rs = Compact(request)
       var ok = true
-      // TODO do in parallel
+      var futures = List[Future[Any]]()
       for (serverj <- servers) {
         val serverName = jgetString(serverj)
         val server = sendServer.serverRef(serverName)
-        val f = server ? ("lock", databaseName, guid, false)
-        val (code, v) = Await.result(f, 5 seconds)
+        val f = server ? (cmd, databaseName, rs)
+        futures = f +: futures
+      }
+      for (f <- futures.reverse) {
+        val (code, response) = Await.result(f, 5 seconds)
         if (code != Codes.Ok) ok = false;
       }
-      if (! ok) unlock(databaseName, guid)
       ok
     }
-    private def unlock(databaseName: String, guid: String) {
-      // TODO do in parallel
-      for (serverj <- servers) {
-        val serverName = jgetString(serverj)
-        val server = sendServer.serverRef(serverName)
-        val f = server ? ("unlock", databaseName, guid)
-        val v = Await.result(f, 5 seconds)
+
+    private def lock(expectedState:String, check:JsonObject):Boolean = {
+      var request = request0 + ("getinfo"->true)
+      val tableName = jgetString(check, "table")
+      if (tableName != "") request += ("table" -> tableName)
+      val f = server ? ("lock", databaseName, Compact(request))
+      val (code, s:String) = Await.result(f, 5 seconds)
+      if (code != Codes.Ok) {
+        if (code == Codes.Locked) throw new Exception("Database: " + databaseName + " is locked")
+        throw new Exception("Unknown lock failure: " + code)
       }
-  }
+      val response = Json(s)
+      val state = jgetString(response, "s")
+      if (expectedState != "" && expectedState != state) {
+        val f = server ? ("unlock", databaseName, Compact(request0))
+        val (code, s:String) = Await.result(f, 5 seconds)
+        throw new Exception("Bad state, expected " + expectedState + " actual" + state)
+      }
+      servers = if (state == "none") {
+         jgetArray(check, "servers")
+      } else {
+         jgetArray(response,"servers")
+      }
+      if (tableName != "") {
+        val requestTableAbsent = jgetBoolean(check, "tableAbsent")
+        val actualTableAbsent = jgetBoolean(response, "tableAbsent")
+        if (requestTableAbsent) {
+          if (! actualTableAbsent) {
+            val f = server ? ("unlock", databaseName, Compact(request0))
+            val (code, s:String) = Await.result(f, 5 seconds)
+            throw new Exception("Table " + tableName + " already exists")
+          }
+        } else {
+          if (actualTableAbsent) {
+            val f = server ? ("unlock", databaseName, Compact(request0))
+            val (code, s:String) = Await.result(f, 5 seconds)
+            throw new Exception("Table " + tableName + " does not exist")
+          }
+          
+        }
+      }
+      val ok = doAll("lock", request0)
+      if (! ok) unlock()
+      ok
+    }
     
-    def start(expectedState:String = ""):Boolean = {
-      if (lock(databaseName, guid)) {
-        if (expectedState != "" && expectedState != state) {
-          throw new Exception("Bad state, expected " + expectedState + " actual" + state)
-        }
+    private def unlock() {
+      doAll("unlock", request0)
+    }
+    
+    def act(expectedState:String = "", check:JsonObject = emptyJsonObject)(body: => Unit) = {
+      if (lock(expectedState, check)) {
+        body
+        unlock()
         true
-      }
-      else false
-    }
-
-    def pass(cmd:String) {
-      // TODO do in parallel
-      for (serverj <- servers) {
-        // TODO set up act
-        val serverName = jgetString(serverj)
-        val server = sendServer.serverRef(serverName)
-        val f = server ? (cmd, databaseName)
-        val (code, v) = Await.result(f, 5 seconds)
-        if (code != Codes.Ok) {
-          unlock(databaseName, guid)
-        }
+      } else {
+        false
       }
     }
 
-    def end() = unlock(databaseName, guid)
+    def pass(cmd:String, request:JsonObject = emptyJsonObject) {
+      doAll(cmd, request)
+    }
   }
-
 
   private def allDatabases(): Traversable[String] = {
     val f = server ? ("allDatabases")
@@ -254,129 +268,60 @@ class Manager(host: String, port: Int) extends CheckedActor {
     }
   }
 
-  private def createDatabase(databaseName: String, config: Json) {
-    val conf = DatabaseConfig(databaseName, config)
-    var ok = true
-    // TODO use dba
-    for (serverName <- conf.servers.keys) {
-      val server = sendServer.serverRef(serverName)
-      val f = server ? ("newDatabase", databaseName, Compact(config))
-      val v = Await.result(f, 5 seconds)
-      if (v != Codes.Ok) {
-        ok = false
-        //println("Create failed: " +v + ":" + serverInfo.name) 
-      }
+  private def createDatabase(databaseName: String, jconfig: Json) {
+    val dba = DatabaseActions(databaseName)
+    val config = DatabaseConfig(databaseName, jconfig)
+    var servers = JsonArray()
+    for ((serverName, serverConfig) <- config.servers) {
+      servers = serverName +: servers
     }
-    if (ok) {
-      for (serverName <- conf.servers.keys) {
-        val server = sendServer.serverRef(serverName)
-        val f = server ? ("startDatabase2", databaseName)
-        val (code,v) = Await.result(f, 5 seconds)
-      }
+    val check = JsonObject(("databaseAbsent" -> true),("servers" -> servers.reverse))
+    val request = JsonObject(("config" -> jconfig))
+    dba.act("none", check) {
+      dba.pass("newDatabase", request)
+      dba.pass("startDatabase2")
     }
   }
 
   private def deleteDatabase(databaseName: String) {
-    //val status = getDatabaseStatus(databaseName)
-    //if (status == "none") throw new Exception("database does not exist")
-    //if (status != "stop") throw new Exception("database not stopped")
     val dba = DatabaseActions(databaseName)
-    if (dba.start("stop")) {
+    dba.act("stop") {
       dba.pass("deleteDatabase")
-      dba.end()
     }
-    /*
-    // TODO could be done in parallel
-    for (serverName <- allServers(databaseName)) {
-      val server = sendServer.serverRef(serverName)
-      val f = server ? ("deleteDatabase", databaseName)
-      val v = Await.result(f, 5 seconds)
-    }
-    */
   }
 
   private def startDatabase(databaseName: String) {
-    //val status = getDatabaseStatus(databaseName)
-    //if (status == "none") throw new Exception("database does not exist")
-    //if (status != "stop") throw new Exception("database not stopped")
     val dba = DatabaseActions(databaseName)
-    if (dba.start("stop")) {
+    dba.act("stop") {
       dba.pass("startDatabase1")
       dba.pass("startDatabase2")
-      dba.end()
     }
-    /*
-    // TODO could be done in parallel
-    for (serverName <- allServers(databaseName)) {
-      val server = sendServer.serverRef(serverName)
-      val f = server ? ("startDatabase1", databaseName)
-      val v = Await.result(f, 5 seconds)
-    }
-    for (serverName <- allServers(databaseName)) {
-      val server = sendServer.serverRef(serverName)
-      val f = server ? ("startDatabase2", databaseName)
-      val v = Await.result(f, 5 seconds)
-    }
-    */
   }
 
   private def stopDatabase(databaseName: String) {
-    //val status = getDatabaseStatus(databaseName)
-    //if (status == "none") throw new Exception("database does not exist")
-    //if (status != "active") throw new Exception("database not active")
     val dba = DatabaseActions(databaseName)
-    if (dba.start("active")) {
+    dba.act("active") {
       dba.pass("stopDatabase1")
       dba.pass("stopDatabase2")
-      dba.end()
     }
-    /*
-    // TODO could be done in parallel
-    for (serverName <- allServers(databaseName)) {
-      val server = sendServer.serverRef(serverName)
-      val f = server ? ("stopDatabase1", databaseName)
-      val v = Await.result(f, 5 seconds)
-    }
-    for (serverName <- allServers(databaseName)) {
-      val server = sendServer.serverRef(serverName)
-      val f = server ? ("stopDatabase2", databaseName)
-      val v = Await.result(f, 5 seconds)
-    }
-    */
   }
 
   private def addTable(databaseName: String, tableName: String) {
-    val status = getDatabaseStatus(databaseName)
-    if (status == "none") throw new Exception("database does not exist")
-    if (status != "active") throw new Exception("database not active")
-    // TODO use dba
-    // TODO could be done in parallel
-    for (serverName <- allServers(databaseName)) {
-      val server = sendServer.serverRef(serverName)
-      val f = server ? ("addTable1", databaseName, tableName)
-      val v = Await.result(f, 5 seconds)
-    }
-    for (serverName <- allServers(databaseName)) {
-      val server = sendServer.serverRef(serverName)
-      val f = server ? ("addTable2", databaseName, tableName)
-      val v = Await.result(f, 5 seconds)
+    val request = JsonObject(("table"->tableName))
+    val result1 = request + ("tableAbsent"->true)
+    val dba = DatabaseActions(databaseName)
+    dba.act("active") {
+      dba.pass("addTable1", request)
+      dba.pass("addTable2", request)
     }
   }
 
   private def deleteTable(databaseName: String, tableName: String) {
-    val status = getDatabaseStatus(databaseName)
-    if (status == "none") throw new Exception("database does not exist")
-    if (status != "active") throw new Exception("database not active")
-    // TODO use dba
-    for (serverName <- allServers(databaseName)) {
-      val server = sendServer.serverRef(serverName)
-      val f = server ? ("deleteTable1", databaseName, tableName)
-      val v = Await.result(f, 5 seconds)
-    }
-    for (serverName <- allServers(databaseName)) {
-      val server = sendServer.serverRef(serverName)
-      val f = server ? ("deleteTable2", databaseName, tableName)
-      val v = Await.result(f, 5 seconds)
+    val request = JsonObject(("table"->tableName))
+    val dba = DatabaseActions(databaseName)
+    dba.act("active") {
+      dba.pass("deleteTable1", request)
+      dba.pass("deleteTable2", request)
     }
   }
 
@@ -527,18 +472,60 @@ class Manager(host: String, port: Int) extends CheckedActor {
     case ("addTable", p: Promise[String], databaseName: String, tableName: String) => {
       complete(p) {
         addTable(databaseName, tableName)
-        // TODO
-        // TODO update local config and map
-        println("Add table: " + databaseName + ":" + tableName)
         Codes.Ok
       }
     }
     case ("deleteTable", p: Promise[String], databaseName: String, tableName: String) => {
       complete(p) {
         deleteTable(databaseName, tableName)
-        // TODO
-        // TODO update local config and map
-        println("Delete table: " + databaseName + ":" + tableName)
+        Codes.Ok
+      }
+    }
+    case ("addTables", p: Promise[String], databaseName: String, config: Json) => {
+      complete(p) {
+        //addTabless(databaseName, config)
+        println("Add tables: " + databaseName)
+        println(Pretty(config))
+        Codes.Ok
+      }
+    }
+    case ("deleteTables", p: Promise[String], databaseName: String, config: Json) => {
+      complete(p) {
+        //deleteNodes(databaseName, config)
+        println("Delete tables: " + databaseName)
+        println(Pretty(config))
+        Codes.Ok
+      }
+    }
+    case ("addNodes", p: Promise[String], databaseName: String, config: Json) => {
+      complete(p) {
+        //addNodes(databaseName, config)
+        println("Add nodes: " + databaseName)
+        println(Pretty(config))
+        Codes.Ok
+      }
+    }
+    case ("deleteNodes", p: Promise[String], databaseName: String, config: Json) => {
+      complete(p) {
+        //deleteNodes(databaseName, config)
+        println("Delete nodes: " + databaseName)
+        println(Pretty(config))
+        Codes.Ok
+      }
+    }
+    case ("addRings", p: Promise[String], databaseName: String, config: Json) => {
+      complete(p) {
+        //addNodes(databaseName, config)
+        println("Add rings: " + databaseName)
+        println(Pretty(config))
+        Codes.Ok
+      }
+    }
+    case ("deleteRings", p: Promise[String], databaseName: String, config: Json) => {
+      complete(p) {
+        //deleteNodes(databaseName, config)
+        println("Delete rings: " + databaseName)
+        println(Pretty(config))
         Codes.Ok
       }
     }
