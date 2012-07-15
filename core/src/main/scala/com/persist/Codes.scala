@@ -20,6 +20,7 @@ package com.persist
 private[persist] object Codes {
     // Success
     final val Ok = "Ok"
+    final val Busy = "Busy"       // activity still ongoing
     final val NotPresent = "NotPresent"
     final val NoPut = "NoPut"    // opt put failed
     final val Locked = "Locked"  // already locked by different guid

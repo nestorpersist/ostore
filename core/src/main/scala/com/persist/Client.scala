@@ -45,9 +45,8 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: Int = 8011) 
     Await.result(stopped, 5 seconds)
   }
   
-  // TODO Traverable may not be right result
-  def allDatabases():Traversable[String] = {
-    var p = new DefaultPromise[Traversable[String]]
+  def allDatabases():Iterable[String] = {
+    var p = new DefaultPromise[Iterable[String]]
     manager ! ("allDatabases", p)
     val v = Await.result(p, 5 seconds)
     v

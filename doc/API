@@ -56,7 +56,12 @@ For database (post)
 	{"cmd":"delete"}
 	{"cmd":"start"}
 	{"cmd":"stop"}
-
+        {"cmd":"addTables","config":c}
+        {"cmd":"deleteTables","config":c}
+        {"cmd":"addNodes","config":c}
+        {"cmd":"deleteNodes","config":c}
+        {"cmd":"addRings","config":c}
+        {"cmd":"deleteRings","config":c}
 
 For item (get)
         get=kvc      multipart return (Key,Value,vector Clock)
@@ -74,11 +79,6 @@ For table (get list of keys)
         includeparent
         reverse
         count=n         REST only, default is 30
-
-For table (post)
-   body contains one of
-	{"cmd":"add"}
-        {"cmd":"delete"}
 
 For item (put)
         create           for opt cc (must not already exist)

@@ -32,20 +32,38 @@ private[persist] trait ServerBalanceComponent { this: ServerTableAssembly =>
     var cntFromPrev: Long = 0
     
     // next node
-    var nextNodeName = info.config.rings(info.ringName).nextNodeName(info.nodeName)
-    var nextNode:ActorRef = null
+    var nextNodeName = ""
+    private var nextNode:ActorRef = null
     var nextCount: Long = Long.MaxValue
     var nextLow: String = info.high
 
     // prev node
-    var prevNodeName =  info.config.rings(info.ringName).prevNodeName(info.nodeName)
-    var prevNode:ActorRef = null
+    private var prevNodeName =  ""
+    private var prevNode:ActorRef = null
+    
+    setPrevNextName()
     
     var singleNode = info.nodeName == nextNodeName
+    
+    private def setPrevNextName():Boolean = {
+       val nextNodeName = info.config.rings(info.ringName).nextNodeName(info.nodeName)
+       val prevNodeName =  info.config.rings(info.ringName).prevNodeName(info.nodeName)
+       val changed = nextNodeName != this.nextNodeName || prevNodeName != this.prevNodeName
+      this.prevNodeName = prevNodeName
+      this.nextNodeName = nextNodeName
+      changed
+    }
 
     def setPrevNext() {
       nextNode = info.config.getRef(system,info.ringName,nextNodeName,info.tableName)
       prevNode = info.config.getRef(system,info.ringName, prevNodeName, info.tableName)    
+    }
+    
+    def resetPrevNext() {
+      if (setPrevNextName() || nextNode == null) {
+        setPrevNext()
+      }
+      singleNode = info.nodeName == prevNodeName
     }
 
     def inNext(key:String) = {
@@ -59,6 +77,11 @@ private[persist] trait ServerBalanceComponent { this: ServerTableAssembly =>
     def sendPrefix(prefix:String,key:String,meta:String,v:String) {
       val request = JsonObject("p"->prefix,"k"->key,"m"->meta,"v"->v)
       nextNode ! ("fromPrev", Compact(request))
+    }
+    
+    def isBusy:Boolean = {
+      val count = info.storeTable.size()
+      count > 1 && info.high != nextLow
     }
 
     def sendToNext {
@@ -138,7 +161,7 @@ private[persist] trait ServerBalanceComponent { this: ServerTableAssembly =>
 
     def reportToPrev {
       val count = info.storeTable.size()
-      if (prevReportedCount != count || prevReportedLow != info.low) {
+      if ((canSend && prevReportedCount != count) || prevReportedLow != info.low) {
         //info.prevNode ! ("fromNext", count, info.low)
         val response = JsonObject("n"->count,"k"->info.low)
         prevNode ! ("fromNext", Compact(response))

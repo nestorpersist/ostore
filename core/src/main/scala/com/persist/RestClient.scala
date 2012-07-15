@@ -152,14 +152,18 @@ private[persist] object RestClient1 {
   private def databaseAct(databaseName: String, input: Json): Future[Option[Json]] = {
     Future {
       val cmd = jgetString(input, "cmd")
+      val config = jget(input, "config")
       cmd match {
-        case "create" => {
-          val config = jget(input, "config")
-          client.createDatabase(databaseName, config)
-        }
+        case "create" => client.createDatabase(databaseName, config)
         case "delete" => client.deleteDatabase(databaseName)
         case "start" => client.startDatabase(databaseName)
         case "stop" => client.stopDataBase(databaseName)
+        case "addTables" => client.database(databaseName).addTables(config)
+        case "deleteTables" => client.database(databaseName).deleteTables(config)
+        case "addNodes" => client.database(databaseName).addNodes(config)
+        case "deleteNodes" => client.database(databaseName).deleteNodes(config)
+        case "addRings" => client.database(databaseName).addRings(config)
+        case "deleteRings" => client.database(databaseName).deleteRings(config)
         case x => throw new BadRequestException("bad database post cmd: " + x)
       }
       None
@@ -346,6 +350,7 @@ private[persist] object RestClient1 {
       }
     } else {
       val tableName = parts(0)
+      /*
       if (method == "post") {
         val cmd = jgetString(input, "cmd")
         cmd match {
@@ -364,6 +369,7 @@ private[persist] object RestClient1 {
           }
         }
       } else {
+      */
         val isMonitor = jgetBoolean(options, "monitor")
         val isReport = jgetBoolean(options, "report")
         val searchString = jgetString(options, "search")
@@ -380,7 +386,7 @@ private[persist] object RestClient1 {
         } else {
           listKeys(database, tableName, options)
         }
-      }
+      //}
     }
   }
 

@@ -246,5 +246,24 @@ private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[
     tableNodeMap.high = high
     tableNodeMap.known = true
   }
-
+  
+  def setNext(ringName:String, nodeName:String, nextNodeName:String, host:String, port:Int) {
+    val ring = rings(ringName)
+    if (! ring.nodes.contains(nextNodeName)) {
+      val pos = ring.nodes(nodeName).pos
+      val nodeMap = NodeMap(databaseName, ringName, nextNodeName, pos+1, host, port)
+      for ((tableName,tableMap)<-ring.tables) {
+        val tableNodeMap = TableNodeMap(tableName, nodeMap)
+        tableMap.nodes += (nextNodeName -> tableNodeMap)
+      }
+      for ((nodeName1,nodeMap1)<- ring.nodes) {
+        if (nodeMap1.pos > pos) {
+          nodeMap1.pos += 1
+        }
+      }
+      ring.nodes += (nextNodeName -> nodeMap)
+    }
+    
+  }
+  
 }

@@ -128,9 +128,9 @@ private[persist] object DatabaseConfig {
       val ringName = jgetString(ring, "name")
       var ringMap = Map[String, NodeConfig]()
       var ringSeq = List[String]()
-      var pos: Int = 0
+      //var pos: Int = 0
       val nodes = jgetArray(ring, "nodes")
-      for (node <- nodes) {
+      for ((node,pos) <- nodes.zipWithIndex) {
         val name = jgetString(node, "name")
         val host = jget(node, "host") match {
           case null => defaultHost
@@ -154,7 +154,7 @@ private[persist] object DatabaseConfig {
         val nodeName = nodeConfig.name
         ringMap = ringMap + (nodeName -> nodeConfig)
         ringSeq = ringSeq :+ nodeName
-        pos = pos + 1
+        //pos = pos + 1
       }
       val ringConfig = RingConfig(ringName, ringMap, ringSeq)
       rings = rings + (ringName -> ringConfig)
@@ -183,14 +183,26 @@ private[persist] class DatabaseConfig(
   }
 
   def addTable(tableName: String): DatabaseConfig = {
-    val config = TableConfig(tableName, JsonArray(), emptyMap, emptyMap, emptyMap, emptyMap)
-    val tables1 = tables + (tableName -> config)
+    val tableConfig = TableConfig(tableName, JsonArray(), emptyMap, emptyMap, emptyMap, emptyMap)
+    val tables1 = tables + (tableName -> tableConfig)
     new DatabaseConfig(name, rings, tables1, servers)
   }
   
   def deleteTable(tableName: String): DatabaseConfig = {
     val tables1 = tables - tableName
     new DatabaseConfig(name, rings, tables1, servers)
+  }
+  
+  def addNode(ringName:String, nodeName: String, serverName:String):DatabaseConfig = {
+    val ring = rings(ringName)
+    val nodes = ring.nodes
+    val nodeSeq = ring.nodeSeq
+    val nodeConfig = NodeConfig(ringName, nodeName, servers(serverName), nodeSeq.size)
+    val nodes1 = nodes + (nodeName -> nodeConfig)
+    val seq1 = (nodeName :: (nodeSeq.reverse)).reverse
+    val ring1 = RingConfig(ring.name, nodes1, seq1)
+    val rings1 = rings + (ringName -> ring1)
+    new DatabaseConfig(name,rings1,tables, servers)
   }
 
   def toJson: Json = {

@@ -78,6 +78,52 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
+    case ("stopBalance") => {
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("stopBalance")
+        val v = Await.result(f, 5 seconds)
+      }
+      sender !  Codes.Ok 
+    }
+    case ("startBalance") => {
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("startBalance")
+        val v = Await.result(f, 5 seconds)
+      }
+      sender !  Codes.Ok 
+    }
+    case ("busyBalance") => {
+      var code = Codes.Ok
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("busyBalance")
+        val code1 = Await.result(f, 5 seconds)
+        if (code1 == Codes.Busy) code = Codes.Busy
+      }
+      sender !  code
+    }
+    case ("addNode", ringName:String, nodeName:String, config:DatabaseConfig) => {
+      this.config = config
+      if (ringName == this.ringName) {
+        newNode(ringName, nodeName)
+      }
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("setConfig", config)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender !  Codes.Ok 
+    }
+    case ("getLowHigh", nodeName:String, tableName:String) => {
+      val nodeInfo = nodes(nodeName)
+      val f = nodeInfo.node ? ("getLowHigh", tableName)
+      val (code:String, result:Json) = Await.result(f, 5 seconds)
+      sender !  (Codes.Ok,result) 
+    }
+    case ("setLowHigh", nodeName:String, tableName:String, low:String, high:String) => {
+      val nodeInfo = nodes(nodeName)
+      val f = nodeInfo.node ? ("setLowHigh", tableName, low, high)
+      Await.result(f, 5 seconds)
+      sender !  Codes.Ok
+    }
     case ("addTable1", tableName:String, config:DatabaseConfig) => {
       for ((nodeName, nodeInfo) <- nodes) {
         val f = nodeInfo.node ? ("addTable1", tableName, config)

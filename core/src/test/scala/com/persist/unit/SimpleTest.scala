@@ -90,6 +90,7 @@ class SimpleTest extends FunSuite {
     client.deleteDatabase(dbName)
 
     client.stop()
+    system.shutdown()
 
     println("Stopping Server")
     Server.stop

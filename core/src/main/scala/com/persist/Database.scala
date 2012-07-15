@@ -32,62 +32,63 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
   private implicit val timeout = Timeout(5 seconds)
   private lazy implicit val ec = ExecutionContext.defaultExecutionContext(system)
 
-  def allTables: Traversable[String] = {
-    var p = new DefaultPromise[Traversable[String]]
+  def allTables: Iterable[String] = {
+    var p = new DefaultPromise[Iterable[String]]
     manager ? ("allTables", p, databaseName)
     val v = Await.result(p, 5 seconds)
     v
   }
 
   def tableInfo(tableName: String, options: JsonObject = emptyJsonObject): Json = {
-    var p = new DefaultPromise[Traversable[Json]]
+    var p = new DefaultPromise[Json]
     manager ! ("tableInfo", p, databaseName, tableName, options)
     val v = Await.result(p, 5 seconds)
     v
   }
 
-  def allRings: Traversable[String] = {
-    var p = new DefaultPromise[Traversable[String]]
+  def allRings: Iterable[String] = {
+    var p = new DefaultPromise[Iterable[String]]
     manager ? ("allRings", p, databaseName)
     val v = Await.result(p, 5 seconds)
     v
   }
 
   def ringInfo(ringName: String, options: JsonObject = emptyJsonObject): Json = {
-    var p = new DefaultPromise[Traversable[Json]]
+    var p = new DefaultPromise[Json]
     manager ! ("ringInfo", p, databaseName, ringName, options)
     val v = Await.result(p, 5 seconds)
     v
   }
 
-  def allNodes(ringName: String): Traversable[String] = {
-    var p = new DefaultPromise[Traversable[String]]
+  def allNodes(ringName: String): Iterable[String] = {
+    var p = new DefaultPromise[Iterable[String]]
     manager ? ("allNodes", p, databaseName, ringName)
     val v = Await.result(p, 5 seconds)
     v
   }
 
   def nodeInfo(ringName: String, nodeName: String, options: JsonObject = emptyJsonObject): Json = {
-    var p = new DefaultPromise[Traversable[Json]]
+    var p = new DefaultPromise[Json]
     manager ! ("nodeInfo", p, databaseName, ringName, nodeName, options)
     val v = Await.result(p, 5 seconds)
     v
   }
 
-  def allServers: Traversable[String] = {
-    var p = new DefaultPromise[Traversable[String]]
+  def allServers: Iterable[String] = {
+    var p = new DefaultPromise[Iterable[String]]
     manager ? ("allServers", p, databaseName)
     val v = Await.result(p, 5 seconds)
     v
   }
 
   def serverInfo(serverName: String, options: JsonObject = emptyJsonObject): Json = {
-    var p = new DefaultPromise[Traversable[Json]]
+    var p = new DefaultPromise[Json]
     manager ! ("nodeInfo", p, databaseName, serverName, options)
     val v = Await.result(p, 5 seconds)
     v
   }
 
+  /*
   // TODO remove
   def addTable(tableName: String) {
     var p = new DefaultPromise[String]
@@ -101,6 +102,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     manager ? ("deleteTable", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)
   }
+  */
   
   def addTables(config: Json) {
     var p = new DefaultPromise[String]

@@ -63,7 +63,6 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
     }
     case ("start2") => {
       for ((tableName, tableInfo) <- tables) {
-          println("start:"+tableInfo.table)
         val f = tableInfo.table ? ("start2")
         Await.result(f, 5 seconds)
       }
@@ -71,7 +70,6 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
     }
     case ("stop1") => {
       for ((tableName, tableInfo) <- tables) {
-          println("stop:"+tableInfo.table)
         val f = tableInfo.table ? ("stop1")
         Await.result(f, 5 seconds)
       }
@@ -85,6 +83,49 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       val f = monitor ? ("stop")
       Await.result(f, 5 seconds)
       store.close()
+      sender ! Codes.Ok
+    }
+    case ("stopBalance") => {
+      for ((tableName, tableInfo) <- tables) {
+        val f = tableInfo.table ? ("stopBalance")
+        Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+    }
+    case ("startBalance") => {
+      for ((tableName, tableInfo) <- tables) {
+        val f = tableInfo.table ? ("startBalance")
+        Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+    }
+    case ("busyBalance") => {
+      var code = Codes.Ok
+      for ((tableName, tableInfo) <- tables) {
+        val f = tableInfo.table ? ("busyBalance")
+        val code1 = Await.result(f, 5 seconds)
+        if (code1 == Codes.Busy) code = Codes.Busy
+      }
+      sender ! code
+    }
+    case ("setConfig", config: DatabaseConfig) => {
+      for ((tableName, tableInfo) <- tables) {
+        val f = tableInfo.table ? ("setConfig", config)
+        Await.result(f, 5 seconds)
+      }
+      this.config = config
+      sender ! Codes.Ok
+    }
+    case ("getLowHigh", tableName:String) => {
+      val tableInfo = tables(tableName)
+      val f = tableInfo.table ? ("getLowHigh")
+      val (code:String,result:Json) = Await.result(f, 5 seconds)
+      sender ! (Codes.Ok, result)
+    }
+    case ("setLowHigh", tableName:String, low:String, high:String) => {
+      val tableInfo = tables(tableName)
+      val f = tableInfo.table ? ("setLowHigh", low, high)
+      Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
     case ("addTable1", tableName:String, config:DatabaseConfig) => {
@@ -117,7 +158,7 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
     }
     case ("deleteTable2", tableName:String) => {
       val tableInfo = tables(tableName)
-      val f = tableInfo.table ? ("stop2")
+      val f = tableInfo.table ? ("delete2")
       Await.result(f, 5 seconds)
       val stopped = gracefulStop(tableInfo.table, 5 seconds)(system)
       Await.result(stopped, 5 seconds)

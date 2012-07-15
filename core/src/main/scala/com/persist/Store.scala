@@ -142,7 +142,7 @@ private[persist] class Store(context:ActorContext, nodeName: String, fname: Stri
     } else {
       vals0
     }
-    new StoreTable(context.system, db, meta, vals, doCommit)
+    new StoreTable(tableName, mname, vname, context.system, db, meta, vals, doCommit)
   }
 
   def close() {

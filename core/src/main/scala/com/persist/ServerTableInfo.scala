@@ -38,8 +38,8 @@ private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>
       val ringConfig = config.rings(ringName)
       val pos = ringConfig.nodePosition(nodeName)
       val nextPos = ringConfig.nodePosition(ringConfig.nextNodeName(nodeName))
-      val low = keyEncode(pos)
-      val high = keyEncode(nextPos)
+      val low = if (pos == nextPos) { "" } else { keyEncode(pos) }
+      val high = if (pos == nextPos) { "\uFFFF" } else { keyEncode(nextPos) }
       storeTable.put("!low", low)
       storeTable.put("!high", high)
       (low, high)

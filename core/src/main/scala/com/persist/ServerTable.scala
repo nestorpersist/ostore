@@ -29,7 +29,7 @@ private[persist] trait ServerTableAssembly extends ServerMapReduceComponent with
   with ServerBalanceComponent with ServerOpsComponent with ServerTableInfoComponent
 
 private[persist] class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
-  store: Store, monitor: ActorRef, send: ActorRef, var config: DatabaseConfig) extends CheckedActor {
+  store: Store, monitor: ActorRef, send: ActorRef, config: DatabaseConfig) extends CheckedActor {
 
   object all extends ServerTableAssembly {
     val info = new ServerTableInfo(databaseName, ringName, nodeName, tableName,
@@ -147,10 +147,8 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
   }
 
   def doCommand(cmd: Any) {
-    //println("CMD:"+cmd+":"+sender)
     cmd match {
       case ("start1") => {
-        //println("START1:"+tableName)
         sender ! Codes.Ok
       }
       case ("start2") => {
@@ -160,7 +158,6 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
           bal.canReport = true
         }
         ops.acceptUserMessages = true
-        //println("START2:"+tableName)
         sender ! Codes.Ok
       }
       case ("stop1") => {
@@ -177,7 +174,41 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
       case ("stop2") => {
         mr.close
         info.storeTable.put("!clean", "true")
+        // TODO delete store table
         info.storeTable.close()
+        sender ! Codes.Ok
+      }
+      case ("delete2") => {
+        mr.delete
+        info.storeTable.delete()
+        sender ! Codes.Ok
+        
+      }
+      case ("stopBalance") => {
+        bal.canSend = false
+        sender ! Codes.Ok
+      }
+      case ("startBalance") => {
+        bal.canSend = true
+        bal.canReport = true
+        sender ! Codes.Ok
+      }
+      case ("busyBalance") => {
+        val code = if (bal.isBusy) {
+          Codes.Busy
+        } else {
+          Codes.Ok
+        }
+        sender ! code
+      }
+      case ("getLowHigh") => {
+        val result = JsonObject("low"->info.low, "high"->info.high)
+        sender ! (Codes.Ok, result)
+      }
+      case ("setLowHigh", low:String, high:String) => {
+        info.low = low
+        info.high = high
+        bal.nextLow = high
         sender ! Codes.Ok
       }
       //case ("fromPrev", uid:Long, key: String, meta: String, value: String) => {
@@ -193,7 +224,8 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
         bal.fromNext(response)
       }
       case ("setConfig", config:DatabaseConfig) => {
-        this.config = config
+        info.config = config
+        bal.resetPrevNext()
         sender ! Codes.Ok
       }
       case (kind: String, uid: Long, key: String, value: Any) => {
@@ -206,7 +238,11 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
               if (checkKey(key, less)) {
                 doBasicCommand(kind, key, value)
               } else {
-                val response = JsonObject("low" -> info.low, "high" -> info.high)
+                val server = config.rings(ringName).nodes(bal.nextNodeName).server
+                val host = server.host
+                val port = server.port
+                val response = JsonObject("low" -> info.low, "high" -> info.high, "next" -> bal.nextNodeName,
+                    "host"->host, "port" -> port)
                 (Codes.Handoff, Compact(response))
               }
             }

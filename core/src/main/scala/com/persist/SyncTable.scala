@@ -31,21 +31,15 @@ import akka.pattern._
 import akka.util.Timeout
 import scala.collection.Traversable
 
-/**
- * Instances of this class are returned by the [[com.persist.SyncTable]] all method.
- */
-//trait AllItems extends Traversable[Json] {
-  //def foreach(body: Json => T)
-//}
-
-
 private object SyncAllItems {
   def apply(client: AsyncTable, options: JsonObject) = new SyncAllItems(client, options)
 }
 
-private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: JsonObject) extends Traversable[Json] {
+private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: JsonObject) extends Iterable[Json] {
+  
   // TODO fix so only 1 wait for entire loop
-  def foreach[T](body: Json => T) = {
+  // This has fewer waits that using the Iterator
+  override def foreach[T](body: Json => T) = {
     var f = asyncClient.all(options)
     var done = false
     while (!done) {
@@ -59,6 +53,24 @@ private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: J
       }
     }
   }
+  case class I() extends Iterator[Json] {
+    var f = asyncClient.all(options)
+    var r = Await.result(f, 20 seconds)
+    def hasNext = r != None
+    def next():Json = {
+      r match {
+        case Some(item) => {
+          val result = item.value
+          f = item.next()
+          r = Await.result(f, 20 seconds)
+          result
+        }
+        case None => throw new Exception("No next item")
+      }
+      
+    }
+  }
+  def iterator = I()
 }
 
 /**
@@ -215,10 +227,10 @@ class SyncTable private[persist] (databaseName:String, tableName: String, asyncC
    *  If false, any key equal to the parent is not included. Default is false.
       *  - '''"ring"="ringName"''' get items from this ring.
 *
-   *  @return the iterator.
+   *  @return an iterable object.
    *
    */
-  def all[T](options: JsonObject = emptyJsonObject): Traversable[Json] = {
+  def all[T](options: JsonObject = emptyJsonObject): Iterable[Json] = {
     SyncAllItems(asyncClient, options)
   }
 }

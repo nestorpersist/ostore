@@ -73,6 +73,15 @@ private[persist] trait ServerMapReduceComponent { this: ServerTableAssembly =>
         info.store.close()
       }
     }
+        
+    def delete {
+      for (ri <- reduces) {
+        ri.reduceStore.delete()
+      }
+      for ((name, info) <- prefixes) {
+        info.store.delete()
+      }
+    }
     
     def ackPrefix(prefix:String,key:String,meta:String) {
       prefixes.get(prefix) match {

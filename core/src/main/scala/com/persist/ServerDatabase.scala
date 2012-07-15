@@ -82,12 +82,56 @@ private[persist] class ServerDatabase(var config:DatabaseConfig, serverConfig: J
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
+    case ("stopBalance") => {
+      for ((ringName, ringInfo) <- rings) {
+        val f = ringInfo.ring ? ("stopBalance")
+        val v = Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+    }
+    case ("startBalance") => {
+      for ((ringName, ringInfo) <- rings) {
+        val f = ringInfo.ring ? ("startBalance")
+        val v = Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+    }
+    case ("busyBalance") => {
+      var code = Codes.Ok
+      for ((ringName, ringInfo) <- rings) {
+        val f = ringInfo.ring ? ("busyBalance")
+        val code1 = Await.result(f, 5 seconds)
+        if (code1 == Codes.Busy) code = Codes.Busy
+      }
+      sender ! (code, "")
+    }
+    case ("addNode", ringName:String, nodeName:String, config:DatabaseConfig) => {
+      for ((ringName1, ringInfo) <- rings) {
+        if (ringName1 == ringName) {
+          val f = ringInfo.ring ? ("addNode", ringName, nodeName, config)
+          val v = Await.result(f, 5 seconds)
+        }
+      }
+      this.config = config
+      sender ! Codes.Ok
+    }
+    case ("getLowHigh", ringName:String, nodeName:String, tableName:String) => {
+      val ringInfo = rings(ringName)
+      val f = ringInfo.ring ? ("getLowHigh", nodeName, tableName)
+      val (code:String,result:Json) = Await.result(f, 5 seconds)
+      sender ! (Codes.Ok,result)
+    }
+    case ("setLowHigh", ringName:String, nodeName:String, tableName:String, low:String, high:String) => {
+      val ringInfo = rings(ringName)
+      val f = ringInfo.ring ? ("setLowHigh", nodeName, tableName, low,high)
+      Await.result(f, 5 seconds)
+      sender ! Codes.Ok
+    }
     case ("addTable1", tableName:String, config:DatabaseConfig) => {
       for ((ringName, ringInfo) <- rings) {
         val f = ringInfo.ring ? ("addTable1", tableName, config)
         val v = Await.result(f, 5 seconds)
       }
-      this.config = config
       sender ! Codes.Ok
     }
     case ("addTable2", tableName:String) => {

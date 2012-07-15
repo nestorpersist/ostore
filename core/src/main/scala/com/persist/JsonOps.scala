@@ -543,7 +543,13 @@ object JsonOps {
 
   private[persist] def keyDecode(s: String): JsonKey = {
     try {
-      keyDecode0(s)
+      if (s == "") {
+          "**MIN**"
+      } else if (s == "\uFFFF") {
+          "**MAX**"
+      } else {
+        keyDecode0(s)
+      }
     } catch {
       case ex => {
         // internal error

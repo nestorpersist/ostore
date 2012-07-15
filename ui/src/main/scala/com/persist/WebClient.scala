@@ -239,20 +239,23 @@ class WebClient() {
   }
   
   def addTable(databaseName: String, tableName:String) {
-    val del = new HttpPost("http://" + server + "/" + databaseName + "/" + tableName )
-    val request = JsonObject("cmd"->"add")
+    val del = new HttpPost("http://" + server + "/" + databaseName )
+    val tableConfig = JsonObject("name"->tableName)
+    val config = JsonObject("tables"->tableConfig)
+    val request = JsonObject("cmd"->"addTables", "config"->config)
     val e = new StringEntity(Compact(request))
     del.setEntity(e)
     val response = client.execute(del)
     val code = response.getStatusLine().getStatusCode()
     val e1 = response.getEntity()
     e1.consumeContent()
-    //println("CLIENT ADD TABLE:"+tableName)
   }
    
   def deleteTable(databaseName: String, tableName:String) {
-    val del = new HttpPost("http://" + server + "/" + databaseName + "/" + tableName )
-    val request = JsonObject("cmd"->"delete")
+    val del = new HttpPost("http://" + server + "/" + databaseName  )
+    val tableConfig = JsonObject("name"->tableName)
+    val config = JsonObject("tables"->tableConfig)
+    val request = JsonObject("cmd"->"deleteTables", "config"->config)
     val e = new StringEntity(Compact(request))
     del.setEntity(e)
     val response = client.execute(del)

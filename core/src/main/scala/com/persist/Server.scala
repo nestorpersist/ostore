@@ -34,14 +34,9 @@ import scala.collection.immutable.TreeMap
 import java.io.File
 import scala.io.Source
 
-// TODO 1. remove most await's
-// TODO 2. remove uneeded import and sort
-// TODO 4. remove most vars
-// TODO 5. use scala rather than java libs where possible
-// TODO 6. get rid of most returns
-// TODO 7. add logging
-// TODO 8. break out client as sep project (jsonops, send,synclient,asyncclient)
-// TODO 9. fix up timeouts (special debug settings)
+// TODO 1. remove uneeded import and sort
+// TODO 2. break out client as sep project (jsonops, send,synclient,asyncclient)
+// TODO 3. fix up timeouts (special debug settings)
 
 // Server Actor Paths
 //       /user/@server
@@ -131,7 +126,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
     } while (!done)
   }
 
-  private def doLock(databaseName: String, request: Json): (String,String) = {
+  private def doLock(databaseName: String, request: Json): (String, String) = {
     val getInfo = jgetBoolean(request, "getinfo")
     val tableName = jgetString(request, "table")
     databases.get(databaseName) match {
@@ -188,6 +183,104 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         sender ! (Codes.Ok, "")
       } else {
         sender ! (Codes.Locked, "")
+      }
+    }
+    case ("stopBalance", databaseName: String, rs: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val database = info.dbRef
+          val f = database ? ("stopBalance")
+          Await.result(f, 5 seconds)
+          sender ! (Codes.Ok, "")
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }
+    }
+    case ("startBalance", databaseName: String, rs: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val database = info.dbRef
+          val f = database ? ("startBalance")
+          Await.result(f, 5 seconds)
+          sender ! (Codes.Ok, "")
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }
+    }
+    case ("busyBalance", databaseName: String, rs: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val database = info.dbRef
+          val f = database ? ("busyBalance")
+          val (code:String, result:String) = Await.result(f, 5 seconds)
+          sender ! (code, "")
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }
+    }
+    case ("addNode", databaseName: String, rs: String) => {
+      val request = Json(rs)
+      val ringName = jgetString(request, "ring")
+      val nodeName = jgetString(request, "node")
+      val host = jgetString(request, "host")
+      val port = jgetInt(request, "port")
+      val serverName = host + ":" + port
+      databases.get(databaseName) match {
+        case Some(info) => {
+          // TODO check node name not already used
+          info.config = info.config.addNode(ringName, nodeName, serverName)
+          storeTable.putMeta(databaseName, Compact(info.config.toJson))
+          val database = info.dbRef
+          val f = database ? ("addNode", ringName, nodeName, info.config)
+          Await.result(f, 5 seconds)
+          sender ! (Codes.Ok, "")
+          println("Added node " + ringName +"/" + nodeName)
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }
+    }
+    case ("getLowHigh", databaseName: String, rs: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val request = Json(rs)
+          val ringName = jgetString(request, "ring")
+          val nodeName = jgetString(request, "node")
+          val tableName = jgetString(request, "table")
+          val database = info.dbRef
+          val f = database ? ("getLowHigh", ringName, nodeName, tableName)
+          val (code: String, result: Json) = Await.result(f, 5 seconds)
+          sender ! (Codes.Ok, Compact(result))
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }
+    }
+    case ("setLowHigh", databaseName: String, rs: String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val request = Json(rs)
+          val ringName = jgetString(request, "ring")
+          val nodeName = jgetString(request, "node")
+          val tableName = jgetString(request, "table")
+          val low = jgetString(request,"low")
+          val high = jgetString(request, "high")
+          val database = info.dbRef
+          val f = database ? ("setLowHigh", ringName, nodeName, tableName, low, high)
+          Await.result(f, 5 seconds)
+          sender ! (Codes.Ok, "")
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
       }
     }
     case ("databaseinfo", databaseName: String, os: String) => {
@@ -513,6 +606,7 @@ object Server {
     val f1 = gracefulStop(server, 5 seconds)(system) // will stop all its children too!
     Await.result(f1, 5 seconds)
     system.shutdown()
+    // TODO throw exception if any internal errors detected
   }
 
   def main(args: Array[String]) {

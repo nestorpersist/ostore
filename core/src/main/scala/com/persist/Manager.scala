@@ -32,6 +32,9 @@ import akka.dispatch.DefaultPromise
 import akka.actor.ActorRef
 import java.util.UUID
 
+// TODO multipart actions should occur as single step
+// TODO lock and send actions only to ring involved (e.g.addNode)
+
 class Manager(host: String, port: Int) extends CheckedActor {
   private val system = context.system
   private implicit val timeout = Timeout(5 seconds)
@@ -85,12 +88,12 @@ class Manager(host: String, port: Int) extends CheckedActor {
   }
 
   private case class DatabaseActions(databaseName: String) {
-    
-    private val guid = UUID.randomUUID().toString()
-    private val request0 = JsonObject(("guid"->guid))
-    private var servers:JsonArray = emptyJsonArray
 
-    private def doAll(cmd:String, request:JsonObject):Boolean = {
+    private val guid = UUID.randomUUID().toString()
+    private val request0 = JsonObject("guid" -> guid)
+    private var servers: JsonArray = emptyJsonArray
+
+    private def doAll(cmd: String, request: JsonObject): Boolean = {
       val rs = Compact(request)
       var ok = true
       var futures = List[Future[Any]]()
@@ -107,12 +110,12 @@ class Manager(host: String, port: Int) extends CheckedActor {
       ok
     }
 
-    private def lock(expectedState:String, check:JsonObject):Boolean = {
-      var request = request0 + ("getinfo"->true)
+    private def lock(expectedState: String, check: JsonObject): Boolean = {
+      var request = request0 + ("getinfo" -> true)
       val tableName = jgetString(check, "table")
       if (tableName != "") request += ("table" -> tableName)
       val f = server ? ("lock", databaseName, Compact(request))
-      val (code, s:String) = Await.result(f, 5 seconds)
+      val (code, s: String) = Await.result(f, 5 seconds)
       if (code != Codes.Ok) {
         if (code == Codes.Locked) throw new Exception("Database: " + databaseName + " is locked")
         throw new Exception("Unknown lock failure: " + code)
@@ -121,57 +124,78 @@ class Manager(host: String, port: Int) extends CheckedActor {
       val state = jgetString(response, "s")
       if (expectedState != "" && expectedState != state) {
         val f = server ? ("unlock", databaseName, Compact(request0))
-        val (code, s:String) = Await.result(f, 5 seconds)
+        val (code, s: String) = Await.result(f, 5 seconds)
         throw new Exception("Bad state, expected " + expectedState + " actual" + state)
       }
       servers = if (state == "none") {
-         jgetArray(check, "servers")
+        jgetArray(check, "servers")
       } else {
-         jgetArray(response,"servers")
+        jgetArray(response, "servers")
       }
       if (tableName != "") {
         val requestTableAbsent = jgetBoolean(check, "tableAbsent")
         val actualTableAbsent = jgetBoolean(response, "tableAbsent")
         if (requestTableAbsent) {
-          if (! actualTableAbsent) {
+          if (!actualTableAbsent) {
             val f = server ? ("unlock", databaseName, Compact(request0))
-            val (code, s:String) = Await.result(f, 5 seconds)
+            val (code, s: String) = Await.result(f, 5 seconds)
             throw new Exception("Table " + tableName + " already exists")
           }
         } else {
           if (actualTableAbsent) {
             val f = server ? ("unlock", databaseName, Compact(request0))
-            val (code, s:String) = Await.result(f, 5 seconds)
+            val (code, s: String) = Await.result(f, 5 seconds)
             throw new Exception("Table " + tableName + " does not exist")
           }
-          
+
         }
       }
       val ok = doAll("lock", request0)
-      if (! ok) unlock()
+      if (!ok) unlock()
       ok
     }
-    
+
     private def unlock() {
       doAll("unlock", request0)
     }
-    
-    def act(expectedState:String = "", check:JsonObject = emptyJsonObject)(body: => Unit) = {
+
+    def act(expectedState: String = "", check: JsonObject = emptyJsonObject)(body: => Unit) = {
       if (lock(expectedState, check)) {
-        body
-        unlock()
+        try {
+          body
+        } finally {
+          unlock()
+        }
         true
       } else {
         false
       }
     }
 
-    def pass(cmd:String, request:JsonObject = emptyJsonObject) {
+    def pass(cmd: String, request: JsonObject = emptyJsonObject) {
       doAll(cmd, request)
+    }
+
+    def wait(cmd: String, request: JsonObject = emptyJsonObject) {
+      for (i <- 1 until 60) { // try for 2 minutes
+        val done = doAll(cmd, request)
+        if (done) return
+        Thread.sleep(2000) // 2 seconds
+      }
+      throw new Exception("Wait " + cmd + " timeout")
+    }
+    
+    def addServer(serverName:String):Boolean = {
+      if (servers.contains(serverName)) {
+        false
+      } else {
+        servers += serverName
+        true
+      }
     }
   }
 
-  private def allDatabases(): Traversable[String] = {
+  private def allDatabases(): Iterable[String] = {
     val f = server ? ("allDatabases")
     val (code: String, s: String) = Await.result(f, 5 seconds)
     val databases = jgetArray(Json(s))
@@ -215,7 +239,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
     Json(s)
   }
 
-  private def allServers(databaseName: String): Traversable[String] = {
+  private def allServers(databaseName: String): Iterable[String] = {
     val f = server ? ("allservers", databaseName)
     val (code: String, s: String) = Await.result(f, 5 seconds)
     val servers = jgetArray(Json(s))
@@ -226,7 +250,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
     result.reverse
   }
 
-  private def allTables(databaseName: String): Traversable[String] = {
+  private def allTables(databaseName: String): Iterable[String] = {
     val f = server ? ("alltables", databaseName)
     val (code: String, s: String) = Await.result(f, 5 seconds)
     val tables = jgetArray(Json(s))
@@ -237,7 +261,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
     result.reverse
   }
 
-  private def allRings(databaseName: String): Traversable[String] = {
+  private def allRings(databaseName: String): Iterable[String] = {
     val f = server ? ("allrings", databaseName)
     val (code: String, s: String) = Await.result(f, 5 seconds)
     val rings = jgetArray(Json(s))
@@ -248,7 +272,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
     result.reverse
   }
 
-  private def allNodes(databaseName: String, ringName: String): Traversable[String] = {
+  private def allNodes(databaseName: String, ringName: String): Iterable[String] = {
     val f = server ? ("allnodes", databaseName, ringName)
     val (code: String, s: String) = Await.result(f, 5 seconds)
     val nodes = jgetArray(Json(s))
@@ -261,7 +285,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
 
   private def getDatabaseStatus(databaseName: String): String = {
     try {
-      val result = databaseInfo(databaseName, JsonObject(("info" -> "s")))
+      val result = databaseInfo(databaseName, JsonObject("info" -> "s"))
       jgetString(result, "s")
     } catch {
       case ex => "none"
@@ -275,8 +299,8 @@ class Manager(host: String, port: Int) extends CheckedActor {
     for ((serverName, serverConfig) <- config.servers) {
       servers = serverName +: servers
     }
-    val check = JsonObject(("databaseAbsent" -> true),("servers" -> servers.reverse))
-    val request = JsonObject(("config" -> jconfig))
+    val check = JsonObject("databaseAbsent" -> true, "servers" -> servers.reverse)
+    val request = JsonObject("config" -> jconfig)
     dba.act("none", check) {
       dba.pass("newDatabase", request)
       dba.pass("startDatabase2")
@@ -307,8 +331,8 @@ class Manager(host: String, port: Int) extends CheckedActor {
   }
 
   private def addTable(databaseName: String, tableName: String) {
-    val request = JsonObject(("table"->tableName))
-    val result1 = request + ("tableAbsent"->true)
+    val request = JsonObject("table" -> tableName)
+    val result1 = request + ("tableAbsent" -> true)
     val dba = DatabaseActions(databaseName)
     dba.act("active") {
       dba.pass("addTable1", request)
@@ -317,11 +341,67 @@ class Manager(host: String, port: Int) extends CheckedActor {
   }
 
   private def deleteTable(databaseName: String, tableName: String) {
-    val request = JsonObject(("table"->tableName))
+    val request = JsonObject("table" -> tableName)
     val dba = DatabaseActions(databaseName)
     dba.act("active") {
       dba.pass("deleteTable1", request)
       dba.pass("deleteTable2", request)
+    }
+  }
+
+  private def addNode(databaseName: String, ringName: String, nodeName: String, host: String, port: Int) {
+    val dba = DatabaseActions(databaseName)
+    dba.act("active") {
+      dba.pass("stopBalance")
+      dba.wait("busyBalance")
+
+      // TODO node could be on a new server (also create database on server use old config)
+      //dba.addServer(host,port)
+
+      val request = JsonObject("ring" -> ringName, "node" -> nodeName, "host" -> host, "port" -> port)
+      // Adds node and its tables and update ring prev next connections
+      dba.pass("addNode", request)
+
+      val info = databaseInfo(databaseName, JsonObject("info" -> "c"))
+      val jconfig = jget(info, "c")
+      val config = DatabaseConfig(databaseName, jconfig)
+      val nextNodeName = config.rings(ringName).nextNodeName(nodeName)
+      val prevNodeName = config.rings(ringName).prevNodeName(nodeName)
+      val prevServerName = config.rings(ringName).nodes(prevNodeName).server.name
+      val prevServer = sendServer.serverRef(prevServerName)
+      val newServerName = config.rings(ringName).nodes(nodeName).server.name
+      val newServer = sendServer.serverRef(newServerName)
+      val added = dba.addServer(newServerName)
+      if (added) {
+         val request = JsonObject("config" -> jconfig)
+         val f = newServer ? ("newDatabase", databaseName, request)
+         Await.result(f, 5 seconds)
+         dba.pass("startDatabase2")
+      }
+      val request1 = JsonObject("ring" -> ringName, "node" -> nodeName)
+      for ((tableName, tableConfig) <- config.tables) {
+        val request2 = request1 + ("table" -> tableName)
+        val (low, high) = if (prevNodeName == nextNodeName) {
+          ("\uFFFF", "")
+        } else {
+          val request3 = request2 + ("node" -> prevNodeName)
+          val f = prevServer ? ("getLowHigh", databaseName, Compact(request3))
+          val (code: String, s: String) = Await.result(f, 5 seconds)
+          val response = Json(s)
+          val prevLow = jgetString(response, "low")
+          val prevHigh = jgetString(response, "high")
+          (prevHigh, prevHigh)
+        }
+        val request3 = request2 + ("low" -> low, "high" -> high)
+        val f2 = newServer ? ("setLowHigh", databaseName, Compact(request3))
+        val (code: String, s: String) = Await.result(f2, 5 seconds)
+      }
+      if (added) {
+        val f = newServer ? ("startDatabase2", databaseName, request)
+        Await.result(f, 5 seconds)
+      }
+
+      dba.pass("startBalance")
     }
   }
 
@@ -332,13 +412,17 @@ class Manager(host: String, port: Int) extends CheckedActor {
     var result = JsonObject()
     for (ringName <- allRings(databaseName)) {
       var ro = JsonObject()
-      val dest = Map("ring" -> ringName)
+      //val dest = Map("ring" -> ringName)
       // TODO could do calls in parallel
       for (nodeName <- allNodes(databaseName, ringName)) {
-        val dest1 = dest + ("node" -> nodeName)
-        var f1 = new DefaultPromise[Any]
-        sends(databaseName) ! ("report", dest1, f1, tableName, "", "")
-        val (code: String, x: String) = Await.result(f1, 5 seconds)
+        val info = nodeInfo(databaseName, ringName, nodeName, JsonObject("info" -> "hp"))
+        val host = jgetString(info, "h")
+        val port = jgetInt(info, "p")
+        implicit val timeout = Timeout(5 seconds)
+        val tableRef: ActorRef = system.actorFor("akka://ostore@" + host + ":" + port +
+          "/user/" + databaseName + "/" + ringName + "/" + nodeName + "/" + tableName)
+        val f1 = tableRef ? ("report", 0L, "", "")
+        val (code: String, uid:Long, x: String) = Await.result(f1, 5 seconds)
         ro = ro + (nodeName -> Json(x))
       }
       result = result + (ringName -> ro)
@@ -395,27 +479,27 @@ class Manager(host: String, port: Int) extends CheckedActor {
         getAsyncTable(databaseName, tableName)
       }
     }
-    case ("allDatabases", p: Promise[Traversable[String]]) => {
+    case ("allDatabases", p: Promise[Iterable[String]]) => {
       complete(p) {
         allDatabases()
       }
     }
-    case ("allTables", p: Promise[Traversable[String]], databaseName: String) => {
+    case ("allTables", p: Promise[Iterable[String]], databaseName: String) => {
       complete(p) {
         allTables(databaseName)
       }
     }
-    case ("allRings", p: Promise[Traversable[String]], databaseName: String) => {
+    case ("allRings", p: Promise[Iterable[String]], databaseName: String) => {
       complete(p) {
         allRings(databaseName)
       }
     }
-    case ("allNodes", p: Promise[Traversable[String]], databaseName: String, ringName: String) => {
+    case ("allNodes", p: Promise[Iterable[String]], databaseName: String, ringName: String) => {
       complete(p) {
         allNodes(databaseName, ringName)
       }
     }
-    case ("allServers", p: Promise[Traversable[String]], databaseName: String) => {
+    case ("allServers", p: Promise[Iterable[String]], databaseName: String) => {
       complete(p) {
         allServers(databaseName)
       }
@@ -469,6 +553,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
         Codes.Ok
       }
     }
+    /*
     case ("addTable", p: Promise[String], databaseName: String, tableName: String) => {
       complete(p) {
         addTable(databaseName, tableName)
@@ -481,27 +566,34 @@ class Manager(host: String, port: Int) extends CheckedActor {
         Codes.Ok
       }
     }
+    */
     case ("addTables", p: Promise[String], databaseName: String, config: Json) => {
       complete(p) {
-        //addTabless(databaseName, config)
-        println("Add tables: " + databaseName)
-        println(Pretty(config))
+        for (t <- jgetArray(config, "tables")) {
+          addTable(databaseName, jgetString(t, "name"))
+        }
         Codes.Ok
       }
     }
     case ("deleteTables", p: Promise[String], databaseName: String, config: Json) => {
       complete(p) {
-        //deleteNodes(databaseName, config)
-        println("Delete tables: " + databaseName)
-        println(Pretty(config))
+        for (t <- jgetArray(config, "tables")) {
+          deleteTable(databaseName, jgetString(t, "name"))
+        }
         Codes.Ok
       }
     }
     case ("addNodes", p: Promise[String], databaseName: String, config: Json) => {
       complete(p) {
-        //addNodes(databaseName, config)
-        println("Add nodes: " + databaseName)
-        println(Pretty(config))
+        for (r <- jgetArray(config, "rings")) {
+          val ringName = jgetString(r, "name")
+          for (n <- jgetArray(r, "nodes")) {
+            val nodeName = jgetString(n, "name")
+            val host = jgetString(n, "host")
+            val port = jgetInt(n, "port")
+            addNode(databaseName, ringName, nodeName, host, port)
+          }
+        }
         Codes.Ok
       }
     }
@@ -536,7 +628,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
     }
     case ("monitor", p: Promise[Json], databaseName: String, tableName: String) => {
       complete(p) {
-        report(databaseName, tableName)
+        monitor(databaseName, tableName)
       }
     }
     case ("stop", p: Promise[String]) => {

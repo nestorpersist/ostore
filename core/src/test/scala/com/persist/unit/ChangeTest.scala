@@ -43,6 +43,24 @@ class ChangeTest extends FunSuite {
        "nodes":[ {"name":"n1", "host":"127.0.0.1", "port":8011} ] } ]
      }
      """)
+     
+    val tableConfig = Json("""
+         { "tables": [ {"name":"tab1"} ] }
+     """)
+
+    val nodeConfig2 = Json("""
+    { 
+     "rings":[ {"name":"r1",
+       "nodes":[ {"name":"n2", "host":"127.0.0.1", "port":8011} ] } ]
+     }
+     """)
+    val nodeConfig3 = Json("""
+    { 
+     "rings":[ {"name":"r1",
+       "nodes":[ {"name":"n3", "host":"127.0.0.1", "port":8011} ] } ]
+     }
+     """)
+     
 
     println("Starting Server")
     Server.start(serverConfig, true)
@@ -52,7 +70,7 @@ class ChangeTest extends FunSuite {
     client.createDatabase(dbName, databaseConfig)
 
     val database = client.database(dbName)
-    database.addTable("tab1")
+    database.addTables(tableConfig)
 
     val tab1 = database.syncTable("tab1")
     for (tableName <- database.allTables) {
@@ -79,14 +97,23 @@ class ChangeTest extends FunSuite {
     }
     println("")
     
-    database.deleteTable("tab1")
+    database.addNodes(nodeConfig2)
+    Thread.sleep(1000)
+    println(Pretty(database.report("tab1")))
+
+    database.addNodes(nodeConfig3)
+    Thread.sleep(1000)
+    println(Pretty(database.report("tab1")))
+    
+    database.deleteTables(tableConfig)
     for (tableName <- database.allTables) {
-        assert(false, "table not delete")
+        assert(false, "table not deleted")
     }
     client.stopDataBase(dbName)
     client.deleteDatabase(dbName)
 
     client.stop()
+    system.shutdown()
 
     println("Stopping Server")
     Server.stop
