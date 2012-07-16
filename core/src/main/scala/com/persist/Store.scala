@@ -20,7 +20,6 @@ import net.kotek.jdbm.DB
 import java.io.File
 import net.kotek.jdbm.DBMaker
 import java.util.SortedMap
-import akka.actor.ActorSystem
 import akka.util.duration._
 import akka.actor.Props
 import akka.pattern._
@@ -142,13 +141,21 @@ private[persist] class Store(context:ActorContext, nodeName: String, fname: Stri
     } else {
       vals0
     }
-    new StoreTable(tableName, mname, vname, context.system, db, meta, vals, doCommit)
+    new StoreTable(tableName, mname, vname, context.system, this, meta, vals, doCommit)
   }
 
   def close() {
     val f = commit ? "done"
     Await.result(f, 1 seconds)
     db.close()
+  }
+
+  def commitChanges() {
+    db.commit()
+  }
+
+  def deleteCollection(name: String) {
+    db.deleteCollection(name)
   }
 
 }
