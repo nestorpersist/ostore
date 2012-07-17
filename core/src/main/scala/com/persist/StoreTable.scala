@@ -18,18 +18,12 @@
 package com.persist
 
 //import scala.collection.immutable.TreeMap
-import net.kotek.jdbm.DBMaker
 import java.util.SortedMap
 import java.util.Map
-import net.kotek.jdbm.DB
-import java.io.File
-import akka.dispatch.Future
 import akka.dispatch.ExecutionContext
 import akka.util.Timeout
 import akka.util.duration._
 import akka.actor.ActorSystem
-import akka.dispatch.Promise
-import java.io.ObjectOutputStream
 import JsonOps._
 
 private class JObject(var j:Json) extends java.io.Serializable {
@@ -47,8 +41,13 @@ private class JObject(var j:Json) extends java.io.Serializable {
   }
 }
 
-private[persist] class StoreTable(name:String, mname:String, vname:String,
-    system: ActorSystem, db: DB, meta: SortedMap[String, String], vals: Map[String, String],doCommit: => Unit) {
+private[persist] class StoreTable( name:String
+                                 , system: ActorSystem
+                                 , store: AbstractStore
+                                 , meta: SortedMap[String, String]
+                                 , vals: Map[String, String]
+                                 , doCommit: => Unit
+                                 ) {
 
   lazy implicit private val ec = ExecutionContext.defaultExecutionContext(system)
   implicit private val timeout = Timeout(5 seconds)
@@ -108,18 +107,18 @@ private[persist] class StoreTable(name:String, mname:String, vname:String,
 
   def putMeta(key: String, metav: String) {
     meta.put(key, metav)
-    db.commit()
+    store.commitChanges()
   }
 
   def put(key: String, value: String) {
     vals.put(key, value)
-    db.commit()
+    store.commitChanges()
   }
 
   def putBoth(key: String, metav: String, value: String) {
     meta.put(key, metav)
     vals.put(key, value)
-    db.commit()
+    store.commitChanges()
   }
 
   /*
@@ -152,14 +151,14 @@ private[persist] class StoreTable(name:String, mname:String, vname:String,
       // delay and batch up commits
       doCommit
     } else {
-      db.commit()
+      store.commitChanges()
     }
   }
 
   def remove(key: String) {
     meta.remove(key)
     vals.remove(key)
-    db.commit()
+    store.commitChanges()
   }
 
   def first(): Option[String] = {
@@ -184,8 +183,7 @@ private[persist] class StoreTable(name:String, mname:String, vname:String,
   }
   
   def delete() = {
-    db.deleteCollection(mname)
-    db.deleteCollection(vname)
+    store.deleteCollection(name)
   }
 
   override def toString(): String = {
