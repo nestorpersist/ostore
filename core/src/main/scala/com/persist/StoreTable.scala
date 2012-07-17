@@ -41,8 +41,13 @@ private class JObject(var j:Json) extends java.io.Serializable {
   }
 }
 
-private[persist] class StoreTable(name:String, mname:String, vname:String,
-    system: ActorSystem, store: Store, meta: SortedMap[String, String], vals: Map[String, String],doCommit: => Unit) {
+private[persist] class StoreTable( name:String
+                                 , system: ActorSystem
+                                 , store: AbstractStore
+                                 , meta: SortedMap[String, String]
+                                 , vals: Map[String, String]
+                                 , doCommit: => Unit
+                                 ) {
 
   lazy implicit private val ec = ExecutionContext.defaultExecutionContext(system)
   implicit private val timeout = Timeout(5 seconds)
@@ -178,8 +183,7 @@ private[persist] class StoreTable(name:String, mname:String, vname:String,
   }
   
   def delete() = {
-    store.deleteCollection(mname)
-    store.deleteCollection(vname)
+    store.deleteCollection(name)
   }
 
   override def toString(): String = {

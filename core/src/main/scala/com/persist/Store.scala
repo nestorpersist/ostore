@@ -80,7 +80,48 @@ private[persist] class StoreCommit(db: DB) extends CheckedActor {
   }
 }
 
-private[persist] class Store(context:ActorContext, nodeName: String, fname: String, val create: Boolean) {
+
+private[persist] abstract class AbstractStore(val create: Boolean) {
+  def getTable(tableName: String): StoreTable
+  def close()
+  def commitChanges()
+  def deleteCollection(name: String)
+}
+
+
+private[persist] class InMemoryStore(context:ActorContext, nodeName: String, fname: String, create: Boolean)
+  extends AbstractStore(create) {
+
+  class InMemoryEntry {
+    var meta: java.util.SortedMap[String, String] = new java.util.TreeMap[String, String] // TODO: change to Scala collections
+    var vals: java.util.Map[String, String] = new java.util.HashMap[String, String] // TODO: change to Scala collections
+  }
+
+  var store = new scala.collection.mutable.HashMap[String, InMemoryEntry]
+
+  private def doCommit { /* nop */ }
+
+  def getTable(tableName: String) = {
+
+    val entry = store.getOrElse(tableName, {
+      val newEntry = new InMemoryEntry
+      store.put(tableName, newEntry)
+      newEntry
+    })
+    new StoreTable(tableName, context.system, this, entry.meta, entry.vals, doCommit)
+  }
+
+  def close() { /* nop */ }
+
+  def commitChanges() { /* nop */}
+
+  def deleteCollection(name: String) {
+    store.remove(name)
+  }
+}
+
+private[persist] class Store(context:ActorContext, nodeName: String, fname: String, create: Boolean)
+  extends AbstractStore(create) {
   val cacheSize = 1024 * 1024 * 1 // 1 M records
   val dbfname = fixName(fname)
 
@@ -141,7 +182,7 @@ private[persist] class Store(context:ActorContext, nodeName: String, fname: Stri
     } else {
       vals0
     }
-    new StoreTable(tableName, mname, vname, context.system, this, meta, vals, doCommit)
+    new StoreTable(tableName, context.system, this, meta, vals, doCommit)
   }
 
   def close() {
@@ -155,7 +196,8 @@ private[persist] class Store(context:ActorContext, nodeName: String, fname: Stri
   }
 
   def deleteCollection(name: String) {
-    db.deleteCollection(name)
+    db.deleteCollection(name + ":meta")
+    db.deleteCollection(name + ":vals")
   }
 
 }

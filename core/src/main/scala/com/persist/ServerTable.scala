@@ -19,17 +19,15 @@ package com.persist
 
 import akka.actor.ActorRef
 import JsonOps._
-import akka.dispatch.Future
 import akka.dispatch.ExecutionContext
 import akka.util.Timeout
 import akka.util.duration._
-import akka.dispatch.Promise
 
 private[persist] trait ServerTableAssembly extends ServerMapReduceComponent with ServerSyncComponent
   with ServerBalanceComponent with ServerOpsComponent with ServerTableInfoComponent
 
 private[persist] class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
-  store: Store, monitor: ActorRef, send: ActorRef, config: DatabaseConfig) extends CheckedActor {
+  store: AbstractStore, monitor: ActorRef, send: ActorRef, config: DatabaseConfig) extends CheckedActor {
 
   object all extends ServerTableAssembly {
     val info = new ServerTableInfo(databaseName, ringName, nodeName, tableName,
