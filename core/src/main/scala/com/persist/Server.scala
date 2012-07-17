@@ -82,13 +82,19 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
   private val host = jgetString(serverConfig, "host")
   private val port = jgetInt(serverConfig, "port")
   private val serverName = host + ":" + port
+
   private val path = jgetString(serverConfig, "path")
-  private val fname = path + "/" + "@server" + "/" + serverName
-  private val f = new File(fname)
-  private val exists = f.exists()
+  private var exists = false
+  private val store = path match {
+    case "" => new InMemoryStore(context, "@server", "", false)
+    case _ =>
+      val fname = path + "/" + "@server" + "/" + serverName
+      val f = new File(fname)
+      exists = f.exists()
+      new Store(context, "@server", fname, !exists || create)
+  }
   private val system = context.system
   private val sendServer = new SendServer(system)
-  private val store = new Store(context, "@server", fname, !exists || create)
   private val storeTable = store.getTable(serverName)
   private val listener = system.actorOf(Props[Listener])
   system.eventStream.subscribe(listener, classOf[DeadLetter])

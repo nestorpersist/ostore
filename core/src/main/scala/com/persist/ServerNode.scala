@@ -38,10 +38,14 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
   private var tables = TreeMap[String, TableInfo]()
 
   private val path = jgetString(serverConfig, "path")
-  private val desc = databaseName + "/" + ringName + "/" + nodeName
-  private val fname = path + "/" + desc
+  private val store = path match {
+    case "" => new InMemoryStore(context, nodeName, "", true)
+    case _ =>
+      val desc = databaseName + "/" + ringName + "/" + nodeName
+      val fname = path + "/" + desc
+      new Store(context, nodeName, fname, create)
+  }
   private val system = context.system
-  private val store = new Store(context, nodeName, fname, create)
 
   def newTable(tableName: String) {
     val table = context.actorOf(
