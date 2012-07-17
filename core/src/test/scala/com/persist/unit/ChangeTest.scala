@@ -93,12 +93,11 @@ class ChangeTest extends FunSuite {
     val v3 = tab1.get("key3")
     println("key3:" + v3)
 
-    var expect = List("key1", "key2", "key4", "key5")
+    val expect = List[String]("key1", "key2", "key4", "key5")
 
-    for (k <- tab1.all()) {
+    for ((k,expectK) <- tab1.all().zip(expect)) {
       println("fwd:" + k)
-      assert(k == expect.head, "forward failed")
-      expect = expect.tail
+      assert(k == expectK, "forward failed")
     }
     println("")
     println(Pretty(database.report("tab1")))
