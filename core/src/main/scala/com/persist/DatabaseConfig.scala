@@ -41,6 +41,9 @@ private[persist] case class RingConfig(
 
   def nextNodeName(nodeName: String): String = {
     val pos = nodes(nodeName).pos + 1
+    if (pos > nodeSeq.size) {
+      println(nodeName + ":" + nodes(nodeName) +":"+ pos)
+    }
     val pos1 = if (pos == nodeSeq.size) 0 else pos
     nodeSeq(pos1)
   }
@@ -200,6 +203,24 @@ private[persist] class DatabaseConfig(
     val nodeConfig = NodeConfig(ringName, nodeName, servers(serverName), nodeSeq.size)
     val nodes1 = nodes + (nodeName -> nodeConfig)
     val seq1 = (nodeName :: (nodeSeq.reverse)).reverse
+    val ring1 = RingConfig(ring.name, nodes1, seq1)
+    val rings1 = rings + (ringName -> ring1)
+    new DatabaseConfig(name,rings1,tables, servers)
+  }
+  
+  def deleteNode(ringName:String, nodeName:String):DatabaseConfig = {
+    val ring = rings(ringName)
+    val nodes = ring.nodes
+    val nodeSeq = ring.nodeSeq
+    val nodes0 = nodes - nodeName
+    var nodes1 = nodes0
+    for (((nodeName1, nodeConfig),pos)<-nodes0.zipWithIndex) {
+      if (nodeConfig.pos != pos) {
+        val nodeConfig1 = NodeConfig(ringName, nodeName1, nodeConfig.server, pos)
+        nodes1 += (nodeName1 -> nodeConfig1)
+      }
+    }
+    val seq1 = nodeSeq.filterNot(_ == nodeName)
     val ring1 = RingConfig(ring.name, nodes1, seq1)
     val rings1 = rings + (ringName -> ring1)
     new DatabaseConfig(name,rings1,tables, servers)

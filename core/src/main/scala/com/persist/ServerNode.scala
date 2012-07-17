@@ -85,9 +85,9 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       store.close()
       sender ! Codes.Ok
     }
-    case ("stopBalance") => {
+    case ("stopBalance", forceEmpty:Boolean) => {
       for ((tableName, tableInfo) <- tables) {
-        val f = tableInfo.table ? ("stopBalance")
+        val f = tableInfo.table ? ("stopBalance", forceEmpty)
         Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
@@ -163,6 +163,13 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       val stopped = gracefulStop(tableInfo.table, 5 seconds)(system)
       Await.result(stopped, 5 seconds)
       tables = tables - tableName
+      sender ! Codes.Ok
+    }
+    case ("deleteNode") => {
+      for ((tableName, tableInfo) <- tables) {
+        val f = tableInfo.table ? ("delete2")
+        Await.result(f, 5 seconds)
+      }
       sender ! Codes.Ok
     }
   }

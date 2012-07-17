@@ -544,9 +544,9 @@ object JsonOps {
   private[persist] def keyDecode(s: String): JsonKey = {
     try {
       if (s == "") {
-          "**MIN**"
+          false  // Min
       } else if (s == "\uFFFF") {
-          "**MAX**"
+          true   // Max
       } else {
         keyDecode0(s)
       }

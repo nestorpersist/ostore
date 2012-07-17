@@ -1,6 +1,7 @@
 *.class
 *.log
 
+.history
 .DS_Store
 .project
 .settings

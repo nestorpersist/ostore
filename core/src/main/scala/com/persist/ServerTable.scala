@@ -184,13 +184,16 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
         sender ! Codes.Ok
         
       }
-      case ("stopBalance") => {
-        bal.canSend = false
+      case ("stopBalance", forceEmpty:Boolean) => {
+        bal.canSend = forceEmpty
+        bal.forceEmpty = forceEmpty
         sender ! Codes.Ok
       }
       case ("startBalance") => {
-        bal.canSend = true
-        bal.canReport = true
+        if (! bal.singleNode) {
+          bal.canSend = true
+          bal.canReport = true
+        }
         sender ! Codes.Ok
       }
       case ("busyBalance") => {

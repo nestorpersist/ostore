@@ -30,6 +30,7 @@ import scala.collection.immutable.TreeMap
 private[persist] class RingInfo(val name: String, val ring: ActorRef)
 
 private[persist] class ServerDatabase(var config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
+  private val system = context.system
   val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
   val databaseName = config.name
   val send = context.actorOf(Props(new Send(context.system,config)), name = "@send")
@@ -82,9 +83,10 @@ private[persist] class ServerDatabase(var config:DatabaseConfig, serverConfig: J
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case ("stopBalance") => {
-      for ((ringName, ringInfo) <- rings) {
-        val f = ringInfo.ring ? ("stopBalance")
+    case ("stopBalance", ringName:String, nodeName:String) => {
+      for ((ringName1, ringInfo) <- rings) {
+        val nodeName1 = if (ringName == ringName1) nodeName else ""
+        val f = ringInfo.ring ? ("stopBalance", nodeName1)
         val v = Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
@@ -108,12 +110,27 @@ private[persist] class ServerDatabase(var config:DatabaseConfig, serverConfig: J
     case ("addNode", ringName:String, nodeName:String, config:DatabaseConfig) => {
       for ((ringName1, ringInfo) <- rings) {
         if (ringName1 == ringName) {
-          val f = ringInfo.ring ? ("addNode", ringName, nodeName, config)
+          val f = ringInfo.ring ? ("addNode", nodeName, config)
           val v = Await.result(f, 5 seconds)
         }
       }
       this.config = config
       sender ! Codes.Ok
+    }
+    case ("deleteNode", ringName:String, nodeName:String, config:DatabaseConfig) => {
+      for ((ringName1, ringInfo) <- rings) {
+        if (ringName1 == ringName) {
+          val f = ringInfo.ring ? ("deleteNode", nodeName, config)
+          val (code:String,empty:Boolean) = Await.result(f, 5 seconds)
+          if (empty) {
+              val stopped = gracefulStop(ringInfo.ring, 5 seconds)(system)
+              Await.result(stopped, 5 seconds)
+              rings -= ringName
+          }
+        }
+      }
+      this.config = config
+      sender ! (Codes.Ok,rings.size == 0)
     }
     case ("getLowHigh", ringName:String, nodeName:String, tableName:String) => {
       val ringInfo = rings(ringName)

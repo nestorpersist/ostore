@@ -30,6 +30,7 @@ import scala.collection.immutable.TreeMap
 private[persist] class NodeInfo(val name: String, val node: ActorRef)
 
 private[persist] class ServerRing(databaseName:String, ringName:String, send:ActorRef, var config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
+  private val system = context.system
   val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
   var nodes = TreeMap[String, NodeInfo]()
   implicit val timeout = Timeout(5 seconds)
@@ -78,9 +79,10 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case ("stopBalance") => {
-      for ((nodeName, nodeInfo) <- nodes) {
-        val f = nodeInfo.node ? ("stopBalance")
+    case ("stopBalance", nodeName:String) => {
+      for ((nodeName1, nodeInfo) <- nodes) {
+        val forceEmpty = nodeName1 == nodeName
+        val f = nodeInfo.node ? ("stopBalance", forceEmpty)
         val v = Await.result(f, 5 seconds)
       }
       sender !  Codes.Ok 
@@ -101,7 +103,7 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
       }
       sender !  code
     }
-    case ("addNode", ringName:String, nodeName:String, config:DatabaseConfig) => {
+    case ("addNode", nodeName:String, config:DatabaseConfig) => {
       this.config = config
       if (ringName == this.ringName) {
         newNode(ringName, nodeName)
@@ -111,6 +113,22 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
         val v = Await.result(f, 5 seconds)
       }
       sender !  Codes.Ok 
+    }
+    case ("deleteNode", nodeName:String, config:DatabaseConfig) => {
+      this.config = config
+      if (ringName == this.ringName) {
+          val node = nodes(nodeName).node
+          val f = node ? ("deleteNode")
+          Await.result(f, 5 seconds)
+          val stopped = gracefulStop(node, 5 seconds)(system)
+          Await.result(stopped, 5 seconds)
+          nodes -= nodeName
+      }
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("setConfig", config)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender !  (Codes.Ok,nodes.size == 0) 
     }
     case ("getLowHigh", nodeName:String, tableName:String) => {
       val nodeInfo = nodes(nodeName)

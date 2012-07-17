@@ -34,10 +34,6 @@ import scala.collection.immutable.TreeMap
 import java.io.File
 import scala.io.Source
 
-// TODO 1. remove uneeded import and sort
-// TODO 2. break out client as sep project (jsonops, send,synclient,asyncclient)
-// TODO 3. fix up timeouts (special debug settings)
-
 // Server Actor Paths
 //       /user/@server
 //       /user/database
@@ -186,10 +182,13 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
       }
     }
     case ("stopBalance", databaseName: String, rs: String) => {
+      val request = Json(rs)
+      val ringName = jgetString(request, "ring")
+      val nodeName = jgetString(request, "node")
       databases.get(databaseName) match {
         case Some(info) => {
           val database = info.dbRef
-          val f = database ? ("stopBalance")
+          val f = database ? ("stopBalance", ringName, nodeName)
           Await.result(f, 5 seconds)
           sender ! (Codes.Ok, "")
         }
@@ -246,6 +245,31 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           sender ! (Codes.Exist, "database:" + databaseName)
         }
       }
+    }
+    case ("deleteNode", databaseName:String , rs:String) =>{
+      val request = Json(rs)
+      val ringName = jgetString(request, "ring")
+      val nodeName = jgetString(request, "node")
+      databases.get(databaseName) match {
+        case Some(info) => {
+          info.config = info.config.deleteNode(ringName, nodeName)
+          storeTable.putMeta(databaseName, Compact(info.config.toJson))
+          val database = info.dbRef
+          val f = database ? ("deleteNode", ringName, nodeName, info.config)
+          val (code:String,empty:Boolean) = Await.result(f, 5 seconds)
+          if (empty) {
+              val stopped = gracefulStop(database, 5 seconds)(system)
+              Await.result(stopped, 5 seconds)
+              databases -= databaseName
+              println("Database deleted " + databaseName)
+          }
+          sender ! (Codes.Ok, "")
+          println("Delete node " + ringName +"/" + nodeName)
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }      
     }
     case ("getLowHigh", databaseName: String, rs: String) => {
       databases.get(databaseName) match {

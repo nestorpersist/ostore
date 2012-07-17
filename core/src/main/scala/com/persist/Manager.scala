@@ -405,6 +405,21 @@ class Manager(host: String, port: Int) extends CheckedActor {
     }
   }
 
+  private def deleteNode(databaseName: String, ringName: String, nodeName: String) {
+    val dba = DatabaseActions(databaseName)
+    dba.act("active") {
+      val request = JsonObject("ring" ->ringName, "node" -> nodeName)
+      dba.pass("stopBalance", request)
+      dba.wait("busyBalance")
+      
+      // Update config and relink prev next
+      // and delete node (and if then empty, enclosing ring and database)
+      dba.pass("deleteNode", request)
+      
+      dba.pass("startBalance")
+    }
+  }
+  
   /**
    * Temporary debugging method.
    */
@@ -599,9 +614,13 @@ class Manager(host: String, port: Int) extends CheckedActor {
     }
     case ("deleteNodes", p: Promise[String], databaseName: String, config: Json) => {
       complete(p) {
-        //deleteNodes(databaseName, config)
-        println("Delete nodes: " + databaseName)
-        println(Pretty(config))
+        for (r <- jgetArray(config, "rings")) {
+          val ringName = jgetString(r, "name")
+          for (n <- jgetArray(r, "nodes")) {
+            val nodeName = jgetString(n, "name")
+            deleteNode(databaseName, ringName, nodeName)
+          }
+        }
         Codes.Ok
       }
     }

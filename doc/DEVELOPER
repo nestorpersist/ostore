@@ -8,3 +8,60 @@
 
                sbt 
                test-only com.persist.unit.*
+
+3. To generate Scala doc
+
+	cd core
+	sbt doc
+	open file core/target/scala-2.9.1/api/index.html
+
+4. Things to (mostly) avoid
+
+	var
+	return
+	any waits
+	Java libraries (where there is a good scala alternative)
+
+
+
+TODO 
+
+1. basic system
+	balance with prefix
+	can't add or delete map tables (report nyi)
+	fast passed via sync
+	get port from config
+	send: timeout, retry, w=n, r=n, 2 nodes, for manager
+	remove unneeded imports and sort
+
+2. change
+	add/delete ring
+
+3. error 
+	checks, exceptions for table api
+	logging
+        detect failure
+	recover
+
+4. Performance
+	test multiserver
+
+5. Misc
+
+	Doc
+		Wiki - rest, config, terminology and overview, + map-reduce,
+			pull to local machine
+		Scaladoc - client server (on github)
+        UI
+		first, last, find, refresh paged data
+		refactor
+		path data structure
+		more info on tables
+        Bulk load - ui and api
+	w=n r=n
+	SBT compound project, deal with common code
+	Conflict resolution
+	All syncTable no wait
+	MR reflection, first n, last n
+	Timeouts
+

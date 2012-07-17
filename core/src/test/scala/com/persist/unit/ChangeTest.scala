@@ -27,7 +27,6 @@ import com.typesafe.config.ConfigFactory
 
 @RunWith(classOf[JUnitRunner])
 class ChangeTest extends FunSuite {
-
   test("test1") {
     val dbName = "testdb"
     val serverConfig = Json("""
@@ -58,6 +57,12 @@ class ChangeTest extends FunSuite {
     { 
      "rings":[ {"name":"r1",
        "nodes":[ {"name":"n3", "host":"127.0.0.1", "port":8011} ] } ]
+     }
+     """)
+    val nodeConfig1 = Json("""
+    { 
+     "rings":[ {"name":"r1",
+       "nodes":[ {"name":"n1", "host":"127.0.0.1", "port":8011} ] } ]
      }
      """)
      
@@ -96,12 +101,21 @@ class ChangeTest extends FunSuite {
       expect = expect.tail
     }
     println("")
+    println(Pretty(database.report("tab1")))
     
     database.addNodes(nodeConfig2)
     Thread.sleep(1000)
     println(Pretty(database.report("tab1")))
 
     database.addNodes(nodeConfig3)
+    Thread.sleep(1000)
+    println(Pretty(database.report("tab1")))
+
+    database.deleteNodes(nodeConfig1)
+    Thread.sleep(1000)
+    println(Pretty(database.report("tab1")))
+
+    database.deleteNodes(nodeConfig3)
     Thread.sleep(1000)
     println(Pretty(database.report("tab1")))
     

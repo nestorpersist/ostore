@@ -1,29 +1,31 @@
-0. Make sure the data directory is empty
+1. Make sure the data directory is empty
    (unless you are testing with a 
     preexisting database).
 
-1. Start sever
+2. Use sbt 0.11.3
+
+3. Start sever
 
 	cd core
 	sbt
 	run
 
-2. Start ui
+4. Start ui
 
 	cd ui
 	sbt
 	container:start
 
-3. In browser goto url
+5. In browser goto url
 
 	http://127.0.0.1:8080/?restartApplication
 
-4. Add a database
+6. Add a database
 
 	name: test
 	file: config/test.db
 
-5. Add values to a table
+7. Add values to a table
 
 	select the test database
 	select tables
@@ -31,7 +33,7 @@
 	upload
 	file: tab1.data
 
-6. To quit
+8. To quit
 
 	for database test
 
