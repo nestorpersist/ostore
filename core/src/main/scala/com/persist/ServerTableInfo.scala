@@ -23,10 +23,8 @@ import JsonOps._
 private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>
   val info: ServerTableInfo
   class ServerTableInfo(val databaseName: String, val ringName: String, val nodeName: String, val tableName: String,
-    initConfig:DatabaseConfig, val send: ActorRef, val store: AbstractStore, val monitor:ActorRef) {
+    var config:DatabaseConfig, val send: ActorRef, val store: AbstractStore, val monitor:ActorRef) {
     
-    var config:DatabaseConfig = initConfig
-
     val absentMetaS = """{"c":{},"d":true}"""
 
     val storeTable = store.getTable(tableName)

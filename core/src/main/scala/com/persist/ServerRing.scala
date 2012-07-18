@@ -29,7 +29,7 @@ import scala.collection.immutable.TreeMap
 
 private[persist] class NodeInfo(val name: String, val node: ActorRef)
 
-private[persist] class ServerRing(databaseName:String, ringName:String, send:ActorRef, var config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
+private[persist] class ServerRing(databaseName: String, ringName: String, send: ActorRef, var config: DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
   private val system = context.system
   val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
   var nodes = TreeMap[String, NodeInfo]()
@@ -38,14 +38,14 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
   def newNode(ringName: String, nodeName: String) {
     val node = context.actorOf(Props(new ServerNode(databaseName, ringName, nodeName, send, config, serverConfig, create)), name = nodeName)
     val f = node ? ("start1")
-    Await.result(f,5 seconds)
+    Await.result(f, 5 seconds)
     val info = new NodeInfo(nodeName, node)
     nodes += (nodeName -> info)
   }
 
   // TODO do in parallel
-  for ((ringName,ringConfig)<-config.rings) {
-    for ((nodeName,nodeConfig)<-ringConfig.nodes) {
+  for ((ringName, ringConfig) <- config.rings) {
+    for ((nodeName, nodeConfig) <- ringConfig.nodes) {
       if (nodeConfig.server.name == serverName) {
         newNode(ringName, nodeName)
       }
@@ -54,14 +54,14 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
 
   def rec = {
     case ("start1") => {
-      sender !  Codes.Ok 
+      sender ! Codes.Ok
     }
     case ("start2") => {
       for ((nodeName, nodeInfo) <- nodes) {
         val f = nodeInfo.node ? ("start2")
         val v = Await.result(f, 5 seconds)
       }
-      sender !  Codes.Ok 
+      sender ! Codes.Ok
     }
     case ("stop1") => {
       for ((nodeName, nodeInfo) <- nodes) {
@@ -79,20 +79,20 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case ("stopBalance", nodeName:String) => {
+    case ("stopBalance", nodeName: String) => {
       for ((nodeName1, nodeInfo) <- nodes) {
         val forceEmpty = nodeName1 == nodeName
         val f = nodeInfo.node ? ("stopBalance", forceEmpty)
         val v = Await.result(f, 5 seconds)
       }
-      sender !  Codes.Ok 
+      sender ! Codes.Ok
     }
     case ("startBalance") => {
       for ((nodeName, nodeInfo) <- nodes) {
         val f = nodeInfo.node ? ("startBalance")
         val v = Await.result(f, 5 seconds)
       }
-      sender !  Codes.Ok 
+      sender ! Codes.Ok
     }
     case ("busyBalance") => {
       var code = Codes.Ok
@@ -101,9 +101,10 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
         val code1 = Await.result(f, 5 seconds)
         if (code1 == Codes.Busy) code = Codes.Busy
       }
-      sender !  code
+      sender ! code
     }
-    case ("addNode", nodeName:String, config:DatabaseConfig) => {
+    case ("addNode", nodeName: String, config: DatabaseConfig) => {
+        println("RING:"+Pretty(config.toJson))
       this.config = config
       if (ringName == this.ringName) {
         newNode(ringName, nodeName)
@@ -112,65 +113,63 @@ private[persist] class ServerRing(databaseName:String, ringName:String, send:Act
         val f = nodeInfo.node ? ("setConfig", config)
         val v = Await.result(f, 5 seconds)
       }
-      sender !  Codes.Ok 
+      sender ! Codes.Ok
     }
-    case ("deleteNode", nodeName:String, config:DatabaseConfig) => {
+    case ("deleteNode", nodeName: String, config: DatabaseConfig) => {
       this.config = config
-      if (ringName == this.ringName) {
-          val node = nodes(nodeName).node
-          val f = node ? ("deleteNode")
-          Await.result(f, 5 seconds)
-          val stopped = gracefulStop(node, 5 seconds)(system)
-          Await.result(stopped, 5 seconds)
-          nodes -= nodeName
-      }
+      val node = nodes(nodeName).node
+      val f = node ? ("deleteNode")
+      Await.result(f, 5 seconds)
+      val stopped = gracefulStop(node, 5 seconds)(system)
+      Await.result(stopped, 5 seconds)
+      nodes -= nodeName
       for ((nodeName, nodeInfo) <- nodes) {
         val f = nodeInfo.node ? ("setConfig", config)
         val v = Await.result(f, 5 seconds)
       }
-      sender !  (Codes.Ok,nodes.size == 0) 
+      sender ! (Codes.Ok, nodes.size == 0)
     }
-    case ("getLowHigh", nodeName:String, tableName:String) => {
+    case ("getLowHigh", nodeName: String, tableName: String) => {
       val nodeInfo = nodes(nodeName)
       val f = nodeInfo.node ? ("getLowHigh", tableName)
-      val (code:String, result:Json) = Await.result(f, 5 seconds)
-      sender !  (Codes.Ok,result) 
+      val (code: String, result: Json) = Await.result(f, 5 seconds)
+      sender ! (Codes.Ok, result)
     }
-    case ("setLowHigh", nodeName:String, tableName:String, low:String, high:String) => {
+    case ("setLowHigh", nodeName: String, tableName: String, low: String, high: String) => {
       val nodeInfo = nodes(nodeName)
       val f = nodeInfo.node ? ("setLowHigh", tableName, low, high)
       Await.result(f, 5 seconds)
-      sender !  Codes.Ok
+      sender ! Codes.Ok
     }
-    case ("addTable1", tableName:String, config:DatabaseConfig) => {
+    case ("addTable1", tableName: String, config: DatabaseConfig) => {
       for ((nodeName, nodeInfo) <- nodes) {
         val f = nodeInfo.node ? ("addTable1", tableName, config)
         val v = Await.result(f, 5 seconds)
       }
       this.config = config
-      sender !  Codes.Ok 
+      sender ! Codes.Ok
     }
-    case ("addTable2", tableName:String) => {
+    case ("addTable2", tableName: String) => {
       for ((nodeName, nodeInfo) <- nodes) {
         val f = nodeInfo.node ? ("addTable2", tableName)
         val v = Await.result(f, 5 seconds)
       }
-      sender !  Codes.Ok 
+      sender ! Codes.Ok
     }
-    case ("deleteTable1", tableName:String, config:DatabaseConfig) => {
+    case ("deleteTable1", tableName: String, config: DatabaseConfig) => {
       for ((nodeName, nodeInfo) <- nodes) {
         val f = nodeInfo.node ? ("deleteTable1", tableName, config)
         val v = Await.result(f, 5 seconds)
       }
       this.config = config
-      sender !  Codes.Ok 
+      sender ! Codes.Ok
     }
-    case ("deleteTable2", tableName:String) => {
+    case ("deleteTable2", tableName: String) => {
       for ((nodeName, nodeInfo) <- nodes) {
         val f = nodeInfo.node ? ("deleteTable2", tableName)
         val v = Await.result(f, 5 seconds)
       }
-      sender !  Codes.Ok 
+      sender ! Codes.Ok
     }
   }
 

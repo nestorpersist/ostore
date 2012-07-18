@@ -18,24 +18,30 @@
 package com.persist
 
 private[persist] object Codes {
-    // Success
-    final val Ok = "Ok"
-    final val Busy = "Busy"       // activity still ongoing
-    final val NotPresent = "NotPresent"
-    final val NoPut = "NoPut"    // opt put failed
-    final val Locked = "Locked"  // already locked by different guid
+  // Success
+  final val Ok = "Ok"
+  final val Busy = "Busy" // activity still ongoing
+  final val NotPresent = "NotPresent"
+  final val NoPut = "NoPut" // opt put failed
+  final val Locked = "Locked" // already locked by different guid
 
-    // Handoffs
-    final val Handoff = "Handoff"
-    final val Next = "Next"
-    final val Prev = "Prev"
-    final val PrevM = "Prev-"
-    final val Done = "Done"
-      
-    // Failures 
-    final val NotAvailable = "NotAvailable"
-    final val ReadOnly = "ReadOnly"
-    final val BadRequest = "BadRequest"
-    final val InternalError = "InternalError"
-    final val Exist = "Exist"
+  // Missing Actors
+  final val NoDatabaase = "NoDatabase"
+  final val NoRing = "NoRing"
+  final val NoNode = "NoNode"
+  final val NoTable = "NoTable"
+
+  // Handoffs
+  final val Handoff = "Handoff"
+  final val Next = "Next"
+  final val Prev = "Prev"
+  final val PrevM = "Prev-"
+  final val Done = "Done"
+
+  // Failures 
+  final val NotAvailable = "NotAvailable"
+  final val ReadOnly = "ReadOnly"
+  final val BadRequest = "BadRequest"
+  final val InternalError = "InternalError"
+  final val Exist = "Exist"
 }

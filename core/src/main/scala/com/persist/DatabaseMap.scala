@@ -29,7 +29,7 @@ private[persist] case class RingMap(
     // NodeMap => TableNodeMap
     var nodes: Map[String, NodeMap],
     // server names
-    val nodeSeq: List[String]) {
+    var nodeSeq: List[String]) {
   
   def nodePosition(nodeName: String): Int = {
     nodes(nodeName).pos
@@ -65,6 +65,7 @@ private[persist] case class TableNodeMap(val tableName:String, val node:NodeMap)
   var known: Boolean = false
   var low: String = ""
   var high: String = ""
+  var lastSet:Long = 0
    
   private var ref: ActorRef = null
 
@@ -186,6 +187,7 @@ private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[
     }
   }
 
+ // TODO only a single node result is now needed!
   def get(ringName: String, tableName: String, key: String, less: Boolean): (TableNodeMap, TableNodeMap) = {
     val ringMap = rings(ringName)
     val tmap = ringMap.tables.get(tableName)
@@ -205,7 +207,15 @@ private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[
             // possible in-transit 
             val nextNodeName = rings(ringName).nextNodeName(nodeName)
             val next = nodes(nextNodeName)
-            (n, next)
+            if (! n.known) {
+              (n,n)
+            } else if (! next.known) {
+              (next,next)
+            } else if (n.lastSet < next.lastSet) {
+              (n,n)
+            } else {
+              (next,next)
+            }
           }
         }
       }
@@ -245,6 +255,7 @@ private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[
     tableNodeMap.low = low
     tableNodeMap.high = high
     tableNodeMap.known = true
+    tableNodeMap.lastSet = System.currentTimeMillis()
   }
   
   def setNext(ringName:String, nodeName:String, nextNodeName:String, host:String, port:Int) {
@@ -262,8 +273,43 @@ private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[
         }
       }
       ring.nodes += (nextNodeName -> nodeMap)
+      var nodeSeq = List[String]()
+      for (nodeName2<-ring.nodeSeq) {
+        nodeSeq = nodeName2 +: nodeSeq
+        if (nodeName2 == nodeName) nodeSeq = nextNodeName +: nodeSeq
+      }
+      ring.nodeSeq = nodeSeq.reverse
     }
-    
+  }
+  
+  def deleteNode(ringName:String, nodeName:String) {
+    // TODO remove ring when no more node, database when no more rings
+    val ring = rings(ringName)
+    if (ring.nodes.contains(nodeName)) {
+      val pos = ring.nodes(nodeName).pos
+      for ((tableName,tableMap)<-ring.tables) {
+         val tableNodeMap = tableMap.nodes(nodeName)
+         val oldSet: HashSet[String] = tableMap.keys.getOrElse(tableNodeMap.low, new HashSet[String]()) - nodeName
+         if (oldSet.size == 0) {
+           tableMap.keys -= tableNodeMap.low
+         } else {
+           tableMap.keys += (tableNodeMap.low -> oldSet)
+        }
+        tableMap.nodes -= nodeName
+      }
+      ring.nodes -= nodeName
+      for ((nodeName1,nodeMap1)<- ring.nodes) {
+        if (nodeMap1.pos > pos) {
+          nodeMap1.pos -= 1
+        }
+      }
+      var nodeSeq = List[String]()
+      for (nodeName2<-ring.nodeSeq) {
+        if (nodeName2 != nodeName) nodeSeq = nodeName2 +: nodeSeq
+      }
+      ring.nodeSeq = nodeSeq.reverse
+    }
+
   }
   
 }

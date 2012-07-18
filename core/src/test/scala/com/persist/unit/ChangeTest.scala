@@ -27,6 +27,7 @@ import com.typesafe.config.ConfigFactory
 
 @RunWith(classOf[JUnitRunner])
 class ChangeTest extends FunSuite {
+
   test("test1") {
     val dbName = "testdb"
     val serverConfig = Json("""
@@ -42,7 +43,7 @@ class ChangeTest extends FunSuite {
        "nodes":[ {"name":"n1", "host":"127.0.0.1", "port":8011} ] } ]
      }
      """)
-     
+
     val tableConfig = Json("""
          { "tables": [ {"name":"tab1"} ] }
      """)
@@ -65,7 +66,6 @@ class ChangeTest extends FunSuite {
        "nodes":[ {"name":"n1", "host":"127.0.0.1", "port":8011} ] } ]
      }
      """)
-     
 
     println("Starting Server")
     Server.start(serverConfig, true)
@@ -78,8 +78,9 @@ class ChangeTest extends FunSuite {
     database.addTables(tableConfig)
 
     val tab1 = database.syncTable("tab1")
+
     for (tableName <- database.allTables) {
-        assert(tableName == "tab1", "table not added")
+      assert(tableName == "tab1", "table not added")
     }
     tab1.put("key1", "val1")
     tab1.put("key2", "val2")
@@ -92,35 +93,36 @@ class ChangeTest extends FunSuite {
     println("key1:" + v1)
     val v3 = tab1.get("key3")
     println("key3:" + v3)
+    def check(where: String) {
+      println(where + ":" + Pretty(database.report("tab1")))
+      val expect = List[String]("key1", "key2", "key4", "key5")
 
-    val expect = List[String]("key1", "key2", "key4", "key5")
-
-    for ((k,expectK) <- tab1.all().zip(expect)) {
-      println("fwd:" + k)
-      assert(k == expectK, "forward failed")
+      for ((k, expectK) <- tab1.all().zip(expect)) {
+        assert(k == expectK, where + " failed)" + k + ":" + expectK + ")")
+      }
     }
-    println("")
-    println(Pretty(database.report("tab1")))
-    
+
+    check("initial")
+
     database.addNodes(nodeConfig2)
     Thread.sleep(1000)
-    println(Pretty(database.report("tab1")))
+    check("add n2")
 
     database.addNodes(nodeConfig3)
     Thread.sleep(1000)
-    println(Pretty(database.report("tab1")))
+    check("add n3")
 
     database.deleteNodes(nodeConfig1)
     Thread.sleep(1000)
-    println(Pretty(database.report("tab1")))
+    check("delete n1")
 
     database.deleteNodes(nodeConfig3)
     Thread.sleep(1000)
-    println(Pretty(database.report("tab1")))
-    
+    check("delete n3")
+
     database.deleteTables(tableConfig)
     for (tableName <- database.allTables) {
-        assert(false, "table not deleted")
+      assert(false, "table not deleted")
     }
     client.stopDataBase(dbName)
     client.deleteDatabase(dbName)

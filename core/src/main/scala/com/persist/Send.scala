@@ -161,11 +161,21 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
       msgs = msgs + (uid -> info)
       send(info, "init")
     }
-    case (kind: String, uid: Long, response: String) => {
+    case (code: String, uid: Long, response: String) => {
       // server => client
       msgs get uid match {
         case Some(info: MsgInfo) => {
-          if (kind == Codes.Handoff) {
+          if (code == Codes.NoNode ||code == Codes.NoRing || code == Codes.NoDatabaase) {
+            val lastEvent = info.history.head
+            val ringName = lastEvent.ring
+            val nodeName = lastEvent.nodeMap.node.nodeName
+            databaseMap.deleteNode(ringName, nodeName)
+            val newUid = uidGen.get
+            val newInfo = MsgInfo(info.kind, info.dest, info.client, newUid, info.tab, info.key, info.value)
+            msgs = msgs - uid
+            msgs = msgs + (newUid -> newInfo)
+            send(newInfo, "noNode")
+          } else if (code == Codes.Handoff) {
             // TODO delay on handoff to same server or when in gap
             val range = Json(response)
             val low = jgetString(range, "low")
@@ -181,14 +191,14 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
             msgs = msgs - uid
             msgs = msgs + (newUid -> newInfo)
             send(newInfo, "handoff")
-          } else if (kind == Codes.Next) {
+          } else if (code == Codes.Next) {
             // retry with new key
             val newUid = uidGen.get
             val newInfo = MsgInfo("next", info.dest, info.client, newUid, info.tab, response, info.value)
             msgs = msgs - uid
             msgs = msgs + (newUid -> newInfo)
             send(newInfo, "next")
-          } else if (kind == Codes.PrevM) {
+          } else if (code == Codes.PrevM) {
             // retry with new key
             val newUid = uidGen.get
             val newInfo = MsgInfo("prev-", info.dest, info.client, newUid, info.tab, response, info.value)
@@ -196,7 +206,7 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
             msgs = msgs + (newUid -> newInfo)
             send(newInfo, "prev")
           } else {
-            sendClient(info, kind, response)
+            sendClient(info, code, response)
           }
         }
         case None => // already processed, ignore 

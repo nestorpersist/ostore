@@ -27,11 +27,11 @@ private[persist] trait ServerTableAssembly extends ServerMapReduceComponent with
   with ServerBalanceComponent with ServerOpsComponent with ServerTableInfoComponent
 
 private[persist] class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
-  store: AbstractStore, monitor: ActorRef, send: ActorRef, config: DatabaseConfig) extends CheckedActor {
+  store: AbstractStore, monitor: ActorRef, send: ActorRef, initialConfig: DatabaseConfig) extends CheckedActor {
 
   object all extends ServerTableAssembly {
     val info = new ServerTableInfo(databaseName, ringName, nodeName, tableName,
-      config, send, store, monitor)
+      initialConfig, send, store, monitor)
     val ops = new ServerOps(context.system)
     val mr = new ServerMapReduce
     val sync = new ServerSync
@@ -180,17 +180,18 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
         mr.delete
         info.storeTable.delete()
         sender ! Codes.Ok
-        
+
       }
-      case ("stopBalance", forceEmpty:Boolean) => {
+      case ("stopBalance", forceEmpty: Boolean) => {
         bal.canSend = forceEmpty
         bal.forceEmpty = forceEmpty
         sender ! Codes.Ok
       }
       case ("startBalance") => {
-        if (! bal.singleNode) {
+        if (!bal.singleNode) {
           bal.canSend = true
           bal.canReport = true
+          ops.acceptUserMessages = true
         }
         sender ! Codes.Ok
       }
@@ -203,10 +204,10 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
         sender ! code
       }
       case ("getLowHigh") => {
-        val result = JsonObject("low"->info.low, "high"->info.high)
+        val result = JsonObject("low" -> info.low, "high" -> info.high)
         sender ! (Codes.Ok, result)
       }
-      case ("setLowHigh", low:String, high:String) => {
+      case ("setLowHigh", low: String, high: String) => {
         info.low = low
         info.high = high
         bal.nextLow = high
@@ -224,7 +225,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
       case ("fromNext", response: String) => {
         bal.fromNext(response)
       }
-      case ("setConfig", config:DatabaseConfig) => {
+      case ("setConfig", config: DatabaseConfig) => {
         info.config = config
         bal.resetPrevNext()
         sender ! Codes.Ok
@@ -239,11 +240,11 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
               if (checkKey(key, less)) {
                 doBasicCommand(kind, key, value)
               } else {
-                val server = config.rings(ringName).nodes(bal.nextNodeName).server
+                val server = info.config.rings(ringName).nodes(bal.nextNodeName).server
                 val host = server.host
                 val port = server.port
                 val response = JsonObject("low" -> info.low, "high" -> info.high, "next" -> bal.nextNodeName,
-                    "host"->host, "port" -> port)
+                  "host" -> host, "port" -> port)
                 (Codes.Handoff, Compact(response))
               }
             }
@@ -263,9 +264,8 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
           */
         } catch {
           case ex: Exception => {
-            sender ! (Codes.InternalError, uid, ex.getMessage())
-            println("Table internal error1: " + kind + ":" + ex.toString())
-            ex.printStackTrace()
+            sender ! (Codes.InternalError, uid, "")
+            throw ex
           }
         }
       }

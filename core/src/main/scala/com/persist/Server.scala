@@ -51,9 +51,6 @@ private class Listener extends CheckedActor {
     case w: RemoteClientWriteFailed => {
       println("*****Remote Write Failed:" + w.getRequest() + ":" + w.getRemoteAddress())
     }
-    case d: DeadLetter => {
-      println("*****DeadLetter:" + d.recipient.path + ":" + d.message)
-    }
     case x => println("*****Other Event:" + x)
   }
 }
@@ -93,7 +90,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
   private val sendServer = new SendServer(system)
   private val storeTable = store.getTable(serverName)
   private val listener = system.actorOf(Props[Listener])
-  system.eventStream.subscribe(listener, classOf[DeadLetter])
+  system.eventStream.subscribe(self, classOf[DeadLetter])
   system.eventStream.subscribe(listener, classOf[RemoteLifeCycleEvent])
 
   private var databases = TreeMap[String, DatabaseInfo]()
@@ -161,6 +158,63 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
   }
 
   def rec = {
+    case d: DeadLetter => {
+      var handled = false
+      val path = d.recipient.path.toString
+      val msg = d.message
+      val sender1 = d.sender
+      val parts1= path.split("//")
+      if (parts1.size == 2) {
+        // Form  ostore/user/database/ring/node/table
+        val parts2 = parts1(1).split("/")
+        if (parts2.size == 6) {
+          val databaseName = parts2(2)
+          val ringName = parts2(3)
+          val nodeName = parts2(4)
+          val tableName = parts2(5)
+          msg match {
+            case (cmd:String,uid:Long, key:String, value:Any) => {
+                handled = true
+                databases.get(databaseName) match {
+                  case Some(info) => {
+                    val config = info.config
+                    config.rings.get(ringName) match {
+                      case Some(ringConfig) => {
+                        ringConfig.nodes.get(nodeName) match {
+                          case Some(nodeConfig) => {
+                            config.tables.get(tableName) match {
+                              case Some(tableConfig) => {
+                                // Should never get here
+                                println("*****Internal Error DeadLetter:" + d.recipient.path + ":" + d.message)
+                                sender1 ! (Codes.InternalError, uid, path)
+                              }
+                              case None => {
+                                sender1 ! (Codes.NoTable, uid, tableName)
+                              }
+                            }
+                          }
+                          case None =>{
+                            sender1 ! (Codes.NoNode, uid, nodeName)
+                          }
+                        }
+                      }
+                      case None => {
+                        sender1 ! (Codes.NoRing, uid, ringName)
+                      }
+                    }
+                  }
+                  case None => {
+                    sender1 ! (Codes.NoDatabaase, uid, databaseName)
+                  }
+                }
+            }
+            case x=> 
+          }
+        }
+        
+      }
+      if (! handled) println("*****DeadLetter:" + d.recipient.path + ":" + d.message)
+    }
     case ("lock", databaseName: String, rs: String) => {
       val request = Json(rs)
       val guid = jgetString(request, "guid")
