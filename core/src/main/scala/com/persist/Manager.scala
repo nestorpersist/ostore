@@ -147,7 +147,6 @@ class Manager(host: String, port: Int) extends CheckedActor {
             val (code, s: String) = Await.result(f, 5 seconds)
             throw new Exception("Table " + tableName + " does not exist")
           }
-
         }
       }
       val ok = doAll("lock", request0)
@@ -171,6 +170,12 @@ class Manager(host: String, port: Int) extends CheckedActor {
         false
       }
     }
+    
+    def lock1(server:ActorRef):Boolean = {
+      val f = server ? ("lock", databaseName, Compact(request0))
+      val (code, s: String) = Await.result(f, 5 seconds)
+      code == Codes.Ok
+    }
 
     def pass(cmd: String, request: JsonObject = emptyJsonObject) {
       doAll(cmd, request)
@@ -184,13 +189,14 @@ class Manager(host: String, port: Int) extends CheckedActor {
       }
       throw new Exception("Wait " + cmd + " timeout")
     }
-    
-    def addServer(serverName:String):Boolean = {
-      if (servers.contains(serverName)) {
-        false
-      } else {
+
+    def hasServer(serverName: String): Boolean = {
+      servers.contains(serverName)
+    }
+
+    def addServer(serverName: String) = {
+      if (!servers.contains(serverName)) {
         servers += serverName
-        true
       }
     }
   }
@@ -352,74 +358,80 @@ class Manager(host: String, port: Int) extends CheckedActor {
   private def addNode(databaseName: String, ringName: String, nodeName: String, host: String, port: Int) {
     val dba = DatabaseActions(databaseName)
     dba.act("active") {
-      dba.pass("stopBalance")
-      dba.wait("busyBalance")
-
-      // TODO node could be on a new server (also create database on server use old config)
-      //dba.addServer(host,port)
-
-      val request = JsonObject("ring" -> ringName, "node" -> nodeName, "host" -> host, "port" -> port)
-      // Adds node and its tables and update ring prev next connections
-      dba.pass("addNode", request)
-
-      val info = databaseInfo(databaseName, JsonObject("info" -> "c"))
-      val jconfig = jget(info, "c")
-      val config = DatabaseConfig(databaseName, jconfig)
-      val nextNodeName = config.rings(ringName).nextNodeName(nodeName)
-      val prevNodeName = config.rings(ringName).prevNodeName(nodeName)
-      val prevServerName = config.rings(ringName).nodes(prevNodeName).server.name
-      val prevServer = sendServer.serverRef(prevServerName)
-      val newServerName = config.rings(ringName).nodes(nodeName).server.name
+      val newServerName = host + ":" + port
       val newServer = sendServer.serverRef(newServerName)
-      val added = dba.addServer(newServerName)
-      if (added) {
-         val request = JsonObject("config" -> jconfig)
-         val f = newServer ? ("newDatabase", databaseName, request)
-         Await.result(f, 5 seconds)
-         dba.pass("startDatabase2")
-      }
-      val request1 = JsonObject("ring" -> ringName, "node" -> nodeName)
-      for ((tableName, tableConfig) <- config.tables) {
-        val request2 = request1 + ("table" -> tableName)
-        val (low, high) = if (prevNodeName == nextNodeName) {
-          ("\uFFFF", "")
-        } else {
-          val request3 = request2 + ("node" -> prevNodeName)
-          val f = prevServer ? ("getLowHigh", databaseName, Compact(request3))
-          val (code: String, s: String) = Await.result(f, 5 seconds)
-          val response = Json(s)
-          val prevLow = jgetString(response, "low")
-          val prevHigh = jgetString(response, "high")
-          (prevHigh, prevHigh)
-        }
-        val request3 = request2 + ("low" -> low, "high" -> high)
-        val f2 = newServer ? ("setLowHigh", databaseName, Compact(request3))
-        val (code: String, s: String) = Await.result(f2, 5 seconds)
-      }
-      if (added) {
-        val f = newServer ? ("startDatabase2", databaseName, request)
-        Await.result(f, 5 seconds)
-      }
+      val creatingNewServer = ! dba.hasServer(newServerName)
 
-      dba.pass("startBalance")
+      if (!creatingNewServer || dba.lock1(newServer)) {
+
+        // Stop balancing
+        dba.pass("stopBalance")
+        dba.wait("busyBalance")
+
+        // Adds node and its tables and update ring prev next connections on existing servers
+        val request = JsonObject("ring" -> ringName, "node" -> nodeName, "host" -> host, "port" -> port)
+        dba.pass("addNode", request)
+
+        val info = databaseInfo(databaseName, JsonObject("info" -> "c"))
+        val jconfig = jget(info, "c")
+        val config = DatabaseConfig(databaseName, jconfig)
+
+        // Create new server
+        if (creatingNewServer) {
+          val newRequest = JsonObject("config" -> jconfig)
+          val f = newServer ? ("newDatabase", databaseName, Compact(newRequest))
+          Await.result(f, 5 seconds)
+        }
+
+        // Update table low/high settings
+        val nextNodeName = config.rings(ringName).nextNodeName(nodeName)
+        val prevNodeName = config.rings(ringName).prevNodeName(nodeName)
+        val prevServerName = config.rings(ringName).nodes(prevNodeName).server.name
+        val prevServer = sendServer.serverRef(prevServerName)
+        val request1 = JsonObject("ring" -> ringName, "node" -> nodeName)
+        for ((tableName, tableConfig) <- config.tables) {
+          val request2 = request1 + ("table" -> tableName)
+          val (low, high) = if (prevNodeName == nextNodeName) {
+            ("\uFFFF", "")
+          } else {
+            val request3 = request2 + ("node" -> prevNodeName)
+            val f = prevServer ? ("getLowHigh", databaseName, Compact(request3))
+            val (code: String, s: String) = Await.result(f, 5 seconds)
+            val response = Json(s)
+            val prevLow = jgetString(response, "low")
+            val prevHigh = jgetString(response, "high")
+            (prevHigh, prevHigh)
+          }
+          val request3 = request2 + ("low" -> low, "high" -> high)
+          val f2 = newServer ? ("setLowHigh", databaseName, Compact(request3))
+          val (code: String, s: String) = Await.result(f2, 5 seconds)
+        }
+
+        // Start it all up
+        if (creatingNewServer) {
+          val f = newServer ? ("startDatabase2", databaseName, Compact(request))
+          Await.result(f, 5 seconds)
+        }
+        dba.pass("startBalance")
+      }
     }
   }
 
   private def deleteNode(databaseName: String, ringName: String, nodeName: String) {
     val dba = DatabaseActions(databaseName)
     dba.act("active") {
-      val request = JsonObject("ring" ->ringName, "node" -> nodeName)
+      val request = JsonObject("ring" -> ringName, "node" -> nodeName)
       dba.pass("stopBalance", request)
       dba.wait("busyBalance")
-      
+
       // Update config and relink prev next
       // and delete node (and if then empty, enclosing ring and database)
       dba.pass("deleteNode", request)
-      
+
       dba.pass("startBalance")
     }
   }
-  
+
   /**
    * Temporary debugging method.
    */
@@ -437,7 +449,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
         val tableRef: ActorRef = system.actorFor("akka://ostore@" + host + ":" + port +
           "/user/" + databaseName + "/" + ringName + "/" + nodeName + "/" + tableName)
         val f1 = tableRef ? ("report", 0L, "", "")
-        val (code: String, uid:Long, x: String) = Await.result(f1, 5 seconds)
+        val (code: String, uid: Long, x: String) = Await.result(f1, 5 seconds)
         ro = ro + (nodeName -> Json(x))
       }
       result = result + (ringName -> ro)

@@ -104,7 +104,6 @@ private[persist] class ServerRing(databaseName: String, ringName: String, send: 
       sender ! code
     }
     case ("addNode", nodeName: String, config: DatabaseConfig) => {
-        println("RING:"+Pretty(config.toJson))
       this.config = config
       if (ringName == this.ringName) {
         newNode(ringName, nodeName)
