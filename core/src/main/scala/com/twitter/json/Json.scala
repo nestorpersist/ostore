@@ -20,7 +20,6 @@ import extensions._
 import scala.util.Sorting
 import scala.util.parsing.combinator._
 
-
 private[com] trait JsonSerializable {
   def toJson(): String
 }
@@ -29,7 +28,6 @@ private[com] trait JsonSerializable {
  * An Exception thrown when parsing or building JSON.
  */
 private[com] class JsonException(reason: String) extends Exception(reason)
-
 
 private class EscapedStringParser extends JavaTokenParsers {
   override protected val whiteSpace = "".r
@@ -88,8 +86,8 @@ private class JsonParser extends JavaTokenParsers {
   lazy val stringParser = (new EscapedStringParser)
 
   def string: Parser[String] = "\"(\\\\\\\\|\\\\\"|[^\"])*+\"".r ^^ { escapedStr =>
-      stringParser.parse(escapedStr)
-    }
+    stringParser.parse(escapedStr)
+  }
 
   def value: Parser[Any] = obj | arr | string | number |
     "null" ^^ (x => null) | "true" ^^ (x => true) | "false" ^^ (x => false)
@@ -102,7 +100,6 @@ private class JsonParser extends JavaTokenParsers {
     }
   }
 }
-
 
 /**
  * An explanation of Scala types and their JSON representations.
@@ -134,7 +131,7 @@ private[com] object Json {
         case 0x09 => "\\t"
         case 0x22 => "\\\""
         case 0x5c => "\\\\"
-        case 0x2f => "\\/"     // to avoid sending "</"
+        case 0x2f => "\\/" // to avoid sending "</"
         case c => quotedChar(c)
       }
     }.mkString("") + "\""
@@ -153,8 +150,9 @@ private[com] object Json {
       case list: Seq[_] =>
         list.map(build(_).body).mkString("[", ",", "]")
       case map: scala.collection.Map[_, _] =>
-        Sorting.stableSort[(Any, Any), String](map.iterator.toList, { case (k, v) => k.toString }).map { case (k, v) =>
-          quote(k.toString) + ":" + build(v).body
+        Sorting.stableSort[(Any, Any), String](map.iterator.toList, { case (k, v) => k.toString }).map {
+          case (k, v) =>
+            quote(k.toString) + ":" + build(v).body
         }.mkString("{", ",", "}")
       case x: JsonSerializable => x.toJson()
       case x =>
@@ -162,26 +160,71 @@ private[com] object Json {
     }
     JsonQuoted(rv)
   }
-  
-    /**
+ 
+  def compact(obj: Any): String = {
+    val sb = new StringBuilder(200)
+    def compact1(obj1: Any) {
+      obj1 match {
+        case s: String => sb.append(quote(s))
+        case null => sb.append("null")
+        case x: Boolean => sb.append(x.toString)
+        case x: Number => sb.append(x.toString)
+        case list: Seq[_] => {
+          if (list.headOption == None) {
+            sb.append("[]")
+          } else {
+            var sep = "["
+            for (elem <- list) {
+              sb.append(sep)
+              compact1(elem)
+              sep = ","
+            }
+            sb.append("]")
+          }
+        }
+        case m: Map[String, _] => {
+          val m2 = m.iterator.toList
+          val m1 = Sorting.stableSort[(String, Any), String](m2, { case (k, v) => k })
+          if (m1.size == 0) {
+            sb.append("{}")
+          } else {
+            var sep = "{"
+            for ((name, elem) <- m1) {
+              sb.append(sep)
+              sb.append(quote(name))
+              sb.append(":")
+              compact1(elem)
+              sep = ","
+            }
+            sb.append("}")
+          }
+        }
+        case x => println("bad input:" + x)
+      }
+    }
+    compact1(obj)
+    sb.toString
+  }
+
+  /**
    * Returns a pretty JSON representation of the given object, as a JsonQuoted object.
    */
-  
-  private def elemCount(obj:Any):Int = {
+
+  private def elemCount(obj: Any): Int = {
     obj match {
-      case array: Array[_] => array.map(elemCount(_)).foldLeft(0){ (acc,n) => acc + n}
-      case list: Seq[_] => list.map(elemCount(_)).foldLeft(0){ (acc,n) => acc + n}
-      case map: scala.collection.Map[_, _] => map.map(v=>elemCount(v._2)).foldLeft(0){ (acc,n) => acc + n}
+      case array: Array[_] => array.map(elemCount(_)).foldLeft(0) { (acc, n) => acc + n }
+      case list: Seq[_] => list.map(elemCount(_)).foldLeft(0) { (acc, n) => acc + n }
+      case map: scala.collection.Map[_, _] => map.map(v => elemCount(v._2)).foldLeft(0) { (acc, n) => acc + n }
       case x => 1
     }
   }
-  
+
   private val splitCount = 8
   //TODO make multiLine more efficient
-  private def multiLine(obj:Any):Boolean = elemCount(obj) > splitCount
-  private def space(cnt:Int):String = " " * cnt
-    
-  def pretty(obj: Any,incr:Int=2,indent:Int=0): JsonQuoted = {
+  private def multiLine(obj: Any): Boolean = elemCount(obj) > splitCount
+  private def space(cnt: Int): String = " " * cnt
+
+  def pretty(obj: Any, incr: Int = 2, indent: Int = 0): JsonQuoted = {
     val rv = space(indent) + (obj match {
       case JsonQuoted(body) => body
       case null => "null"
@@ -189,25 +232,29 @@ private[com] object Json {
       case x: Number => x.toString
       case array: Array[_] => {
         if (multiLine(array)) {
-          array.map(pretty(_,incr,indent+incr).body).mkString("[\n", ",\n", "\n" + space(indent) + "]")        
+          array.map(pretty(_, incr, indent + incr).body).mkString("[\n", ",\n", "\n" + space(indent) + "]")
         } else {
-          array.map(pretty(_,incr,0).body).mkString("[", ",", "]")        
+          array.map(pretty(_, incr, 0).body).mkString("[", ",", "]")
         }
       }
       case list: Seq[_] =>
         if (multiLine(list)) {
-          list.map(pretty(_,incr,indent+incr).body).mkString("[\n", ",\n", "\n" + space(indent) + "]")
+          list.map(pretty(_, incr, indent + incr).body).mkString("[\n", ",\n", "\n" + space(indent) + "]")
         } else {
-          list.map(pretty(_,incr,0).body).mkString("[", ",", "]")
+          list.map(pretty(_, incr, 0).body).mkString("[", ",", "]")
         }
       case map: scala.collection.Map[_, _] =>
         if (multiLine(map)) {
-          Sorting.stableSort[(Any, Any), String](map.iterator.toList, { case (k, v) => k.toString }).map { case (k, v) =>
-          space(indent+incr) + quote(k.toString) + ":" + 
-          (if (multiLine(v)) {"\n"+pretty(v,incr,indent+incr+incr).body}else{pretty(v,incr,0)})}.mkString("{\n", ",\n", "\n" + space(indent) + "}") 
+          Sorting.stableSort[(Any, Any), String](map.iterator.toList, { case (k, v) => k.toString }).map {
+            case (k, v) =>
+              space(indent + incr) + quote(k.toString) + ":" +
+                (if (multiLine(v)) { "\n" + pretty(v, incr, indent + incr + incr).body } else { pretty(v, incr, 0) })
+          }.mkString("{\n", ",\n", "\n" + space(indent) + "}")
         } else {
-          Sorting.stableSort[(Any, Any), String](map.iterator.toList, { case (k, v) => k.toString }).map { case (k, v) =>
-          quote(k.toString) + ":" + pretty(v,incr,0).body}.mkString("{", ",", "}") 
+          Sorting.stableSort[(Any, Any), String](map.iterator.toList, { case (k, v) => k.toString }).map {
+            case (k, v) =>
+              quote(k.toString) + ":" + pretty(v, incr, 0).body
+          }.mkString("{", ",", "}")
         }
       case x: JsonSerializable => x.toJson()
       case x =>
@@ -216,13 +263,11 @@ private[com] object Json {
     JsonQuoted(rv)
   }
 
-
   /**
    * Parses a JSON String representation into its native Scala reprsentation.
    */
   def parse(s: String): Any = (new JsonParser).parse(s)
 }
-
 
 /**
  * Wrapper for the JSON string representation of a data structure. This class exists to

@@ -93,7 +93,7 @@ class TimeTest extends FunSuite {
      """)
 
     println("Starting Server")
-    Server.start(serverConfig)
+    Server.start(serverConfig,true)
 
     val system = ActorSystem("ostoreclient", ConfigFactory.load.getConfig("client"))
     val client = new Client(system)
@@ -116,7 +116,7 @@ class TimeTest extends FunSuite {
     val t2 = System.currentTimeMillis()
     println("Total=" + (t2 - t1))
 
-    val monitor1 = database.monitor("tab1")
+    val monitor1 = database.monitor("genre")
     println("Monitor:" + Pretty(monitor1))
 
     client.stopDataBase(dbName)

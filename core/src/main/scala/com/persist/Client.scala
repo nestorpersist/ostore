@@ -62,7 +62,7 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: Int = 8011) 
   def createDatabase(databaseName: String, config: Json) {
     var p = new DefaultPromise[String]
     manager ! ("createDatabase", p, databaseName, config)
-    val v = Await.result(p, 60 seconds)
+    val v = Await.result(p, 5 minutes)
   }
 
   def deleteDatabase(databaseName: String) {

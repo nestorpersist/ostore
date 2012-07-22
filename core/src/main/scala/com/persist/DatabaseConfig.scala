@@ -33,7 +33,8 @@ private[persist] case class RingConfig(
   // serverName -> ServerConfig
   val nodes: Map[String, NodeConfig],
   // server names
-  val nodeSeq: List[String]) {
+  val nodeSeq: List[String],
+  val available: Boolean = true) {
 
   def nodePosition(nodeName: String): Int = {
     nodes(nodeName).pos
@@ -42,7 +43,7 @@ private[persist] case class RingConfig(
   def nextNodeName(nodeName: String): String = {
     val pos = nodes(nodeName).pos + 1
     if (pos > nodeSeq.size) {
-      println(nodeName + ":" + nodes(nodeName) +":"+ pos)
+      println(nodeName + ":" + nodes(nodeName) + ":" + pos)
     }
     val pos1 = if (pos == nodeSeq.size) 0 else pos
     nodeSeq(pos1)
@@ -133,7 +134,7 @@ private[persist] object DatabaseConfig {
       var ringSeq = List[String]()
       //var pos: Int = 0
       val nodes = jgetArray(ring, "nodes")
-      for ((node,pos) <- nodes.zipWithIndex) {
+      for ((node, pos) <- nodes.zipWithIndex) {
         val name = jgetString(node, "name")
         val host = jget(node, "host") match {
           case null => defaultHost
@@ -190,31 +191,33 @@ private[persist] class DatabaseConfig(
     val tables1 = tables + (tableName -> tableConfig)
     new DatabaseConfig(name, rings, tables1, servers)
   }
-  
+
   def deleteTable(tableName: String): DatabaseConfig = {
     val tables1 = tables - tableName
     new DatabaseConfig(name, rings, tables1, servers)
   }
-  
-  def addNode(ringName:String, nodeName: String, serverName:String):DatabaseConfig = {
+
+  def addNode(ringName: String, nodeName: String, host: String, port: Int): DatabaseConfig = {
+    val serverName = host + ":" + port
+    val servers1 = if (servers.contains(serverName)) servers else servers + (serverName -> ServerConfig(host, port))
     val ring = rings(ringName)
     val nodes = ring.nodes
     val nodeSeq = ring.nodeSeq
-    val nodeConfig = NodeConfig(ringName, nodeName, servers(serverName), nodeSeq.size)
+    val nodeConfig = NodeConfig(ringName, nodeName, servers1(serverName), nodeSeq.size)
     val nodes1 = nodes + (nodeName -> nodeConfig)
     val seq1 = (nodeName :: (nodeSeq.reverse)).reverse
     val ring1 = RingConfig(ring.name, nodes1, seq1)
     val rings1 = rings + (ringName -> ring1)
-    new DatabaseConfig(name,rings1,tables, servers)
+    new DatabaseConfig(name, rings1, tables, servers1)
   }
-  
-  def deleteNode(ringName:String, nodeName:String):DatabaseConfig = {
+
+  def deleteNode(ringName: String, nodeName: String): DatabaseConfig = {
     val ring = rings(ringName)
     val nodes = ring.nodes
     val nodeSeq = ring.nodeSeq
     val nodes0 = nodes - nodeName
     var nodes1 = nodes0
-    for (((nodeName1, nodeConfig),pos)<-nodes0.zipWithIndex) {
+    for (((nodeName1, nodeConfig), pos) <- nodes0.zipWithIndex) {
       if (nodeConfig.pos != pos) {
         val nodeConfig1 = NodeConfig(ringName, nodeName1, nodeConfig.server, pos)
         nodes1 += (nodeName1 -> nodeConfig1)
@@ -223,41 +226,76 @@ private[persist] class DatabaseConfig(
     val seq1 = nodeSeq.filterNot(_ == nodeName)
     val ring1 = RingConfig(ring.name, nodes1, seq1)
     val rings1 = rings + (ringName -> ring1)
-    new DatabaseConfig(name,rings1,tables, servers)
+    
+    var servers1 = Map[String,ServerConfig]()
+    for ((ringName,ringConfig)<- rings1) {
+      for ((nodeName, nodeConfig) <- ringConfig.nodes) {
+        servers1 += (nodeConfig.server.name-> nodeConfig.server)
+      }
+    }
+    new DatabaseConfig(name, rings1, tables, servers1)
+  }
+
+  def addRing(ringName: String, nodesArray: JsonArray):DatabaseConfig = {
+    var servers1 = servers
+    var nodes1 = Map[String,NodeConfig]()
+    var nodeSeq1 = List[String]()
+    for ((node,pos) <- nodesArray.zipWithIndex) {
+      val nodeName = jgetString(node, "name")
+      val host = jgetString(node, "host")
+      val port = jgetInt(node, "port")
+      val serverName = host + ":" + port
+      nodeSeq1 = nodeName +: nodeSeq1
+      if (!servers1.contains(serverName)) {
+        servers1 += (serverName -> ServerConfig(host, port))
+      nodes1 += nodeName -> NodeConfig(ringName, nodeName, servers1(serverName), pos) 
+      }
+    }
+    val ringConfig = RingConfig(ringName, nodes1, nodeSeq1.reverse, false)
+    val rings1 = rings + (ringName -> ringConfig)
+    new DatabaseConfig(name, rings1, tables, servers1)
+  }
+
+  def enableRing(ringName: String) {
+    val rc = rings(ringName)
+    val rings1 = rings + (ringName -> RingConfig(ringName, rc.nodes, rc.nodeSeq))
+    new DatabaseConfig(name, rings1, tables, servers)
   }
 
   def toJson: Json = {
     var jtables = JsonArray()
-    for ((tableName,tableConfig)<-tables) {
-      var jtable = JsonObject(("name"->tableName))
+    for ((tableName, tableConfig) <- tables) {
+      var jtable = JsonObject(("name" -> tableName))
       var jmap = JsonArray()
-      for ((from,jm)<-tableConfig.toMap) {
+      for ((from, jm) <- tableConfig.toMap) {
         jmap = jm +: jmap
       }
       if (jsize(jmap) == 1) {
-        jtable = jtable + ("map"->jget(jmap,0))
+        jtable = jtable + ("map" -> jget(jmap, 0))
       } else if (jsize(jmap) > 1) {
-        jtable = jtable + ("map"->jmap.reverse)
+        jtable = jtable + ("map" -> jmap.reverse)
       }
       var jreduce = JsonArray()
-      for ((from,jr)<-tableConfig.toReduce) {
+      for ((from, jr) <- tableConfig.toReduce) {
         jreduce = jr +: jreduce
       }
       if (jsize(jreduce) == 1) {
-        jtable = jtable + ("reduce"->jget(jreduce,0))
+        jtable = jtable + ("reduce" -> jget(jreduce, 0))
       } else if (jsize(jreduce) > 1) {
-        jtable = jtable + ("reduce"->jreduce.reverse)
+        jtable = jtable + ("reduce" -> jreduce.reverse)
       }
       jtables = jtable +: jtables
     }
     var jrings = JsonArray()
-    for ((ringName,ringConfig)<-rings) {
-      var jnodes = JsonArray()
-      for ((nodeName,nodeConfig)<-ringConfig.nodes) {
-        jnodes = JsonObject(("name"->nodeName),("host"->nodeConfig.server.host),("port"->nodeConfig.server.port)) +: jnodes
+    for ((ringName, ringConfig) <- rings) {
+      if (ringConfig.available) {
+        var jnodes = JsonArray()
+        for ((nodeName, nodeConfig) <- ringConfig.nodes) {
+          jnodes = JsonObject(("name" -> nodeName), ("host" -> nodeConfig.server.host), ("port" -> nodeConfig.server.port)) +: jnodes
+        }
+        jrings = JsonObject("name" -> ringName, "nodes" -> jnodes.reverse) +: jrings
       }
-      jrings = JsonObject("name"->ringName,"nodes"->jnodes.reverse) +: jrings
     }
-    JsonObject(("tables"->jtables.reverse),("rings"->jrings.reverse))
+    JsonObject(("tables" -> jtables.reverse), ("rings" -> jrings.reverse))
   }
 }

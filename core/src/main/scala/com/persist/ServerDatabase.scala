@@ -128,6 +128,9 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
         }
       }
       this.config = config
+      sender ! Codes.Ok
+    }
+    case ("isEmpty") => {
       sender ! (Codes.Ok, rings.size == 0)
     }
     case ("getLowHigh", ringName: String, nodeName: String, tableName: String) => {

@@ -33,6 +33,7 @@ import akka.remote.RemoteLifeCycleEvent
 import scala.collection.immutable.TreeMap
 import java.io.File
 import scala.io.Source
+import akka.event.Logging
 
 // Server Actor Paths
 //       /user/@server
@@ -128,6 +129,8 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
   private def doLock(databaseName: String, request: Json): (String, String) = {
     val getInfo = jgetBoolean(request, "getinfo")
     val tableName = jgetString(request, "table")
+    val ringName = jgetString(request, "ring")
+    val nodeName = jgetString(request, "node")
     databases.get(databaseName) match {
       case Some(info) => {
         val result = if (getInfo) {
@@ -141,6 +144,23 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
               case Some(tinfo) => {}
               case None => {
                 result += ("tableAbsent" -> true)
+              }
+            }
+          }
+          if (ringName != "") {
+            info.config.rings.get(ringName) match {
+              case Some(tinfo) => {
+                if (nodeName != "") {
+                  tinfo.nodes.get(nodeName) match {
+                    case Some(ninfo) =>
+                    case None => {
+                      result += ("nodeAbsent" -> true)
+                    }
+                  }
+                }
+              }
+              case None => {
+                result += ("ringAbsent" -> true)
               }
             }
           }
@@ -293,7 +313,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
       databases.get(databaseName) match {
         case Some(info) => {
           // TODO check node name not already used
-          info.config = info.config.addNode(ringName, nodeName, serverName)
+          info.config = info.config.addNode(ringName, nodeName, host, port)
           storeTable.putMeta(databaseName, Compact(info.config.toJson))
           val database = info.dbRef
           val f = database ? ("addNode", ringName, nodeName, info.config)
@@ -316,6 +336,23 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           storeTable.putMeta(databaseName, Compact(info.config.toJson))
           val database = info.dbRef
           val f = database ? ("deleteNode", ringName, nodeName, info.config)
+          //val (code:String,empty:Boolean) = 
+            Await.result(f, 5 seconds)
+            /*
+          */
+          sender ! (Codes.Ok, "")
+          println("Delete node " + ringName +"/" + nodeName)
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }      
+    }
+    case ("removeEmptyDatabase", databaseName:String, rs:String) => {
+      databases.get(databaseName) match {
+        case Some(info) => {
+          val database = info.dbRef
+          val f = database ? ("isEmpty")
           val (code:String,empty:Boolean) = Await.result(f, 5 seconds)
           if (empty) {
               val stopped = gracefulStop(database, 5 seconds)(system)
@@ -324,12 +361,11 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
               println("Database deleted " + databaseName)
           }
           sender ! (Codes.Ok, "")
-          println("Delete node " + ringName +"/" + nodeName)
         }
         case None => {
           sender ! (Codes.Exist, "database:" + databaseName)
         }
-      }      
+      }
     }
     case ("getLowHigh", databaseName: String, rs: String) => {
       databases.get(databaseName) match {

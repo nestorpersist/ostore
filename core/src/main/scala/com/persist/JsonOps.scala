@@ -20,6 +20,7 @@ package com.persist
 import scala.collection.immutable.HashMap
 import com.twitter.json.Json.parse
 import com.twitter.json.Json.build
+import com.twitter.json.Json.compact
 import com.twitter.json.Json.pretty
 import java.net.URLEncoder
 import java.net.URLDecoder
@@ -117,7 +118,8 @@ object JsonOps {
    * A Json parser.
    */
   def Json(s: String): Json = {
-    parse(s)
+    //parse(s)
+    com.persist.JsonParse.parse(s)
   }
 
   /**
@@ -126,7 +128,8 @@ object JsonOps {
    *
    */
   def Compact(j: Json): String = {
-    build(j).toString()
+    //build(j).toString()
+    compact(j)
   }
 
   /**

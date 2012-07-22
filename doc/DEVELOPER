@@ -44,7 +44,8 @@ TODO
 	recover
 
 4. Performance
-	test multiserver
+	test multiserver (use multiple ports on single server!)
+	jmx
 
 5. Misc
 
@@ -57,11 +58,16 @@ TODO
 		refactor
 		path data structure
 		more info on tables
+		add remove table(s), node(s), ring(s)
         Bulk load - ui and api
 	w=n r=n
-	SBT compound project, deal with common code
+	SBT
+           compound project, deal with common code
+	   package
 	Conflict resolution
 	All syncTable no wait
 	MR reflection, first n, last n
 	Timeouts
+	Antientropy
+	Load based scheduling
 

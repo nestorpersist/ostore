@@ -87,22 +87,6 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     val v = Await.result(p, 5 seconds)
     v
   }
-
-  /*
-  // TODO remove
-  def addTable(tableName: String) {
-    var p = new DefaultPromise[String]
-    manager ? ("addTable", p, databaseName, tableName)
-    val v = Await.result(p, 5 seconds)
-  }
-
-  // TODO remove
-  def deleteTable(tableName: String) {
-    var p = new DefaultPromise[String]
-    manager ? ("deleteTable", p, databaseName, tableName)
-    val v = Await.result(p, 5 seconds)
-  }
-  */
   
   def addTables(config: Json) {
     var p = new DefaultPromise[String]

@@ -57,7 +57,9 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
 
   def setTimer {
     if (events.size > 0) {
-      val when = events.keySet.firstKey
+      // Performance issue
+      //val when = events.keySet.firstKey
+      val when = events.firstKey
       val now: Long = System.currentTimeMillis
       if (timer != null) {
         if (when == timerWhen) return // use previously scheduled timer
