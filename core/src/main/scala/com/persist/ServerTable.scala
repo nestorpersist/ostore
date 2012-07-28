@@ -23,8 +23,8 @@ import akka.dispatch.ExecutionContext
 import akka.util.Timeout
 import akka.util.duration._
 
-private[persist] trait ServerTableAssembly extends ServerMapReduceComponent with ServerSyncComponent
-  with ServerBalanceComponent with ServerOpsComponent with ServerTableInfoComponent
+private[persist] trait ServerTableAssembly extends ServerTableMapReduceComponent with ServerTableSyncComponent
+  with ServerTableBalanceComponent with ServerTableOpsComponent with ServerTableInfoComponent with ServerTableBackgroundComponent
 
 private[persist] class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
   store: AbstractStore, monitor: ActorRef, send: ActorRef, initialConfig: DatabaseConfig) extends CheckedActor {
@@ -32,10 +32,11 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
   object all extends ServerTableAssembly {
     val info = new ServerTableInfo(databaseName, ringName, nodeName, tableName,
       initialConfig, send, store, monitor)
-    val ops = new ServerOps(context.system)
-    val mr = new ServerMapReduce
-    val sync = new ServerSync
-    val bal = new ServerBalance(context.system)
+    val ops = new ServerTableOps(context.system)
+    val mr = new ServerTableMapReduce
+    val sync = new ServerTableSync
+    val bal = new ServerTableBalance(context.system)
+    val back = new ServerTableBackground
   }
 
   val info = all.info
@@ -43,6 +44,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
   val mr = all.mr
   val bal = all.bal
   val sync = all.sync
+  val back = all.back
 
   private val system = context.system
   lazy implicit private val ec = ExecutionContext.defaultExecutionContext(system)
@@ -133,7 +135,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
             case ("prev", v: String) => ops.prev(kind, key, v)
             case ("prev-", v: String) => ops.prev(kind, key, v)
             case (badKind: String, v: String) => {
-              println("table unrecognized command:" + badKind)
+              log.error("table unrecognized command:" + badKind)
               (Codes.BadRequest, badKind)
             }
           }
@@ -155,6 +157,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
           bal.canSend = true
           bal.canReport = true
         }
+        // TODO only accept user messages if not building node!
         ops.acceptUserMessages = true
         sender ! Codes.Ok
       }
@@ -163,7 +166,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
         bal.canSend = false
         // TODO wait for no in transit
         if (info.high != bal.nextLow) {
-          println("Shutdown error /" +
+          log.error("Shutdown error /" +
             databaseName + "/" + ringName + "/" + nodeName + "/" + tableName + " (" + info.high + "," + bal.nextLow + ")")
         }
         // TODO wait for no pending in send
@@ -189,8 +192,10 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
       }
       case ("startBalance") => {
         if (!bal.singleNode) {
+          bal.setPrevNext()
           bal.canSend = true
           bal.canReport = true
+          // TODO accept user only when not building node
           ops.acceptUserMessages = true
         }
         sender ! Codes.Ok
@@ -213,15 +218,17 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
         bal.nextLow = high
         sender ! Codes.Ok
       }
-      //case ("fromPrev", uid:Long, key: String, meta: String, value: String) => {
-      //bal.fromPrev(uid, key, meta, value)
-      //}
+      case ("addRing" , ringName1: String, fromRingName:String, config:DatabaseConfig) => {
+        info.config = config
+        if (fromRingName == ringName) {
+          back.ringCopyTask(ringName1)
+        }
+        sender ! Codes.Ok
+      }
+        
       case ("fromPrev", request: String) => {
         bal.fromPrev(request)
       }
-      //case ("fromNext", count: Long, low: String) => {
-      //bal.fromNext(count, low)
-      //}
       case ("fromNext", response: String) => {
         bal.fromNext(response)
       }
@@ -232,6 +239,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
       }
       case (kind: String, uid: Long, key: String, value: Any) => {
         //val sender1 = sender  // must preserve sender for futures
+        back.qcnt += 1
         try {
           val (code, result) = kind match {
             case "report" => report()
@@ -269,8 +277,11 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
           }
         }
       }
+      case ("token", t:Long) => {
+        back.token(t)
+      }
       case other => {
-        println("Bad table command form:" + cmd)
+        log.error("Bad table command form:" + cmd)
       }
     }
   }
@@ -278,8 +289,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
   def rec = {
     case cmd => {
       doCommand(cmd)
-      if (bal.canSend) bal.sendToNext
-      if (bal.canReport) bal.reportToPrev
+      back.act(self)
       monitor ! ("report", tableName, bal.cntToNext, bal.cntFromPrev, sync.cntSync, ops.cntMsg, info.storeTable.size())
     }
   }

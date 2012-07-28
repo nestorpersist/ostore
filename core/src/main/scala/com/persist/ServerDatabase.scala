@@ -130,6 +130,27 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       this.config = config
       sender ! Codes.Ok
     }
+    case ("addRing", ringName:String, nodes:JsonArray, fromRingName:String, config: DatabaseConfig) => {
+      this.config = config
+      var add = false
+      for (node <- nodes) {
+        val host = jgetString(node, "host")
+        val port = jgetInt(node, "port")
+        val sname = host + ":" + port
+        if (sname == serverName) add = true
+      }
+      if (add) {
+        newRing(ringName)
+      }
+      val f0 = send ? ("addRing", ringName, nodes)
+      Await.result(f0, 5 seconds)
+      for ((ringName1, ringInfo) <- rings) {
+        val f = ringInfo.ring ? ("addRing", ringName, nodes, fromRingName, config)
+        Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+    }
+
     case ("isEmpty") => {
       sender ! (Codes.Ok, rings.size == 0)
     }

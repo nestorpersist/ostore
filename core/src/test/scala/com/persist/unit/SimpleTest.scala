@@ -99,14 +99,12 @@ class SimpleTest extends FunSuite {
   }
 
   test("test with in-memory store") {
-    /*
     val serverConfig = Json("""
     {
      "host":"127.0.0.1", "port":8011
     }
     """)
     shared(serverConfig)
-    */
   }
 
 }

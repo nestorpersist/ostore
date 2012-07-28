@@ -26,9 +26,9 @@ import akka.util.Timeout
 import akka.util.duration._
 import akka.actor.ActorSystem
 
-private[persist] trait ServerOpsComponent { this: ServerTableAssembly =>
-  val ops: ServerOps
-  class ServerOps(system: ActorSystem) {
+private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
+  val ops: ServerTableOps
+  class ServerTableOps(system: ActorSystem) {
 
     lazy implicit private val ec = ExecutionContext.defaultExecutionContext(system)
     implicit private val timeout = Timeout(5 seconds)
@@ -150,7 +150,7 @@ private[persist] trait ServerOpsComponent { this: ServerTableAssembly =>
       val newMeta = JsonObject("c" -> cv)
       val newMetaS = Compact(newMeta)
       info.storeTable.putBothF1(key, newMetaS, value, fast)
-      if (sync.hasSync) sync.msgOut(key, oldMetaS, oldvS, newMetaS, value)
+      if (sync.hasSync) sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
       if (mr.hasMap) mr.mapOut(key, oldMetaS, oldvS, newMetaS, value)
       if (mr.hasReduce) mr.reduceOut(key, oldMetaS, oldvS, newMetaS, value)
       (Codes.Ok, "null")
@@ -193,7 +193,7 @@ private[persist] trait ServerOpsComponent { this: ServerTableAssembly =>
       val newMetaS = Compact(newMeta)
       // if fast, commit will run in background
       info.storeTable.putBothF1(key, newMetaS, value, fast)
-      sync.msgOut(key, oldMetaS, oldvS, newMetaS, value)
+      sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
       mr.doMR(key, oldMetaS, oldvS, newMetaS, value)
       (Codes.Ok, "null")
     }

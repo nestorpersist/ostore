@@ -21,18 +21,16 @@ import akka.actor.Actor
 import akka.actor.ActorRef
 import JsonOps._
 
-private[persist] trait ServerSyncComponent { this: ServerTableAssembly =>
-  val sync: ServerSync
-  class ServerSync {
+private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
+  val sync: ServerTableSync
+  class ServerTableSync {
     val hasSync = info.config.rings.size > 1
-    //lazy val hasSync = info.map.allRingsSize > 1
     var cntSync: Long = 0
 
-    def msgOut(key: String, oldMeta: String, oldValue: String, meta: String, value: String) {
+    def toRings(key: String, oldMeta: String, oldValue: String, meta: String, value: String) {
       // send to other rings
       val vals = (oldMeta, oldValue, meta, value)
       for ((name,config) <- info.config.rings) {
-      //for (rn <- info.map.allRings) {
         if (name != info.ringName) {
           val dest = Map("ring" -> name)
           val ret = "" // TODO will eventually hook this up
@@ -41,6 +39,13 @@ private[persist] trait ServerSyncComponent { this: ServerTableAssembly =>
       }
     }
 
+    def toRing(ringName:String, key:String, meta:String, value:String) {
+      val dest = Map("ring" -> ringName)
+      val vals = (info.absentMetaS, "null", meta, value)
+      val ret = "" // TODO will eventually hook this up
+      info.send ! ("sync", dest, ret, info.tableName, key, vals)
+    }
+    
     def reconcile(value1: Json, value2: Json): Json = {
       if (Compact(value1) == Compact(value2)) {
         value1
@@ -82,7 +87,7 @@ private[persist] trait ServerSyncComponent { this: ServerTableAssembly =>
           val Some(value2) = info.storeTable.get(key)
           val value = reconcile(Json(v), Json(value2))
           info.storeTable.putBoth(key, Compact(cv), Compact(value))
-          msgOut(key, oldMetaS, value2, Compact(cv), Compact(value))
+          toRings(key, oldMetaS, value2, Compact(cv), Compact(value))
           mr.doMR(key, oldMetaS, value2, Compact(cv), Compact(value))
         }
       }

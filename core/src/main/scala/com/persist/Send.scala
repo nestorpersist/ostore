@@ -235,6 +235,11 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
       }
       setTimer
     }
+    case ("addRing", ringName:String, nodes:JsonArray) => {
+      databaseMap.addRing(ringName, nodes)
+      sender ! Codes.Ok
+    }
+
   }
 
 }

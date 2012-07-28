@@ -49,7 +49,7 @@ private[persist] class QParse extends JavaTokenParsers {
   }
 
   def q: Parser[JsonObject] =
-    repsep(item, ",") ^^ { x => x.foldLeft(JsonObject())((a: JsonObject, b: JsonObject) => a ++ b) }
+    repsep(item, "&") ^^ { x => x.foldLeft(JsonObject())((a: JsonObject, b: JsonObject) => a ++ b) }
 
   def item: Parser[JsonObject] = (
     name ~ "=" ~ value ^^

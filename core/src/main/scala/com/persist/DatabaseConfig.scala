@@ -248,8 +248,8 @@ private[persist] class DatabaseConfig(
       nodeSeq1 = nodeName +: nodeSeq1
       if (!servers1.contains(serverName)) {
         servers1 += (serverName -> ServerConfig(host, port))
-      nodes1 += nodeName -> NodeConfig(ringName, nodeName, servers1(serverName), pos) 
       }
+      nodes1 += nodeName -> NodeConfig(ringName, nodeName, servers1(serverName), pos) 
     }
     val ringConfig = RingConfig(ringName, nodes1, nodeSeq1.reverse, false)
     val rings1 = rings + (ringName -> ringConfig)
@@ -288,7 +288,7 @@ private[persist] class DatabaseConfig(
     }
     var jrings = JsonArray()
     for ((ringName, ringConfig) <- rings) {
-      if (ringConfig.available) {
+      if (true || ringConfig.available) {
         var jnodes = JsonArray()
         for ((nodeName, nodeConfig) <- ringConfig.nodes) {
           jnodes = JsonObject(("name" -> nodeName), ("host" -> nodeConfig.server.host), ("port" -> nodeConfig.server.port)) +: jnodes

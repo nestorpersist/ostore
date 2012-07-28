@@ -66,6 +66,13 @@ class ChangeTest extends FunSuite {
        "nodes":[ {"name":"n1", "host":"127.0.0.1", "port":8011} ] } ]
      }
      """)
+    val ringConfig = Json("""
+    {
+     "rings":[ {"name":"r2",
+       "nodes":[ {"name":"n20", "host":"127.0.0.1", "port":8011},
+                 {"name":"n21", "host":"127.0.0.1", "port":8011}] } ]
+    }
+    """)
 
     println("Starting Server")
     Server.start(serverConfig, true)
@@ -111,6 +118,10 @@ class ChangeTest extends FunSuite {
     database.addNodes(nodeConfig3)
     Thread.sleep(1000)
     check("add n3")
+    
+    database.addRings(ringConfig)
+    Thread.sleep(1000)
+    check("add r2")
 
     database.deleteNodes(nodeConfig1)
     Thread.sleep(1000)

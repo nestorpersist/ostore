@@ -48,6 +48,7 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
   private val system = context.system
 
   def newTable(tableName: String) {
+    println("newTable:"+tableName)
     val table = context.actorOf(
       Props(new ServerTable(databaseName, ringName, nodeName, tableName,
         store, monitor, send, config)), name = tableName)
@@ -56,7 +57,6 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
     tables += (tableName -> new TableInfo(tableName, table))
   }
 
-  // TODO do in parallel
   for ((tableName,tableConfig)<- config.tables) {
     newTable(tableName)
   }
@@ -176,5 +176,14 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       }
       sender ! Codes.Ok
     }
+    case ("addRing", ringName:String, fromRingName:String, config:DatabaseConfig) => {
+      this.config = config
+      for ((tableName1, tableInfo) <- tables) {
+        val f = tableInfo.table ? ("addRing", ringName, fromRingName, config)
+        Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+    }
+
   }
 }

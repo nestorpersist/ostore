@@ -22,6 +22,7 @@ import akka.actor.ActorSystem
 import scala.collection.immutable.TreeMap
 import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
+import com.persist.JsonOps._
 
 private[persist] case class RingMap(
     var tables: HashMap[String, TableMap],
@@ -88,11 +89,11 @@ private[persist] object DatabaseMap {
       var nodeSeq = ringConfig.nodeSeq
       for ((nodeName,nodeConfig) <- ringConfig.nodes) {
         val nodeMap = NodeMap(databaseName, ringName, nodeName, nodeConfig.pos, 
-            nodeConfig.server.host: String, nodeConfig.server.port: Int)
+            nodeConfig.server.host, nodeConfig.server.port)
         nodes += (nodeName -> nodeMap)
       }
       var tables = HashMap[String, TableMap]()
-      rings += (ringName -> RingMap(tables,nodes,nodeSeq))
+      rings += (ringName -> RingMap(tables,nodes,nodeSeq.reverse))
     }
     val map = new DatabaseMap(databaseName, rings)
     for ((tableName, tableConfig) <- config.tables) {
@@ -105,7 +106,7 @@ private[persist] object DatabaseMap {
 /* DatabaseMap contains mutable data and should be used by only
  * a single thread (typically actor Send)
  */
-private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[String, RingMap]) {
+private[persist] class DatabaseMap(val databaseName: String, var rings: HashMap[String, RingMap]) {
   
   def addTable(tableName:String)  {
     for ((ringName, ringMap) <- rings) {
@@ -309,7 +310,34 @@ private[persist] class DatabaseMap(val databaseName: String, val rings: HashMap[
       }
       ring.nodeSeq = nodeSeq.reverse
     }
-
+  }
+  
+  def addRing(ringName:String, nodes1:JsonArray) {
+    val (firstRingName,firstRingMap) = rings.head
+    var nodes = Map[String, NodeMap]()
+    var nodeSeq = List[String]()
+    var tables = HashMap[String, TableMap]()
+    for ((node,pos) <- nodes1.zipWithIndex) {
+      val nodeName = jgetString(node, "name")
+      val host = jgetString(node, "host")
+      val port = jgetInt(node, "port")
+      val serverName = host + ":" + port
+      val nodeMap = NodeMap(databaseName, ringName, nodeName, pos, 
+           host, port)
+      nodes += (nodeName -> nodeMap) 
+      var tableNodes = HashMap[String, TableNodeMap]()
+      for ((tableName,tableInfo) <- firstRingMap.tables) {
+        tableNodes += (tableName -> TableNodeMap(tableName,nodeMap))
+      }
+      tables += (nodeName -> TableMap(tableNodes))
+      nodeSeq = nodeName +: nodeSeq
+    }
+    val ringMap = RingMap(tables, nodes, nodeSeq.reverse)
+    rings += (ringName -> ringMap)
+  }
+  
+  def deleteRing(ringName:String) {
+    rings -= ringName
   }
   
 }

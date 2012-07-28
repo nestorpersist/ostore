@@ -28,20 +28,26 @@ TODO
 
 1. basic system
 	balance with prefix
-	can't add or delete map tables (report nyi)
 	fast passed via sync
-	get port from config
-	send: timeout, retry, w=n, r=n, 2 nodes, for manager
+	* get port from config
+	* send: timeout, retry, w=n, r=n, 2 nodes, for manager
 	remove unneeded imports and sort
+	Conflict resolution
+	All syncTable no wait
+	MR reflection, first n, last n
+	w=n r=n
 
 2. change
-	add/delete ring
+	** add/delete ring
 
 3. error 
-	checks, exceptions for table api
+	can't add or delete map tables (report nyi)
+	** checks, exceptions for table api
 	logging
         detect failure
-	recover
+	replaceNode (report NYI)
+	deal with accumulated messages when can't send
+	client error detection (use different ring)
 
 4. Performance
 	test multiserver (use multiple ports on single server!)
@@ -52,7 +58,7 @@ TODO
 	Doc
 		Wiki - rest, config, terminology and overview, + map-reduce,
 			pull to local machine
-		Scaladoc - client server (on github)
+		** Scaladoc - client server (on github)
         UI
 		first, last, find, refresh paged data
 		refactor
@@ -60,13 +66,9 @@ TODO
 		more info on tables
 		add remove table(s), node(s), ring(s)
         Bulk load - ui and api
-	w=n r=n
 	SBT
            compound project, deal with common code
 	   package
-	Conflict resolution
-	All syncTable no wait
-	MR reflection, first n, last n
 	Timeouts
 	Antientropy
 	Load based scheduling

@@ -35,7 +35,8 @@ private[persist] class ServerRing(databaseName: String, ringName: String, send: 
   var nodes = TreeMap[String, NodeInfo]()
   implicit val timeout = Timeout(5 seconds)
 
-  def newNode(ringName: String, nodeName: String) {
+  def newNode(nodeName: String) {
+    println("NewNode:"+ringName+"/"+nodeName)
     val node = context.actorOf(Props(new ServerNode(databaseName, ringName, nodeName, send, config, serverConfig, create)), name = nodeName)
     val f = node ? ("start1")
     Await.result(f, 5 seconds)
@@ -43,11 +44,12 @@ private[persist] class ServerRing(databaseName: String, ringName: String, send: 
     nodes += (nodeName -> info)
   }
 
-  // TODO do in parallel
-  for ((ringName, ringConfig) <- config.rings) {
-    for ((nodeName, nodeConfig) <- ringConfig.nodes) {
-      if (nodeConfig.server.name == serverName) {
-        newNode(ringName, nodeName)
+  for ((ringName1, ringConfig) <- config.rings) {
+    if (ringName1 == ringName) {
+      for ((nodeName, nodeConfig) <- ringConfig.nodes) {
+        if (nodeConfig.server.name == serverName) {
+          newNode(nodeName)
+        }
       }
     }
   }
@@ -106,7 +108,7 @@ private[persist] class ServerRing(databaseName: String, ringName: String, send: 
     case ("addNode", nodeName: String, config: DatabaseConfig) => {
       this.config = config
       if (ringName == this.ringName) {
-        newNode(ringName, nodeName)
+        newNode(nodeName)
       }
       for ((nodeName, nodeInfo) <- nodes) {
         val f = nodeInfo.node ? ("setConfig", config)
@@ -116,18 +118,29 @@ private[persist] class ServerRing(databaseName: String, ringName: String, send: 
     }
     case ("deleteNode", nodeName: String, config: DatabaseConfig) => {
       this.config = config
-      val node = nodes(nodeName).node
-      val f = node ? ("deleteNode")
-      Await.result(f, 5 seconds)
-      val stopped = gracefulStop(node, 5 seconds)(system)
-      Await.result(stopped, 5 seconds)
-      nodes -= nodeName
+      if (nodeName != "") {
+        val node = nodes(nodeName).node
+        val f = node ? ("deleteNode")
+        Await.result(f, 5 seconds)
+        val stopped = gracefulStop(node, 5 seconds)(system)
+        Await.result(stopped, 5 seconds)
+        nodes -= nodeName
+      }
       for ((nodeName, nodeInfo) <- nodes) {
         val f = nodeInfo.node ? ("setConfig", config)
         val v = Await.result(f, 5 seconds)
       }
       sender ! (Codes.Ok, nodes.size == 0)
     }
+    case ("addRing", ringName1: String, nodes1: JsonArray, fromRingName: String, config: DatabaseConfig) => {
+      this.config = config
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("addRing", ringName1, fromRingName, config)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+    }
+
     case ("getLowHigh", nodeName: String, tableName: String) => {
       val nodeInfo = nodes(nodeName)
       val f = nodeInfo.node ? ("getLowHigh", tableName)

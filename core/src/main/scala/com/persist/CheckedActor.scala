@@ -27,16 +27,13 @@ private[persist] abstract class CheckedActor extends Actor with akka.actor.Actor
         val body1: PartialFunction[Any, Unit] = rec.orElse {
           case x: Any => { 
             val s = "Unmatched message " + x.toString() + " : " + self.toString()
-            println(s)
             log.error(s)
-            }
+          }
         }
         body1(msg)
       } catch {
         case ex: Exception => {
           val s = "Unhandled exception in %s while processing %s".format(self.toString(), msg.toString())
-          println(s)
-          ex.printStackTrace()
           log.error(ex, s)
         }
       }

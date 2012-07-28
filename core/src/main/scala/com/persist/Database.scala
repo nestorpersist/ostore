@@ -34,7 +34,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
 
   def allTables: Iterable[String] = {
     var p = new DefaultPromise[Iterable[String]]
-    manager ? ("allTables", p, databaseName)
+    manager ! ("allTables", p, databaseName)
     val v = Await.result(p, 5 seconds)
     v
   }
@@ -48,7 +48,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
 
   def allRings: Iterable[String] = {
     var p = new DefaultPromise[Iterable[String]]
-    manager ? ("allRings", p, databaseName)
+    manager ! ("allRings", p, databaseName)
     val v = Await.result(p, 5 seconds)
     v
   }
@@ -62,7 +62,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
 
   def allNodes(ringName: String): Iterable[String] = {
     var p = new DefaultPromise[Iterable[String]]
-    manager ? ("allNodes", p, databaseName, ringName)
+    manager ! ("allNodes", p, databaseName, ringName)
     val v = Await.result(p, 5 seconds)
     v
   }
@@ -76,7 +76,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
 
   def allServers: Iterable[String] = {
     var p = new DefaultPromise[Iterable[String]]
-    manager ? ("allServers", p, databaseName)
+    manager ! ("allServers", p, databaseName)
     val v = Await.result(p, 5 seconds)
     v
   }
@@ -90,39 +90,43 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
   
   def addTables(config: Json) {
     var p = new DefaultPromise[String]
-    manager ? ("addTables", p, databaseName, config)
+    manager ! ("addTables", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
   }
 
   def deleteTables(config: Json) {
     var p = new DefaultPromise[String]
-    manager ? ("deleteTables", p, databaseName, config)
+    manager ! ("deleteTables", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
   }
  
   def addNodes(config: Json) {
     var p = new DefaultPromise[String]
-    manager ? ("addNodes", p, databaseName, config)
+    manager ! ("addNodes", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
   }
   
   def deleteNodes(config: Json) {
     var p = new DefaultPromise[String]
-    manager ? ("deleteNodes", p, databaseName, config)
+    manager ! ("deleteNodes", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
   }
   
     
   def addRings(config: Json) {
     var p = new DefaultPromise[String]
-    manager ? ("addRings", p, databaseName, config)
+    manager ! ("addRings", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
   }
   
   def deleteRings(config: Json) {
     var p = new DefaultPromise[String]
-    manager ? ("deleteRings", p, databaseName, config)
+    manager ! ("deleteRings", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
+  }
+  
+  def replaceNode(config: Json) {
+    println("replaceNode NYI")
   }
 
   /**

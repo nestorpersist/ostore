@@ -460,8 +460,6 @@ class Manager(host: String, port: Int) extends CheckedActor {
         // Start it all up
         if (creatingNewServer) {
           dba.pass("startDatabase2", request, newServers)
-          //val f = newServer ? ("startDatabase2", databaseName, Compact(request))
-          //Await.result(f, 5 seconds)
         }
         dba.pass("startBalance")
       }
@@ -508,8 +506,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
         val config = DatabaseConfig(databaseName, jconfig)
         val (fromRingName,fromRingConfig) = config.rings.head
         val newRequest = JsonObject("config" -> jconfig)
-        dba.pass("newDatabase", newRequest, newServers)
-        // ??? start
+        dba.pass("newDatabase", newRequest, servers = newServers)
 
         dba.pass("stopBalance")
         dba.wait("busyBalance")
@@ -517,9 +514,9 @@ class Manager(host: String, port: Int) extends CheckedActor {
         // start all new nodes (with new config) state = building
         // set up copy acts and modify config (! available on new ring)
         val addRequest = JsonObject("ring" -> ringName, "from"-> fromRingName, "nodes"->nodes)
-        dba.pass("addRing",addRequest, allServers)
+        dba.pass("addRing",addRequest, servers = allServers)
         
-        dba.pass("startBalance")
+        dba.pass("startBalance", servers = allServers)
         // wait copy complete
         // set state to available (old and new servers)
       }

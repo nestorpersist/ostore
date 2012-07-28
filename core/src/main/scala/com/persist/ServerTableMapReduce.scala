@@ -22,9 +22,9 @@ import akka.actor.ActorRef
 import MapReduce._
 import scala.collection.immutable.HashMap
 
-private[persist] trait ServerMapReduceComponent { this: ServerTableAssembly =>
-  val mr: ServerMapReduce
-  class ServerMapReduce {
+private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly =>
+  val mr: ServerTableMapReduce
+  class ServerTableMapReduce {
 
     case class MapInfo(val to: String, val map: MapAll)
     case class ReduceInfo(val to: String, val reduce: Reduce, val reduceStore: StoreTable)

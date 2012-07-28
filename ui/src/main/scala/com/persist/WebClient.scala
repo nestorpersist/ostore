@@ -150,15 +150,15 @@ class WebClient() {
   }
 
   def getItems(databaseName: String, tableName: String, count:Int): Json = {
-    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName + "?get=kv,count=" + count) ).mkString 
+    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName + "?get=kv&count=" + count) ).mkString 
     Json(info)
   }
 
   def getParent(databaseName: String, tableName: String, parent: JsonKey, count:Int, lowKey:Json, highKey:Json): (Boolean, Json) = {
-    val low = if (lowKey == null) { "" } else { ",low=" + keyUriEncode(lowKey) }
-    val high = if (highKey == null) { "" } else { ",high=" + keyUriEncode(highKey) + ",reverse" }
+    val low = if (lowKey == null) { "" } else { "&low=" + keyUriEncode(lowKey) }
+    val high = if (highKey == null) { "" } else { "&high=" + keyUriEncode(highKey) + "&reverse" }
     val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName +
-      "?parent=" + keyUriEncode(parent) + ",count=" + (count + 1) + low + high)).mkString
+      "?parent=" + keyUriEncode(parent) + "&count=" + (count + 1) + low + high)).mkString
     val list = jgetArray(Json(info))
     val list1 = if (list.size > count) { list.dropRight(1) } else { list }
     (list.size > count,

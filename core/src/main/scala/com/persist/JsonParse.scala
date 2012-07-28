@@ -18,6 +18,7 @@
 /*
  * This class is based on the Json parser given in the Odersky Scala book
  * as modified by Twitter.
+ *     https://github.com/stevej/scala-json/
  * 
  * That version was however too slow, so it has been rewritten here with
  * a similar API, but with an emphasis on performance.
@@ -383,6 +384,7 @@ object JsonParse {
   }
 
   def main(args: Array[String]) {
+    // simple test
     println(JsonOps.Pretty(parse("""{"a":55,
                                      "b":[false,null,99.123,"f\\o\to\ufF32l"],"c":123.1}""")))
   }

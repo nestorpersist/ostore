@@ -52,7 +52,7 @@ private class Listener extends CheckedActor {
     case w: RemoteClientWriteFailed => {
       println("*****Remote Write Failed:" + w.getRequest() + ":" + w.getRemoteAddress())
     }
-    case x => println("*****Other Event:" + x)
+    case x => //println("*****Other Event:" + x)
   }
 }
 
@@ -205,7 +205,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
                             config.tables.get(tableName) match {
                               case Some(tableConfig) => {
                                 // Should never get here
-                                println("*****Internal Error DeadLetter:" + d.recipient.path + ":" + d.message)
+                                log.error("*****Internal Error DeadLetter:" + d.recipient.path + ":" + d.message)
                                 sender1 ! (Codes.InternalError, uid, path)
                               }
                               case None => {
@@ -233,7 +233,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         }
         
       }
-      if (! handled) println("*****DeadLetter:" + d.recipient.path + ":" + d.message +":" + serverName)
+      if (! handled) log.error("*****DeadLetter:" + d.recipient.path + ":" + d.message +":" + serverName)
     }
     case ("lock", databaseName: String, rs: String) => {
       val request = Json(rs)
@@ -312,14 +312,13 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
       val serverName = host + ":" + port
       databases.get(databaseName) match {
         case Some(info) => {
-          // TODO check node name not already used
           info.config = info.config.addNode(ringName, nodeName, host, port)
           storeTable.putMeta(databaseName, Compact(info.config.toJson))
           val database = info.dbRef
           val f = database ? ("addNode", ringName, nodeName, info.config)
           Await.result(f, 5 seconds)
           sender ! (Codes.Ok, "")
-          println("Added node " + ringName +"/" + nodeName)
+          log.info("Added node " + ringName +"/" + nodeName)
         }
         case None => {
           sender ! (Codes.Exist, "database:" + databaseName)
@@ -336,12 +335,9 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           storeTable.putMeta(databaseName, Compact(info.config.toJson))
           val database = info.dbRef
           val f = database ? ("deleteNode", ringName, nodeName, info.config)
-          //val (code:String,empty:Boolean) = 
-            Await.result(f, 5 seconds)
-            /*
-          */
+          Await.result(f, 5 seconds)
           sender ! (Codes.Ok, "")
-          println("Delete node " + ringName +"/" + nodeName)
+          log.info("Deleted node " + ringName +"/" + nodeName)
         }
         case None => {
           sender ! (Codes.Exist, "database:" + databaseName)
@@ -358,9 +354,29 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
               val stopped = gracefulStop(database, 5 seconds)(system)
               Await.result(stopped, 5 seconds)
               databases -= databaseName
-              println("Database deleted " + databaseName)
+              log.info("Database deleted " + databaseName)
           }
           sender ! (Codes.Ok, "")
+        }
+        case None => {
+          sender ! (Codes.Exist, "database:" + databaseName)
+        }
+      }
+    }
+    case ("addRing", databaseName:String, rs:String) => {
+      val request = Json(rs)
+      val ringName = jgetString(request, "ring")
+      val fromRingName = jgetString(request, "from")
+      val nodes = jgetArray(request, "nodes")
+      databases.get(databaseName) match {
+        case Some(info) => {
+          info.config = info.config.addRing(ringName, nodes)
+          storeTable.putMeta(databaseName, Compact(info.config.toJson))
+          val database = info.dbRef
+          val f = database ? ("addRing", ringName, nodes, fromRingName, info.config)
+          Await.result(f, 5 seconds)
+          sender ! (Codes.Ok, "")
+          log.info("Added ring " + ringName)
         }
         case None => {
           sender ! (Codes.Exist, "database:" + databaseName)
@@ -470,7 +486,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         val f = database ? ("start1")
         val x = Await.result(f, 5 seconds)
         sender ! (Codes.Ok, "")
-        println("Created Database " + databaseName)
+        log.info("Created database " + databaseName)
       }
     }
     case ("stopDatabase1", databaseName: String, rs: String) => {
@@ -498,7 +514,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           Await.result(stopped, 5 seconds)
           sender ! (Codes.Ok, "")
           info.dbRef = null
-          println("Database stopped " + databaseName)
+          log.info("Database stopped " + databaseName)
         }
         case None => {
           sender ! (Codes.Exist, "")
@@ -514,7 +530,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           info.state = "starting"
           info.dbRef = database
           sender ! (Codes.Ok, "")
-          println("Database starting " + databaseName)
+          log.info("Database starting " + databaseName)
         }
         case None => {
           sender ! (Codes.Exist, "")
@@ -529,7 +545,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           Await.result(f, 5 seconds)
           info.state = "active"
           sender ! (Codes.Ok, "")
-          println("Database started " + databaseName)
+          log.info("Database started " + databaseName)
         }
         case None => {
           sender ! (Codes.Exist, "")
@@ -539,7 +555,6 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
     case ("deleteDatabase", databaseName: String, rs: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
-          println("Deleting database " + databaseName)
           val path = jgetString(serverConfig, "path")
           val fname = path + "/" + databaseName
           val f = new File(fname)
@@ -547,7 +562,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           databases -= databaseName
           sender ! (Codes.Ok, "")
           storeTable.remove(databaseName)
-          println("Database deleted " + databaseName)
+          log.info("Database deleted " + databaseName)
         }
         case None => {
           sender ! (Codes.Exist, "")
@@ -636,7 +651,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           val f = database ? ("addTable1", tableName, info.config)
           val v = Await.result(f, 5 seconds)
           sender ! (Codes.Ok, "")
-          println("Added table " + tableName)
+          log.info("Added table " + tableName)
         }
         case None => {
           sender ! (Codes.Exist, "")
@@ -669,7 +684,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           val f = database ? ("deleteTable1", tableName, info.config)
           val v = Await.result(f, 5 seconds)
           sender ! (Codes.Ok, "")
-          println("Deleted table " + tableName)
+          log.info("Deleted table " + tableName)
         }
         case None => {
           sender ! (Codes.Exist, "")
@@ -693,16 +708,15 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
     }
 
     case ("start") => {
-      log.info("Starting server.")
+      log.info("Starting server")
       sender ! Codes.Ok
     }
     case ("stop") => {
-      log.info("Stopping server.")
+      log.info("Stopping server")
       if (restPort != 0) Http.stop
       storeTable.close()
       sender ! Codes.Ok
     }
-    case x: String => println("databaseFail:" + x)
   }
 }
 
@@ -731,7 +745,6 @@ object Server {
 
   def main(args: Array[String]) {
     val fname = if (args.size > 0) { args(0) } else { "config/server.json" }
-    println("Server Starting")
     val config = Source.fromFile(fname).mkString
     start(Json(config))
   }

@@ -21,9 +21,9 @@ import JsonOps._
 import akka.actor.ActorSystem
 import akka.actor.ActorRef
 
-private[persist] trait ServerBalanceComponent { this: ServerTableAssembly =>
-  val bal: ServerBalance
-  class ServerBalance(system: ActorSystem) {
+private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =>
+  val bal: ServerTableBalance
+  class ServerTableBalance(system: ActorSystem) {
     var canSend = false
     var canReport = false
     var threshold: Long = 1 // should be at least 1
@@ -116,6 +116,7 @@ private[persist] trait ServerBalanceComponent { this: ServerTableAssembly =>
           }
         }
       }
+      if (! back.canSendBalance(key)) return // waiting on use by background task
       val meta = info.storeTable.getMeta(key) match {
         case Some(value: String) => value
         case None => {
