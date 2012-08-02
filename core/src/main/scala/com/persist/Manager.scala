@@ -137,7 +137,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
         jgetArray(response, "servers")
       }
       servers = List[String]()
-      for (s<-serversArray) {
+      for (s <- serversArray) {
         val serverName = jgetString(s)
         servers = serverName :: servers
       }
@@ -196,7 +196,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
       doAll("unlock", request0)
     }
 
-    def act(expectedState: String = "", check: JsonObject = emptyJsonObject)(body: => Unit):Boolean = {
+    def act(expectedState: String = "", check: JsonObject = emptyJsonObject)(body: => Unit): Boolean = {
       if (initialLock(expectedState, check)) {
         try {
           body
@@ -209,9 +209,9 @@ class Manager(host: String, port: Int) extends CheckedActor {
       }
     }
 
-    def lock(servers1:List[String])(body: => Unit):Boolean = {
+    def lock(servers1: List[String])(body: => Unit): Boolean = {
       val ok = doAll("lock", request0, servers1)
-      if (! ok) doAll("unlock", request0, servers1)
+      if (!ok) doAll("unlock", request0, servers1)
       if (ok) {
         try {
           body
@@ -222,7 +222,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
       ok
     }
 
-    def pass(cmd: String, request:JsonObject=emptyJsonObject, servers:List[String]= List[String]()) {
+    def pass(cmd: String, request: JsonObject = emptyJsonObject, servers: List[String] = List[String]()) {
       doAll(cmd, request)
     }
 
@@ -235,13 +235,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
       throw new Exception("Wait " + cmd + " timeout")
     }
 
-    /*
-    def hasServer(serverName: String): Boolean = {
-      servers.contains(serverName)
-    }
-    */
-    
-    def getServers:List[String] = {
+    def getServers: List[String] = {
       servers
     }
   }
@@ -414,7 +408,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
       dba.lock(newServers) {
 
         // Stop balancing
-        dba.pass("stopBalance")
+        dba.pass("stop", JsonObject("balance" -> true))
         dba.wait("busyBalance")
 
         // Adds node and its tables and update ring prev next connections on existing servers
@@ -429,8 +423,6 @@ class Manager(host: String, port: Int) extends CheckedActor {
         if (creatingNewServer) {
           val newRequest = JsonObject("config" -> jconfig)
           dba.pass("newDatabase", newRequest, newServers)
-          //val f = newServer ? ("newDatabase", databaseName, Compact(newRequest))
-          //Await.result(f, 5 seconds)
         }
 
         // Update table low/high settings
@@ -461,7 +453,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
         if (creatingNewServer) {
           dba.pass("startDatabase2", request, newServers)
         }
-        dba.pass("startBalance")
+        dba.pass("start", JsonObject("balance" -> true, "user" -> true))
       }
     }
   }
@@ -469,15 +461,15 @@ class Manager(host: String, port: Int) extends CheckedActor {
   private def deleteNode(databaseName: String, ringName: String, nodeName: String) {
     val dba = DatabaseActions(databaseName)
     val request = JsonObject("ring" -> ringName, "node" -> nodeName)
-    dba.act("active",request) {
-      dba.pass("stopBalance", request)
+    dba.act("active", request) {
+      dba.pass("stop", request + ("balance" -> true))
       dba.wait("busyBalance")
 
       // Update config and relink prev next
       // and delete node (and if then empty, enclosing ring and database)
       dba.pass("deleteNode", request)
 
-      dba.pass("startBalance")
+      dba.pass("start", JsonObject("balance" -> true))
       dba.pass("removeEmptyDatabase")
     }
   }
@@ -504,28 +496,43 @@ class Manager(host: String, port: Int) extends CheckedActor {
         val info = databaseInfo(databaseName, JsonObject("info" -> "c"))
         val jconfig = jget(info, "c")
         val config = DatabaseConfig(databaseName, jconfig)
-        val (fromRingName,fromRingConfig) = config.rings.head
+        val (fromRingName, fromRingConfig) = config.rings.head
         val newRequest = JsonObject("config" -> jconfig)
         dba.pass("newDatabase", newRequest, servers = newServers)
 
-        dba.pass("stopBalance")
+        dba.pass("stop", JsonObject("balance" -> true))
         dba.wait("busyBalance")
 
-        // start all new nodes (with new config) state = building
-        // set up copy acts and modify config (! available on new ring)
-        val addRequest = JsonObject("ring" -> ringName, "from"-> fromRingName, "nodes"->nodes)
-        dba.pass("addRing",addRequest, servers = allServers)
-        
-        dba.pass("startBalance", servers = allServers)
-        // wait copy complete
-        // set state to available (old and new servers)
-      }
+        // modify config and start all new nodes (with new config) ! available
+        val request = JsonObject("ring" -> ringName)
+        val addRequest = request + ("nodes" -> nodes)
+        dba.pass("addRing", request + ("nodes" -> nodes), servers = allServers)
 
+        // set up copy acts
+        dba.pass("copyRing", request + ("from" -> fromRingName))
+
+        dba.pass("start", JsonObject("balance" -> true))
+
+        // wait copy complete
+        dba.wait("ringReady", request)
+        
+        // set state to available (old and new servers)
+        dba.pass("setRingAvailable", request + ("avail"->true), servers = allServers)
+      }
     }
   }
-
-  // deleteRing
-  // val request = JsonObject("ring" -> ringName)
+  
+  private def deleteRing(databaseName:String, ringName:String) {
+    val dba = DatabaseActions(databaseName)
+    val request = JsonObject("ring" -> ringName)
+    dba.act("active", request) {
+      // update config, stop sync messages, stop user messages to ring
+      dba.pass("deleteRing1", request)
+      // remove all nodes
+      dba.pass("deleteRing2", request)
+      dba.pass("removeEmptyDatabase")
+    }
+  }
 
   /**
    * Temporary debugging method.
@@ -534,7 +541,6 @@ class Manager(host: String, port: Int) extends CheckedActor {
     var result = JsonObject()
     for (ringName <- allRings(databaseName)) {
       var ro = JsonObject()
-      //val dest = Map("ring" -> ringName)
       // TODO could do calls in parallel
       for (nodeName <- allNodes(databaseName, ringName)) {
         val info = nodeInfo(databaseName, ringName, nodeName, JsonObject("info" -> "hp"))
@@ -729,9 +735,10 @@ class Manager(host: String, port: Int) extends CheckedActor {
     }
     case ("deleteRings", p: Promise[String], databaseName: String, config: Json) => {
       complete(p) {
-        //deleteNodes(databaseName, config)
-        println("Delete rings: " + databaseName)
-        println(Pretty(config))
+        for (r <- jgetArray(config, "rings")) {
+          val ringName = jgetString(r, "name")
+          deleteRing(databaseName, ringName)
+        }
         Codes.Ok
       }
     }

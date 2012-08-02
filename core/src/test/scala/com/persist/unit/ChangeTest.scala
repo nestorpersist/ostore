@@ -73,6 +73,11 @@ class ChangeTest extends FunSuite {
                  {"name":"n21", "host":"127.0.0.1", "port":8011}] } ]
     }
     """)
+    val ringConfig1 = Json("""
+    {
+     "rings":[ {"name":"r1"} ]
+    }
+    """)
 
     println("Starting Server")
     Server.start(serverConfig, true)
@@ -130,6 +135,12 @@ class ChangeTest extends FunSuite {
     database.deleteNodes(nodeConfig3)
     Thread.sleep(1000)
     check("delete n3")
+    
+    database.deleteRings(ringConfig1)
+    Thread.sleep(1000)
+    println("delete r1" + ":" + Pretty(database.report("tab1")))
+    // client ring fail over NYI
+    //check("delete r1")
 
     database.deleteTables(tableConfig)
     for (tableName <- database.allTables) {

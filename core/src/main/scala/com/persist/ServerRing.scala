@@ -36,9 +36,9 @@ private[persist] class ServerRing(databaseName: String, ringName: String, send: 
   implicit val timeout = Timeout(5 seconds)
 
   def newNode(nodeName: String) {
-    println("NewNode:"+ringName+"/"+nodeName)
+    //println("NewNode:"+ringName+"/"+nodeName)
     val node = context.actorOf(Props(new ServerNode(databaseName, ringName, nodeName, send, config, serverConfig, create)), name = nodeName)
-    val f = node ? ("start1")
+    val f = node ? ("init")
     Await.result(f, 5 seconds)
     val info = new NodeInfo(nodeName, node)
     nodes += (nodeName -> info)
@@ -55,21 +55,7 @@ private[persist] class ServerRing(databaseName: String, ringName: String, send: 
   }
 
   def rec = {
-    case ("start1") => {
-      sender ! Codes.Ok
-    }
-    case ("start2") => {
-      for ((nodeName, nodeInfo) <- nodes) {
-        val f = nodeInfo.node ? ("start2")
-        val v = Await.result(f, 5 seconds)
-      }
-      sender ! Codes.Ok
-    }
-    case ("stop1") => {
-      for ((nodeName, nodeInfo) <- nodes) {
-        val f = nodeInfo.node ? ("stop1")
-        val v = Await.result(f, 5 seconds)
-      }
+    case ("init") => {
       sender ! Codes.Ok
     }
     case ("stop2") => {
@@ -81,17 +67,17 @@ private[persist] class ServerRing(databaseName: String, ringName: String, send: 
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case ("stopBalance", nodeName: String) => {
-      for ((nodeName1, nodeInfo) <- nodes) {
-        val forceEmpty = nodeName1 == nodeName
-        val f = nodeInfo.node ? ("stopBalance", forceEmpty)
+    case ("stop", user: Boolean, balance: Boolean, forceNode: String) => {
+      for ((nodeName, nodeInfo) <- nodes) {
+        val forceEmpty = nodeName == forceNode
+        val f = nodeInfo.node ? ("stop", user, balance, forceEmpty)
         val v = Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
     }
-    case ("startBalance") => {
+    case ("start", balance: Boolean, user: Boolean) => {
       for ((nodeName, nodeInfo) <- nodes) {
-        val f = nodeInfo.node ? ("startBalance")
+        val f = nodeInfo.node ? ("start", balance, user)
         val v = Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
@@ -132,15 +118,39 @@ private[persist] class ServerRing(databaseName: String, ringName: String, send: 
       }
       sender ! (Codes.Ok, nodes.size == 0)
     }
-    case ("addRing", ringName1: String, nodes1: JsonArray, fromRingName: String, config: DatabaseConfig) => {
+    case ("setConfig", config:DatabaseConfig) => {
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("setConfig", config)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+    }
+    case ("addRing", ringName1: String, nodes1: JsonArray, config: DatabaseConfig) => {
       this.config = config
       for ((nodeName, nodeInfo) <- nodes) {
-        val f = nodeInfo.node ? ("addRing", ringName1, fromRingName, config)
+        val f = nodeInfo.node ? ("addRing", ringName1, config)
+        val v = Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+    }
+    case ("copyRing", ringName1) => {
+      this.config = config
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("copyRing", ringName1)
         val v = Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
     }
 
+    case ("ringReady", ringName: String) => {
+      var code = Codes.Ok
+      for ((nodeName, nodeInfo) <- nodes) {
+        val f = nodeInfo.node ? ("ringReady", ringName)
+        val code1 = Await.result(f, 5 seconds)
+        if (code1 == Codes.Busy) code = Codes.Busy
+      }
+      sender ! code
+    }
     case ("getLowHigh", nodeName: String, tableName: String) => {
       val nodeInfo = nodes(nodeName)
       val f = nodeInfo.node ? ("getLowHigh", tableName)

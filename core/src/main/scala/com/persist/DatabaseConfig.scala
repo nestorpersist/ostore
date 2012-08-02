@@ -255,10 +255,21 @@ private[persist] class DatabaseConfig(
     val rings1 = rings + (ringName -> ringConfig)
     new DatabaseConfig(name, rings1, tables, servers1)
   }
+  
+  def deleteRing(ringName: String):DatabaseConfig = {
+    val rings1 = rings - ringName
+    var servers1 = Map[String,ServerConfig]()
+    for ((ringName,ringConfig)<- rings1) {
+      for ((nodeName, nodeConfig) <- ringConfig.nodes) {
+        servers1 += (nodeConfig.server.name-> nodeConfig.server)
+      }
+    }
+    new DatabaseConfig(name, rings1, tables, servers1)
+  }
 
-  def enableRing(ringName: String) {
+  def enableRing(ringName: String, avail:Boolean) {
     val rc = rings(ringName)
-    val rings1 = rings + (ringName -> RingConfig(ringName, rc.nodes, rc.nodeSeq))
+    val rings1 = rings + (ringName -> RingConfig(ringName, rc.nodes, rc.nodeSeq, avail))
     new DatabaseConfig(name, rings1, tables, servers)
   }
 

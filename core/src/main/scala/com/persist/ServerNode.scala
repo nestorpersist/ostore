@@ -28,8 +28,8 @@ import akka.util.Timeout
 import scala.collection.immutable.TreeMap
 import JsonOps._
 
-private[persist] class ServerNode(databaseName: String, ringName: String, nodeName: String, send: ActorRef, var config:DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
-  
+private[persist] class ServerNode(databaseName: String, ringName: String, nodeName: String, send: ActorRef, var config: DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
+
   private val monitor = context.actorOf(Props(new Monitor(nodeName)), name = "@mon")
   implicit val timeout = Timeout(5 seconds)
 
@@ -48,35 +48,21 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
   private val system = context.system
 
   def newTable(tableName: String) {
-    println("newTable:"+tableName)
+    //println("newTable:" + tableName)
     val table = context.actorOf(
       Props(new ServerTable(databaseName, ringName, nodeName, tableName,
         store, monitor, send, config)), name = tableName)
-    var f = table ? ("start1")
+    var f = table ? ("init")
     Await.result(f, 5 seconds)
     tables += (tableName -> new TableInfo(tableName, table))
   }
 
-  for ((tableName,tableConfig)<- config.tables) {
+  for ((tableName, tableConfig) <- config.tables) {
     newTable(tableName)
   }
 
   def rec = {
-    case ("start1") => {
-      sender ! Codes.Ok
-    }
-    case ("start2") => {
-      for ((tableName, tableInfo) <- tables) {
-        val f = tableInfo.table ? ("start2")
-        Await.result(f, 5 seconds)
-      }
-      sender ! Codes.Ok
-    }
-    case ("stop1") => {
-      for ((tableName, tableInfo) <- tables) {
-        val f = tableInfo.table ? ("stop1")
-        Await.result(f, 5 seconds)
-      }
+    case ("init") => {
       sender ! Codes.Ok
     }
     case ("stop2") => {
@@ -89,16 +75,16 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       store.close()
       sender ! Codes.Ok
     }
-    case ("stopBalance", forceEmpty:Boolean) => {
+    case ("stop", user: Boolean, balance: Boolean, forceEmpty: Boolean) => {
       for ((tableName, tableInfo) <- tables) {
-        val f = tableInfo.table ? ("stopBalance", forceEmpty)
+        val f = tableInfo.table ? ("stop", user, balance, forceEmpty)
         Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
     }
-    case ("startBalance") => {
+    case ("start", balance: Boolean, user: Boolean) => {
       for ((tableName, tableInfo) <- tables) {
-        val f = tableInfo.table ? ("startBalance")
+        val f = tableInfo.table ? ("start", balance, user)
         Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
@@ -120,19 +106,19 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       this.config = config
       sender ! Codes.Ok
     }
-    case ("getLowHigh", tableName:String) => {
+    case ("getLowHigh", tableName: String) => {
       val tableInfo = tables(tableName)
       val f = tableInfo.table ? ("getLowHigh")
-      val (code:String,result:Json) = Await.result(f, 5 seconds)
+      val (code: String, result: Json) = Await.result(f, 5 seconds)
       sender ! (Codes.Ok, result)
     }
-    case ("setLowHigh", tableName:String, low:String, high:String) => {
+    case ("setLowHigh", tableName: String, low: String, high: String) => {
       val tableInfo = tables(tableName)
       val f = tableInfo.table ? ("setLowHigh", low, high)
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case ("addTable1", tableName:String, config:DatabaseConfig) => {
+    case ("addTable1", tableName: String, config: DatabaseConfig) => {
       for ((tableName, tableInfo) <- tables) {
         val f = tableInfo.table ? ("setConfig", config)
         Await.result(f, 5 seconds)
@@ -141,13 +127,13 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       newTable(tableName)
       sender ! Codes.Ok
     }
-    case ("addTable2", tableName:String) => {
+    case ("addTable2", tableName: String) => {
       val tableInfo = tables(tableName)
-      val f = tableInfo.table ? ("start2")
+      val f = tableInfo.table ? ("start", true, true)
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case ("deleteTable1", tableName:String, config:DatabaseConfig) => {
+    case ("deleteTable1", tableName: String, config: DatabaseConfig) => {
       for ((tableName1, tableInfo) <- tables) {
         if (tableName1 != tableName) {
           val f = tableInfo.table ? ("setConfig", config)
@@ -156,11 +142,11 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       }
       this.config = config
       val tableInfo = tables(tableName)
-      val f = tableInfo.table ? ("stop1")
+      val f = tableInfo.table ? ("stop", true, true, false)
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case ("deleteTable2", tableName:String) => {
+    case ("deleteTable2", tableName: String) => {
       val tableInfo = tables(tableName)
       val f = tableInfo.table ? ("delete2")
       Await.result(f, 5 seconds)
@@ -176,14 +162,30 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       }
       sender ! Codes.Ok
     }
-    case ("addRing", ringName:String, fromRingName:String, config:DatabaseConfig) => {
+    case ("addRing", ringName: String, config: DatabaseConfig) => {
       this.config = config
       for ((tableName1, tableInfo) <- tables) {
-        val f = tableInfo.table ? ("addRing", ringName, fromRingName, config)
+        val f = tableInfo.table ? ("addRing", ringName, config)
         Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
     }
-
+    case ("copyRing", ringName: String) => {
+      this.config = config
+      for ((tableName1, tableInfo) <- tables) {
+        val f = tableInfo.table ? ("copyRing", ringName)
+        Await.result(f, 5 seconds)
+      }
+      sender ! Codes.Ok
+    }
+    case ("ringReady", ringName: String) => {
+      var code = Codes.Ok
+      for ((tableName1, tableInfo) <- tables) {
+        val f = tableInfo.table ? ("ringReady", ringName)
+        val code1 = Await.result(f, 5 seconds)
+        if (code1 == Codes.Busy) code = Codes.Busy
+      }
+      sender ! code
+    }
   }
 }

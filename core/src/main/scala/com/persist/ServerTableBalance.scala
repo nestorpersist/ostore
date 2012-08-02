@@ -29,38 +29,44 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
     var threshold: Long = 1 // should be at least 1
     var forceEmpty = false
 
-    var cntToNext: Long = 0
-    var cntFromPrev: Long = 0
+    // prev node
+    var prevNodeName = ""
+    private var prevNode: ActorRef = null
 
     // next node
     var nextNodeName = ""
     private var nextNode: ActorRef = null
+    var cntToNext: Long = 0
+    var cntFromPrev: Long = 0
+
     var nextCount: Long = Long.MaxValue
     var nextLow: String = info.high
 
-    // prev node
-    private var prevNodeName = ""
-    private var prevNode: ActorRef = null
+    var singleNode = true
 
     setPrevNextName()
 
-    var singleNode = info.nodeName == nextNodeName
-
-    private def setPrevNextName(): Boolean = {
+    def setPrevNextName() = {
       val nextNodeName = info.config.rings(info.ringName).nextNodeName(info.nodeName)
       val prevNodeName = info.config.rings(info.ringName).prevNodeName(info.nodeName)
-      val changed = nextNodeName != this.nextNodeName || prevNodeName != this.prevNodeName
+      if (nextNodeName != this.nextNodeName) nextNode = null
+      if (prevNodeName != this.prevNodeName) prevNode = null
       this.prevNodeName = prevNodeName
       this.nextNodeName = nextNodeName
-      changed
+      singleNode = info.nodeName == nextNodeName
     }
 
     def setPrevNext() {
-      nextNode = info.config.getRef(system, info.ringName, nextNodeName, info.tableName)
-      prevNode = info.config.getRef(system, info.ringName, prevNodeName, info.tableName)
+      if (nextNode == null) {
+        nextNode = info.config.getRef(system, info.ringName, nextNodeName, info.tableName)
+      }
+      if (prevNode == null) {
+        prevNode = info.config.getRef(system, info.ringName, prevNodeName, info.tableName)
+      }
     }
 
-    def resetPrevNext() {
+    /*
+    def resetPrevNextX() {
       if (setPrevNextName() || nextNode == null) {
         setPrevNext()
       }
@@ -71,6 +77,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
         canReport = false
       }
     }
+    */
 
     def inNext(key: String) = {
       if (singleNode) {
@@ -116,7 +123,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
           }
         }
       }
-      if (! back.canSendBalance(key)) return // waiting on use by background task
+      if (!back.canSendBalance(key)) return // waiting on use by background task
       val meta = info.storeTable.getMeta(key) match {
         case Some(value: String) => value
         case None => {

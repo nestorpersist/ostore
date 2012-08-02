@@ -239,7 +239,10 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
       databaseMap.addRing(ringName, nodes)
       sender ! Codes.Ok
     }
-
+    case ("deleteRing", ringName:String) => {
+      databaseMap.deleteRing(ringName)
+      sender! Codes.Ok
+    }
   }
 
 }

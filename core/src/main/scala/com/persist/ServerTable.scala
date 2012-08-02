@@ -148,34 +148,32 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
 
   def doCommand(cmd: Any) {
     cmd match {
-      case ("start1") => {
+      case ("init") => {
         sender ! Codes.Ok
       }
-      case ("start2") => {
-        if (!bal.singleNode) {
+      case ("start", balance: Boolean, user: Boolean) => {
+        if (balance) {
+          if (!bal.singleNode) {
+            bal.canSend = true
+            bal.canReport = true
+          }
           bal.setPrevNext()
-          bal.canSend = true
-          bal.canReport = true
         }
-        // TODO only accept user messages if not building node!
-        ops.acceptUserMessages = true
+        if (user) ops.acceptUserMessages = true
         sender ! Codes.Ok
       }
-      case ("stop1") => {
-        ops.acceptUserMessages = false
-        bal.canSend = false
-        // TODO wait for no in transit
-        if (info.high != bal.nextLow) {
-          log.error("Shutdown error /" +
-            databaseName + "/" + ringName + "/" + nodeName + "/" + tableName + " (" + info.high + "," + bal.nextLow + ")")
+      case ("stop", user: Boolean, balance: Boolean, forceBalance: Boolean) => {
+        if (user) ops.acceptUserMessages = false
+        if (balance) bal.canSend = false
+        if (forceBalance) {
+          bal.canSend = true
+          bal.forceEmpty = true
         }
-        // TODO wait for no pending in send
         sender ! Codes.Ok
       }
       case ("stop2") => {
         mr.close
         info.storeTable.put("!clean", "true")
-        // TODO delete store table
         info.storeTable.close()
         sender ! Codes.Ok
       }
@@ -184,21 +182,6 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
         info.storeTable.delete()
         sender ! Codes.Ok
 
-      }
-      case ("stopBalance", forceEmpty: Boolean) => {
-        bal.canSend = forceEmpty
-        bal.forceEmpty = forceEmpty
-        sender ! Codes.Ok
-      }
-      case ("startBalance") => {
-        if (!bal.singleNode) {
-          bal.setPrevNext()
-          bal.canSend = true
-          bal.canReport = true
-          // TODO accept user only when not building node
-          ops.acceptUserMessages = true
-        }
-        sender ! Codes.Ok
       }
       case ("busyBalance") => {
         val code = if (bal.isBusy) {
@@ -218,14 +201,19 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
         bal.nextLow = high
         sender ! Codes.Ok
       }
-      case ("addRing" , ringName1: String, fromRingName:String, config:DatabaseConfig) => {
+      case ("addRing", ringName1: String, config: DatabaseConfig) => {
         info.config = config
-        if (fromRingName == ringName) {
-          back.ringCopyTask(ringName1)
-        }
+        if (ringName == ringName1) bal.setPrevNext()
         sender ! Codes.Ok
       }
-        
+      case ("copyRing", ringName1: String) => {
+        back.ringCopyTask(ringName1)
+        sender ! Codes.Ok
+      }
+      case ("ringReady", ringName: String) => {
+        val code = if (back.ringCopyActive(ringName)) Codes.Busy else Codes.Ok
+        sender ! code
+      }
       case ("fromPrev", request: String) => {
         bal.fromPrev(request)
       }
@@ -234,7 +222,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
       }
       case ("setConfig", config: DatabaseConfig) => {
         info.config = config
-        bal.resetPrevNext()
+        bal.setPrevNextName()
         sender ! Codes.Ok
       }
       case (kind: String, uid: Long, key: String, value: Any) => {
@@ -277,7 +265,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
           }
         }
       }
-      case ("token", t:Long) => {
+      case ("token", t: Long) => {
         back.token(t)
       }
       case other => {

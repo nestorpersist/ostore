@@ -39,7 +39,7 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
 
   def newRing(ringName: String) {
     val ring = context.actorOf(Props(new ServerRing(databaseName, ringName, send, config, serverConfig, create)), name = ringName)
-    val f = ring ? ("start1")
+    val f = ring ? ("init")
     Await.result(f, 5 seconds)
     val info = new RingInfo(ringName, ring)
     rings += (ringName -> info)
@@ -57,21 +57,7 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
   }
 
   def rec = {
-    case ("start1") => {
-      sender ! Codes.Ok
-    }
-    case ("start2") => {
-      for ((ringName, ringInfo) <- rings) {
-        val f = ringInfo.ring ? ("start2")
-        val v = Await.result(f, 5 seconds)
-      }
-      sender ! Codes.Ok
-    }
-    case ("stop1") => {
-      for ((ringName, ringInfo) <- rings) {
-        val f = ringInfo.ring ? ("stop1")
-        val v = Await.result(f, 5 seconds)
-      }
+    case ("init") => {
       sender ! Codes.Ok
     }
     case ("stop2") => {
@@ -83,17 +69,17 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       Await.result(f, 5 seconds)
       sender ! Codes.Ok
     }
-    case ("stopBalance", ringName: String, nodeName: String) => {
-      for ((ringName1, ringInfo) <- rings) {
-        val nodeName1 = if (ringName == ringName1) nodeName else ""
-        val f = ringInfo.ring ? ("stopBalance", nodeName1)
+    case ("stop", user: Boolean, balance: Boolean, forceRing: String, forceNode: String) => {
+      for ((ringName, ringInfo) <- rings) {
+        val forceNode1 = if (forceRing == ringName) forceNode else ""
+        val f = ringInfo.ring ? ("stop", user, balance, forceNode1)
         val v = Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
     }
-    case ("startBalance") => {
+    case ("start", balance: Boolean, user: Boolean) => {
       for ((ringName, ringInfo) <- rings) {
-        val f = ringInfo.ring ? ("startBalance")
+        val f = ringInfo.ring ? ("start", balance, user)
         val v = Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
@@ -130,7 +116,7 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       this.config = config
       sender ! Codes.Ok
     }
-    case ("addRing", ringName:String, nodes:JsonArray, fromRingName:String, config: DatabaseConfig) => {
+    case ("addRing", ringName: String, nodes: JsonArray, config: DatabaseConfig) => {
       this.config = config
       var add = false
       for (node <- nodes) {
@@ -145,9 +131,53 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       val f0 = send ? ("addRing", ringName, nodes)
       Await.result(f0, 5 seconds)
       for ((ringName1, ringInfo) <- rings) {
-        val f = ringInfo.ring ? ("addRing", ringName, nodes, fromRingName, config)
+        val f = ringInfo.ring ? ("addRing", ringName, nodes, config)
         Await.result(f, 5 seconds)
       }
+      sender ! Codes.Ok
+    }
+    case ("copyRing", ringName: String, fromRingName: String) => {
+      for ((ringName1, ringInfo) <- rings) {
+        if (ringName1 == fromRingName) {
+          val f = ringInfo.ring ? ("copyRing", ringName)
+          Await.result(f, 5 seconds)
+        }
+      }
+      sender ! Codes.Ok
+    }
+    case ("ringReady", ringName: String, fromRingName: String) => {
+      var code = Codes.Ok
+      for ((ringName1, ringInfo) <- rings) {
+        if (ringName1 == fromRingName) {
+          val f = ringInfo.ring ? ("ringReady", ringName)
+          val code1 = Await.result(f, 5 seconds)
+          if (code1 == Codes.Busy) code = Codes.Busy
+        }
+      }
+      sender ! code
+    }
+    case ("deleteRing1", ringName:String, config:DatabaseConfig) => {
+      for ((ringName1, ringInfo) <- rings) {
+        if (ringName1 == ringName) {
+          val f = ringInfo.ring ? ("stop", true, true, "")
+          Await.result(f, 5 seconds)
+        } else {
+          val f1 = ringInfo.ring ? ("setConfig", config)
+          Await.result(f1, 5 seconds)
+        }
+      }
+      sender ! Codes.Ok
+    }
+    case ("deleteRing2",ringName:String) => {
+      val f0 = send ? ("deleteRing", ringName)
+      Await.result(f0, 5 seconds)
+      for ((ringName1, ringInfo) <- rings) {
+        if (ringName1 == ringName) {
+          val stopped = gracefulStop(ringInfo.ring, 5 seconds)(system)
+          Await.result(stopped, 5 seconds)
+        }
+      }
+      rings -= ringName
       sender ! Codes.Ok
     }
 
