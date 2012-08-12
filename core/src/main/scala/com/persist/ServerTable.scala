@@ -22,6 +22,8 @@ import JsonOps._
 import akka.dispatch.ExecutionContext
 import akka.util.Timeout
 import akka.util.duration._
+import Exceptions._
+import Codes.emptyResponse
 
 private[persist] trait ServerTableAssembly extends ServerTableMapReduceComponent with ServerTableSyncComponent
   with ServerTableBalanceComponent with ServerTableOpsComponent with ServerTableInfoComponent with ServerTableBackgroundComponent
@@ -120,7 +122,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
               if (ops.canWrite) {
                 ops.put(key, v, os)
               } else {
-                (Codes.ReadOnly, info.tableName)
+                (Codes.ReadOnly, Compact(JsonObject("table"->info.tableName)))
               }
             }
             case ("delete", v: String) => {
@@ -136,11 +138,11 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
             case ("prev-", v: String) => ops.prev(kind, key, v)
             case (badKind: String, v: String) => {
               log.error("table unrecognized command:" + badKind)
-              (Codes.BadRequest, badKind)
+              (Codes.InternalError, Compact(JsonObject("msg"->"unrecognized kind", "kind"->badKind)))
             }
           }
         } else {
-          (Codes.NotAvailable, "")
+          (Codes.NotAvailable, emptyResponse)
         }
       }
     }
@@ -260,8 +262,9 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
           */
         } catch {
           case ex: Exception => {
-            sender ! (Codes.InternalError, uid, "")
-            throw ex
+            val (code, v1) = exceptionToCode(ex)
+            sender ! (code, uid, v1)
+            log.error(ex, "ServerTable Exception")
           }
         }
       }

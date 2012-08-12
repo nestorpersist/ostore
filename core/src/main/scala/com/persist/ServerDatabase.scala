@@ -33,7 +33,8 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
   private val system = context.system
   val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
   val databaseName = config.name
-  val send = context.actorOf(Props(new Send(context.system, config)), name = "@send")
+  //val send = context.actorOf(Props(new Send(context.system, config)), name = "@send")
+  val send = context.actorOf(Props(new Messaging(config)), name = "@send")
   var rings = TreeMap[String, RingInfo]()
   implicit val timeout = Timeout(5 seconds)
 

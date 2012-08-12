@@ -188,8 +188,8 @@ private[persist] class DatabaseMap(val databaseName: String, var rings: HashMap[
     }
   }
 
- // TODO only a single node result is now needed!
-  def get(ringName: String, tableName: String, key: String, less: Boolean): (TableNodeMap, TableNodeMap) = {
+  def get(ringName: String, tableName: String, key: String, less: Boolean): TableNodeMap = {
+    // TODO check ringName and tableName exist
     val ringMap = rings(ringName)
     val tmap = ringMap.tables.get(tableName)
     tmap match {
@@ -198,24 +198,24 @@ private[persist] class DatabaseMap(val databaseName: String, var rings: HashMap[
         if (nodes.size == 1) {
           // only one node, so use it
           val (nodeName, n) = nodes.head
-          (n, n)
+          n
         } else {
           val nodeName = bestFit(tableMap, key, less)
           val n = nodes(nodeName)
           if (inNode(n, key, less)) {
-            (n, n)
+            n
           } else {
             // possible in-transit 
             val nextNodeName = rings(ringName).nextNodeName(nodeName)
             val next = nodes(nextNodeName)
             if (! n.known) {
-              (n,n)
+              n
             } else if (! next.known) {
-              (next,next)
+              next
             } else if (n.lastSet < next.lastSet) {
-              (n,n)
+              n
             } else {
-              (next,next)
+              next
             }
           }
         }
@@ -226,12 +226,12 @@ private[persist] class DatabaseMap(val databaseName: String, var rings: HashMap[
         // TODO should log this
         val (nodeName, nodeMap) = rings(ringName).nodes.head
         val n = TableNodeMap(tableName, nodeMap)
-        (n, n)
+        n
       }
     }
   }
 
-  def setLowHigh(ringName: String, nodeName: String, tableName: String, low: String, high: String) {
+  def setLowHigh(ringName: String, nodeName: String, tableName: String, low: String, high: String):Boolean = {
     val ringMap = rings(ringName)
     if (ringMap.tables.get(tableName) == None) {
       // Table is new so create it 
@@ -241,6 +241,7 @@ private[persist] class DatabaseMap(val databaseName: String, var rings: HashMap[
     val tableMap = ringMap.tables(tableName)
     val tableNodeMap = tableMap.nodes(nodeName)
     if (tableNodeMap.known) {
+      if (tableNodeMap.low == low && tableNodeMap.high == high) return false
       // remove old value
       val oldSet: HashSet[String] = tableMap.keys.getOrElse(tableNodeMap.low, new HashSet[String]()) - nodeName
       if (oldSet.size == 0) {
@@ -257,6 +258,7 @@ private[persist] class DatabaseMap(val databaseName: String, var rings: HashMap[
     tableNodeMap.high = high
     tableNodeMap.known = true
     tableNodeMap.lastSet = System.currentTimeMillis()
+    true
   }
   
   def setNext(ringName:String, nodeName:String, nextNodeName:String, host:String, port:Int) {

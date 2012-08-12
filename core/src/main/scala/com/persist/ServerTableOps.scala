@@ -25,6 +25,8 @@ import akka.dispatch.ExecutionContext
 import akka.util.Timeout
 import akka.util.duration._
 import akka.actor.ActorSystem
+import Exceptions._
+import Codes.emptyResponse
 
 private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
   val ops: ServerTableOps
@@ -49,6 +51,8 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
         if (items.contains("k")) result = result + ("k" -> keyDecode(key))
         if (items.contains("v")) result = result + ("v" -> Json(value))
         if (items.contains("c")) result = result + ("c" -> jget(meta, "c"))
+        if (items.contains("d")) result = result + ("c" -> jgetBoolean(meta, "d"))
+        if (items.contains("e")) result = result + ("e" ->jgetLong(meta, "e"))
         Compact(result)
       } else {
         value
@@ -83,17 +87,17 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
 
     private def get1(key: String, os: String): (String, Any) = {
       val options = Json(os)
+      val get = jgetString(options, "get")
       val meta = info.storeTable.getMeta(key)
       meta match {
         case Some(ms) => {
           val m = Json(ms)
-          if (jgetBoolean(m, "d")) {
-            (Codes.NotPresent, "")
+          if (jgetBoolean(m, "d") && ! get.contains("d")) {
+            (Codes.NotPresent, emptyResponse)
           } else {
             val value = info.storeTable.get(key)
             value match {
               case Some(vs) => {
-                val get = jgetString(options, "get")
                 val result = getItems(key, m, vs, get)
                 (Codes.Ok, result)
               }
@@ -101,7 +105,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
             }
           }
         }
-        case None => (Codes.NotPresent, "")
+        case None => (Codes.NotPresent, emptyResponse)
       }
     }
 
@@ -119,6 +123,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
     private def put1(key: String, value: String, requests: String): (String, Any) = {
       val request = Json(requests)
       val fast = jgetBoolean(request, "o", "fast")
+      val expires = jgetLong(request, "o", "expires")
       val oldMetaS = info.storeTable.getMeta(key) match {
         case Some(s: String) => s
         case None => info.absentMetaS
@@ -127,7 +132,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       val oldD = jgetBoolean(oldMeta, "d")
       if (! oldD && jgetBoolean(request, "create")) {
         // Create and already exists
-        return (Codes.NoPut, "null")
+        return (Codes.NoPut, emptyResponse)
       }
       val oldvS = if (oldD) {
         "null"
@@ -142,18 +147,19 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       if (requestcv != null) {
         if (ClockVector.compare(oldcv, requestcv) != '=') {
           // Opt put and value has changed
-          return (Codes.NoPut, "null")
+          return (Codes.NoPut, emptyResponse)
         }
       }
       val d = info.uidGen.get
       val cv = ClockVector.incr(oldcv, info.ringName, d)
-      val newMeta = JsonObject("c" -> cv)
+      var newMeta = JsonObject("c" -> cv)
+      if (expires != 0) newMeta += ("e" -> expires)
       val newMetaS = Compact(newMeta)
       info.storeTable.putBothF1(key, newMetaS, value, fast)
       if (sync.hasSync) sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
       if (mr.hasMap) mr.mapOut(key, oldMetaS, oldvS, newMetaS, value)
       if (mr.hasReduce) mr.reduceOut(key, oldMetaS, oldvS, newMetaS, value)
-      (Codes.Ok, "null")
+      (Codes.Ok, emptyResponse)
     }
 
     def put(key: String, value: String, requests: String): (String, Any) = {
@@ -184,7 +190,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       if (requestcv != null) {
         if (ClockVector.compare(oldcv, requestcv) != '=') {
           // Opt delete and value has changed
-          return (Codes.NoPut, "null")
+          return (Codes.NoPut, emptyResponse)
         }
       }
       val d = info.uidGen.get
@@ -195,13 +201,14 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       info.storeTable.putBothF1(key, newMetaS, value, fast)
       sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
       mr.doMR(key, oldMetaS, oldvS, newMetaS, value)
-      (Codes.Ok, "null")
+      (Codes.Ok, emptyResponse)
     }
 
     def next(kind: String, key: String, os: String): (String, Any) = {
       val options = Json(os)
+      val get = jgetString(options, "get")
       val equal = kind == "next"
-      val key1 = getNext(key, equal, false, options)
+      val key1 = getNext(key, equal, get.contains("d"), options)
       key1 match {
         case Some((key2: String, result: String)) => {
           if (inLow(key, false) && inLow(key2, false)) {
@@ -216,7 +223,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
           if (inLow(key, false) && !bal.singleNode) {
             (Codes.Next, info.high)
           } else {
-            (Codes.Done, "")
+            (Codes.Done, emptyResponse)
           }
         }
       }
@@ -226,7 +233,8 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       val equal = kind == "prev"
       val less = kind == "prev-"
       val options = Json(os)
-      val key1 = getPrev(key, equal, false, options)
+      val get = jgetString(options,"get")
+      val key1 = getPrev(key, equal, get.contains("d"), options)
       key1 match {
         case Some((key2: String, result: String)) => {
           if (inLow(key, less) && inLow(key2, false)) {
@@ -243,13 +251,12 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
           } else if (inHigh(key, less)) {
             (Codes.PrevM, info.low)
           } else {
-            (Codes.Done, "")
+            (Codes.Done, emptyResponse)
           }
         }
       }
     }
 
-    //    def getNext(key: String, equal: Boolean, includeDelete: Boolean, options: Json): Option[Tuple2[String, String]] = {
     def getNext(key: String, equal: Boolean, includeDelete: Boolean, options: Json): Option[(String, String)] = {
       val key1 = info.storeTable.next(key, equal)
       key1 match {
@@ -281,8 +288,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
               }
             }
             case None => {
-              // should not occur 
-              None
+              throw InternalError("getNext")
             }
           }
         }
@@ -290,7 +296,6 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       }
     }
 
-    //def getPrev(key: String, equal: Boolean, includeDelete: Boolean, options: Json): Option[Tuple2[String, String]] = {
     def getPrev(key: String, equal: Boolean, includeDelete: Boolean, options: Json): Option[(String, String)] = {
       val key1 = info.storeTable.prev(key, equal)
       key1 match {
@@ -322,8 +327,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
               }
             }
             case None => {
-              // should not occur 
-              None
+              throw InternalError("getPrev")
             }
           }
         }

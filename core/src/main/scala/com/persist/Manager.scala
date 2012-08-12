@@ -31,6 +31,7 @@ import akka.actor.Props
 import akka.dispatch.DefaultPromise
 import akka.actor.ActorRef
 import java.util.UUID
+import Exceptions._
 
 // TODO multipart actions should occur as single step
 // TODO lock and send actions only to ring involved (e.g.addNode)
@@ -40,6 +41,8 @@ class Manager(host: String, port: Int) extends CheckedActor {
   private val system = context.system
   private implicit val timeout = Timeout(5 seconds)
   private implicit val executor = system.dispatcher
+  
+  private val emptyRequest = Compact(emptyJsonObject)
 
   private val sendServer = new SendServer(system)
   private val server = sendServer.serverRef(host + ":" + port)
@@ -51,7 +54,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
     val send = sends.get(databaseName) match {
       case Some(s) => s
       case None => {
-        val info = databaseInfo(databaseName, JsonObject("info" -> "c"))
+        val info = databaseInfo(databaseName, JsonObject("get" -> "c"))
         val jconfig = jget(info, "c")
         val config = DatabaseConfig(databaseName, jconfig)
         val s = system.actorOf(Props(new Send(system, config)))
@@ -64,8 +67,8 @@ class Manager(host: String, port: Int) extends CheckedActor {
     new AsyncTable(databaseName, tableName, system, send)
   }
 
-  private def getSyncTable(databaseName: String, tableName: String): SyncTable = {
-    new SyncTable(databaseName, tableName, getAsyncTable(databaseName, tableName))
+  private def getTable(databaseName: String, tableName: String): Table = {
+    new Table(databaseName, tableName, getAsyncTable(databaseName, tableName))
   }
 
   private def getDatabase(databaseName: String): Database = {
@@ -243,6 +246,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
   private def allDatabases(): Iterable[String] = {
     val f = server ? ("allDatabases")
     val (code: String, s: String) = Await.result(f, 5 seconds)
+    checkCode(code, s)
     val databases = jgetArray(Json(s))
     var result = List[String]()
     for (database <- databases) {
@@ -251,42 +255,60 @@ class Manager(host: String, port: Int) extends CheckedActor {
     result.reverse
   }
 
-  private def databaseInfo(databaseName: String, options: JsonObject): Json = {
-    val f = server ? ("databaseinfo", databaseName, Compact(options))
+  private def databaseExists(databaseName:String, options: JsonObject):Boolean = {
+    val f = server ? ("databaseExists", databaseName, Compact(options))
     val (code: String, s: String) = Await.result(f, 5 seconds)
-    if (code == Codes.Ok) {
-      Json(s)
+    if (code == Codes.NoDatabase) {
+      false
     } else {
-      throw new Exception(s)
+      checkCode(code, s)
+      true    
     }
   }
 
-  private def tableInfo(databaseName: String, tableName: String, options: JsonObject): Json = {
-    val f = server ? ("tableinfo", databaseName, tableName, Compact(options))
+  private def databaseInfo(databaseName: String, options: JsonObject): Json = {
+    val f = server ? ("databaseInfo", databaseName, Compact(options))
     val (code: String, s: String) = Await.result(f, 5 seconds)
+    checkCode(code, s)
+    Json(s)
+  }
+
+  private def tableInfo(databaseName: String, tableName: String, options: JsonObject): Json = {
+    val request = JsonObject("table"->tableName, "o" -> options)
+    val f = server ? ("tableInfo", databaseName, Compact(request))
+    val (code: String, s: String) = Await.result(f, 5 seconds)
+    checkCode(code, s)
     Json(s)
   }
 
   private def serverInfo(databaseName: String, serverName: String, options: JsonObject): Json = {
-    val f = server ? ("serverinfo", databaseName, serverName, Compact(options))
+    val request = JsonObject("server"->serverName, "o" -> options)
+    val f = server ? ("serverInfo", databaseName, Compact(request))
     val (code: String, s: String) = Await.result(f, 5 seconds)
+    checkCode(code, s)
     Json(s)
   }
 
   private def ringInfo(databaseName: String, ringName: String, options: JsonObject): Json = {
-    val f = server ? ("ringinfo", databaseName, ringName, Compact(options))
+    val request = JsonObject("ring"->ringName, "o" -> options)
+    val f = server ? ("ringInfo", databaseName, Compact(request))
     val (code: String, s: String) = Await.result(f, 5 seconds)
+    checkCode(code, s)
     Json(s)
   }
+  
   private def nodeInfo(databaseName: String, ringName: String, nodeName: String, options: JsonObject): Json = {
-    val f = server ? ("nodeinfo", databaseName, ringName, nodeName, Compact(options))
+    val request = JsonObject("ring"->ringName, "node"-> nodeName, "o" -> options)
+    val f = server ? ("nodeInfo", databaseName, Compact(request))
     val (code: String, s: String) = Await.result(f, 5 seconds)
+    checkCode(code, s)
     Json(s)
   }
 
   private def allServers(databaseName: String): Iterable[String] = {
-    val f = server ? ("allservers", databaseName)
+    val f = server ? ("allServers", databaseName, emptyRequest)
     val (code: String, s: String) = Await.result(f, 5 seconds)
+    checkCode(code, s)
     val servers = jgetArray(Json(s))
     var result = List[String]()
     for (server <- servers) {
@@ -296,8 +318,9 @@ class Manager(host: String, port: Int) extends CheckedActor {
   }
 
   private def allTables(databaseName: String): Iterable[String] = {
-    val f = server ? ("alltables", databaseName)
+    val f = server ? ("allTables", databaseName, emptyRequest)
     val (code: String, s: String) = Await.result(f, 5 seconds)
+    checkCode(code, s)
     val tables = jgetArray(Json(s))
     var result = List[String]()
     for (table <- tables) {
@@ -307,8 +330,9 @@ class Manager(host: String, port: Int) extends CheckedActor {
   }
 
   private def allRings(databaseName: String): Iterable[String] = {
-    val f = server ? ("allrings", databaseName)
+    val f = server ? ("allRings", databaseName, emptyRequest)
     val (code: String, s: String) = Await.result(f, 5 seconds)
+    checkCode(code, s)
     val rings = jgetArray(Json(s))
     var result = List[String]()
     for (ring <- rings) {
@@ -318,8 +342,10 @@ class Manager(host: String, port: Int) extends CheckedActor {
   }
 
   private def allNodes(databaseName: String, ringName: String): Iterable[String] = {
-    val f = server ? ("allnodes", databaseName, ringName)
+    val request = JsonObject("ring"->ringName)
+    val f = server ? ("allNodes", databaseName, Compact(request))
     val (code: String, s: String) = Await.result(f, 5 seconds)
+    checkCode(code, s)
     val nodes = jgetArray(Json(s))
     var result = List[String]()
     for (node <- nodes) {
@@ -330,7 +356,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
 
   private def getDatabaseStatus(databaseName: String): String = {
     try {
-      val result = databaseInfo(databaseName, JsonObject("info" -> "s"))
+      val result = databaseInfo(databaseName, JsonObject("get" -> "s"))
       jgetString(result, "s")
     } catch {
       case ex => "none"
@@ -415,7 +441,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
         val request = JsonObject("ring" -> ringName, "node" -> nodeName, "host" -> host, "port" -> port)
         dba.pass("addNode", request)
 
-        val info = databaseInfo(databaseName, JsonObject("info" -> "c"))
+        val info = databaseInfo(databaseName, JsonObject("get" -> "c"))
         val jconfig = jget(info, "c")
         val config = DatabaseConfig(databaseName, jconfig)
 
@@ -493,7 +519,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
       }
       dba.lock(newServers) {
         val allServers = oldServers ::: newServers
-        val info = databaseInfo(databaseName, JsonObject("info" -> "c"))
+        val info = databaseInfo(databaseName, JsonObject("get" -> "c"))
         val jconfig = jget(info, "c")
         val config = DatabaseConfig(databaseName, jconfig)
         val (fromRingName, fromRingConfig) = config.rings.head
@@ -543,7 +569,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
       var ro = JsonObject()
       // TODO could do calls in parallel
       for (nodeName <- allNodes(databaseName, ringName)) {
-        val info = nodeInfo(databaseName, ringName, nodeName, JsonObject("info" -> "hp"))
+        val info = nodeInfo(databaseName, ringName, nodeName, JsonObject("get" -> "hp"))
         val host = jgetString(info, "h")
         val port = jgetInt(info, "p")
         implicit val timeout = Timeout(5 seconds)
@@ -551,6 +577,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
           "/user/" + databaseName + "/" + ringName + "/" + nodeName + "/" + tableName)
         val f1 = tableRef ? ("report", 0L, "", "")
         val (code: String, uid: Long, x: String) = Await.result(f1, 5 seconds)
+        checkCode(code, x)
         ro = ro + (nodeName -> Json(x))
       }
       result = result + (ringName -> ro)
@@ -567,7 +594,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
       var ro = JsonObject()
       // TODO could do calls in parallel
       for (nodeName <- allNodes(databaseName, ringName)) {
-        val info = nodeInfo(databaseName, ringName, nodeName, JsonObject("info" -> "hp"))
+        val info = nodeInfo(databaseName, ringName, nodeName, JsonObject("get" -> "hp"))
         val host = jgetString(info, "h")
         val port = jgetInt(info, "p")
         implicit val timeout = Timeout(5 seconds)
@@ -575,6 +602,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
           "/user/" + databaseName + "/" + ringName + "/" + nodeName + "/@mon")
         val f1 = monitorRef ? ("get", tableName)
         val (code: String, x: String) = Await.result(f1, 5 seconds)
+        checkCode(code, x)
         ro = ro + (nodeName -> Json(x))
       }
       result = result + (ringName -> ro)
@@ -597,9 +625,9 @@ class Manager(host: String, port: Int) extends CheckedActor {
         getDatabase(databaseName)
       }
     }
-    case ("syncTable", p: Promise[SyncTable], databaseName: String, tableName: String) => {
+    case ("table", p: Promise[Table], databaseName: String, tableName: String) => {
       complete(p) {
-        getSyncTable(databaseName, tableName)
+        getTable(databaseName, tableName)
       }
     }
     case ("asyncTable", p: Promise[AsyncTable], databaseName: String, tableName: String) => {
@@ -630,6 +658,11 @@ class Manager(host: String, port: Int) extends CheckedActor {
     case ("allServers", p: Promise[Iterable[String]], databaseName: String) => {
       complete(p) {
         allServers(databaseName)
+      }
+    }
+    case ("databaseExists", p: Promise[Json], databaseName: String, options: JsonObject) => {
+      complete(p) {
+        databaseExists(databaseName, options)
       }
     }
     case ("databaseInfo", p: Promise[Json], databaseName: String, options: JsonObject) => {

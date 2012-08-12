@@ -115,8 +115,7 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
       }
       case None => {
           val less = info.kind.endsWith("-")
-          // TODO deal with node1
-          val (node1,node2) = databaseMap.get(ring, info.tab, info.key, less)
+          val node2 = databaseMap.get(ring, info.tab, info.key, less)
           node2
       }
     }
@@ -167,6 +166,7 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
       // server => client
       msgs get uid match {
         case Some(info: MsgInfo) => {
+          /*
           if (code == Codes.NoNode ||code == Codes.NoRing || code == Codes.NoDatabaase) {
             val lastEvent = info.history.head
             val ringName = lastEvent.ring
@@ -177,7 +177,9 @@ private[persist] class Send(system:ActorSystem,config:DatabaseConfig) extends Ch
             msgs = msgs - uid
             msgs = msgs + (newUid -> newInfo)
             send(newInfo, "noNode")
-          } else if (code == Codes.Handoff) {
+          } else 
+          */
+          if (code == Codes.Handoff) {
             // TODO delay on handoff to same server or when in gap
             val range = Json(response)
             val low = jgetString(range, "low")

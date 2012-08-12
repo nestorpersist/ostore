@@ -65,7 +65,8 @@ private[persist] case class NodeConfig(
 
 private[persist] case class TableConfig(
   val tableName: String,
-  val prefix: JsonArray,
+  val hasPrefix: Boolean,
+  val prefix: JsonArray, 
   val toMap: Map[String, Json],
   val fromMap: Map[String, Json],
   val toReduce: Map[String, Json],
@@ -91,35 +92,35 @@ private[persist] object DatabaseConfig {
         case a: JsonArray => {
           for (m <- a) {
             val from = jgetString(m, "from")
-            toMap = toMap + (to -> (getMap(toMap, to) + (from -> m)))
-            fromMap = fromMap + (from -> (getMap(fromMap, from) + (to -> m)))
+            toMap += (to -> (getMap(toMap, to) + (from -> m)))
+            fromMap += (from -> (getMap(fromMap, from) + (to -> m)))
           }
         }
         case m: JsonObject => {
           val from = jgetString(m, "from")
-          toMap = toMap + (to -> (getMap(toMap, to) + (from -> m)))
-          fromMap = fromMap + (from -> (getMap(fromMap, from) + (to -> m)))
+          toMap += (to -> (getMap(toMap, to) + (from -> m)))
+          fromMap += (from -> (getMap(fromMap, from) + (to -> m)))
         }
         case x =>
       }
       val reduce = jget(tab, "reduce")
       if (reduce != null) {
         val from = jgetString(reduce, "from")
-        toReduce = toReduce + (to -> (getMap(toReduce, to) + (from -> reduce)))
-        fromReduce = fromReduce + (from -> (getMap(fromReduce, from) + (to -> reduce)))
+        toReduce += (to -> (getMap(toReduce, to) + (from -> reduce)))
+        fromReduce += (from -> (getMap(fromReduce, from) + (to -> reduce)))
       }
     }
 
     var tables = new TreeMap[String, TableConfig]()
     for (tab <- tabs) {
       val name = jgetString(tab, "name")
-      val prefix = jget(tab, "prefix") match {
-        case a: JsonArray => a
-        case obj: JsonObject => JsonArray(obj)
-        case x => JsonArray()
+      val (hasPrefix,prefix) = jget(tab, "prefix") match {
+        case a: JsonArray => (true,a)
+        case obj: JsonObject => (true,JsonArray(obj))
+        case x => (false,JsonArray())
       }
-      val info = TableConfig(name, prefix, getMap(toMap, name), getMap(fromMap, name), getMap(toReduce, name), getMap(fromReduce, name))
-      tables = tables + (name -> info)
+      val info = TableConfig(name, hasPrefix, prefix, getMap(toMap, name), getMap(fromMap, name), getMap(toReduce, name), getMap(fromReduce, name))
+      tables += (name -> info)
     }
 
     var servers = Map[String, ServerConfig]()
@@ -156,12 +157,12 @@ private[persist] object DatabaseConfig {
         val nodeConfig = new NodeConfig(ringName, name, serverConfig, pos)
 
         val nodeName = nodeConfig.name
-        ringMap = ringMap + (nodeName -> nodeConfig)
+        ringMap += (nodeName -> nodeConfig)
         ringSeq = ringSeq :+ nodeName
         //pos = pos + 1
       }
       val ringConfig = RingConfig(ringName, ringMap, ringSeq)
-      rings = rings + (ringName -> ringConfig)
+      rings += (ringName -> ringConfig)
     }
     new DatabaseConfig(databaseName, rings, tables, servers)
   }
@@ -187,7 +188,7 @@ private[persist] class DatabaseConfig(
   }
 
   def addTable(tableName: String): DatabaseConfig = {
-    val tableConfig = TableConfig(tableName, JsonArray(), emptyMap, emptyMap, emptyMap, emptyMap)
+    val tableConfig = TableConfig(tableName, false, JsonArray(), emptyMap, emptyMap, emptyMap, emptyMap)
     val tables1 = tables + (tableName -> tableConfig)
     new DatabaseConfig(name, rings, tables1, servers)
   }
@@ -282,18 +283,21 @@ private[persist] class DatabaseConfig(
         jmap = jm +: jmap
       }
       if (jsize(jmap) == 1) {
-        jtable = jtable + ("map" -> jget(jmap, 0))
+        jtable += ("map" -> jget(jmap, 0))
       } else if (jsize(jmap) > 1) {
-        jtable = jtable + ("map" -> jmap.reverse)
+        jtable += ("map" -> jmap.reverse)
       }
       var jreduce = JsonArray()
       for ((from, jr) <- tableConfig.toReduce) {
         jreduce = jr +: jreduce
       }
       if (jsize(jreduce) == 1) {
-        jtable = jtable + ("reduce" -> jget(jreduce, 0))
+        jtable += ("reduce" -> jget(jreduce, 0))
       } else if (jsize(jreduce) > 1) {
-        jtable = jtable + ("reduce" -> jreduce.reverse)
+        jtable += ("reduce" -> jreduce.reverse)
+      }
+      if (tableConfig.hasPrefix) {
+        jtable += ("prefix" -> tableConfig.prefix)
       }
       jtables = jtable +: jtables
     }

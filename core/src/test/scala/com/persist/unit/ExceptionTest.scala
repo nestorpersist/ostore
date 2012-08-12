@@ -17,6 +17,7 @@
 
 package com.persist.unit
 
+
 import com.persist._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
@@ -26,9 +27,15 @@ import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 
 @RunWith(classOf[JUnitRunner])
-class SimpleTest extends FunSuite {
-  
-  def shared(serverConfig:Json) {
+class ExceptionTest extends FunSuite {
+
+  test("test exceptions") {
+    val serverConfig = Json("""
+    {
+     "path":"/tmp/exception",
+     "host":"127.0.0.1", "port":8011
+    }        
+    """)
     val dbName = "testdb"
     val databaseConfig = Json("""
     { 
@@ -37,7 +44,7 @@ class SimpleTest extends FunSuite {
        "nodes":[ {"name":"n1", "host":"127.0.0.1", "port":8011} ] } ]
      }
      """)
-
+     
     println("Starting Server")
     Server.start(serverConfig, true)
 
@@ -47,8 +54,26 @@ class SimpleTest extends FunSuite {
 
     val database = client.database(dbName)
     val tab1 = database.table("tab1")
+    
+    val j1 = intercept[Exception] {
+      val j = Json("""{x}""")
+    }
+    println("j1:"+j1)
+
+    val j2 = intercept[Exception] {
+      val j = Json("""{"a":3}7""")
+    }
+    println("j2:"+j2)
+    
+    val e1 = intercept[Exception] {
+      val badDatabase = client.database("bad")
+      //val badTable = badDatabase.table("tab1")
+    }
+    println("e1:"+e1)
+
+    
+    /*
     println("tab1")
-    tab1.put("key1", "val1")
     tab1.put("key2", "val2")
     tab1.put("key3", "val3")
     tab1.put("key4", "val4")
@@ -76,8 +101,13 @@ class SimpleTest extends FunSuite {
     println("Report:" + Pretty(report1))
     val monitor1 = database.monitor("tab1")
     println("Monitor:" + Pretty(monitor1))
+    */
 
     client.stopDataBase(dbName)
+    val e2 = intercept[Exception] {
+      tab1.put("key1", "val1")
+    }
+    println("e2:"+e2)
     client.deleteDatabase(dbName)
 
     client.stop()
@@ -86,25 +116,5 @@ class SimpleTest extends FunSuite {
     println("Stopping Server")
     Server.stop
     println("DONE") 
-  }
-
-  test("test with JDBM3 store") {
-    val serverConfig = Json("""
-    {
-     "path":"/tmp/simple",
-     "host":"127.0.0.1", "port":8011
-    }        
-    """)
-    shared(serverConfig)
-  }
-
-  test("test with in-memory store") {
-    val serverConfig = Json("""
-    {
-     "host":"127.0.0.1", "port":8011
     }
-    """)
-    shared(serverConfig)
-  }
-
 }

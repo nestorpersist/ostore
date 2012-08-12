@@ -27,7 +27,15 @@ import akka.dispatch.Await
 import akka.actor.Props
 import akka.dispatch.DefaultPromise
 import akka.dispatch.ExecutionContext
+import Exceptions._
 
+/**
+ * This is the client API for accessing OStore databases.
+ * 
+ * @param system the ActorSystem that the client should use.
+ * @param host the host name the client should visit to get database information at startup.
+ * @param port the port on the host to use.
+ */
 class Client(system: ActorSystem, host: String = "127.0.0.1", port: Int = 8011) {
   // TODO optional database of client state (list of servers)
   // TODO connect command to add servers 
@@ -45,6 +53,11 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: Int = 8011) 
     Await.result(stopped, 5 seconds)
   }
   
+  /**
+   * Returns the names of all databases that this client knows about.
+   * 
+   * @return the database names.
+   */
   def allDatabases():Iterable[String] = {
     var p = new DefaultPromise[Iterable[String]]
     manager ! ("allDatabases", p)
@@ -52,40 +65,70 @@ class Client(system: ActorSystem, host: String = "127.0.0.1", port: Int = 8011) 
     v
   }
   
-  def databaseInfo(databaseName:String,options:JsonObject=emptyJsonObject):Json = {
-    var p = new DefaultPromise[Traversable[Json]]
-    manager ! ("databaseInfo", p, databaseName,options)
-    val v = Await.result(p, 5 seconds)
+  def databaseExists(dbName:String,options:JsonObject=emptyJsonObject):Boolean = {
+    var p = new DefaultPromise[Boolean]
+    manager ! ("databaseExists", p, dbName,options)
+    val v:Boolean = Await.result(p, 5 seconds)
     v
   }
   
-  def createDatabase(databaseName: String, config: Json) {
+  /*
+  def databaseInfo(dbName:String,options:JsonObject=emptyJsonObject):Json = {
+    var p = new DefaultPromise[Traversable[Json]]
+    manager ! ("databaseInfo", p, dbName,options)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
+  */
+  
+  /**
+   * Creates and starts a new database.
+   * 
+   * @param dbName the name of the new database.
+   * @param config the configuration for the new database (see Wiki).
+   */
+  def createDatabase(dbName: String, config: Json) {
     var p = new DefaultPromise[String]
-    manager ! ("createDatabase", p, databaseName, config)
+    manager ! ("createDatabase", p, dbName, config)
     val v = Await.result(p, 5 minutes)
   }
 
-  def deleteDatabase(databaseName: String) {
+  /**
+   * Deletes a database. The database must exist and be stopped.
+   * 
+   * @param dbName the name of the database to be deleted.
+   */
+  def deleteDatabase(dbName: String) {
     var p = new DefaultPromise[String]
-    manager ! ("deleteDatabase", p, databaseName)
+    manager ! ("deleteDatabase", p, dbName)
     val v = Await.result(p, 5 seconds)
   }
 
-  def startDatabase(databaseName: String) {
+  def startDatabase(dbName: String) {
     var p = new DefaultPromise[String]
-    manager ! ("startDatabase", p, databaseName)
+    manager ! ("startDatabase", p, dbName)
     val v = Await.result(p, 5 seconds)
   }
 
-  def stopDataBase(databaseName: String) {
+  def stopDataBase(dbName: String) {
     var p = new DefaultPromise[String]
-    manager ! ("stopDatabase", p, databaseName)
+    manager ! ("stopDatabase", p, dbName)
     val v = Await.result(p, 5 seconds)
   }
 
-  def database(databaseName: String):Database = {
+  /**
+   * Returns an API for a database.
+   * 
+   * @param dbName the name of the database.
+   * @return the API for the named database.
+   */
+  def database(dbName: String, options:JsonObject=emptyJsonObject):Database = {
+    val check = ! jgetBoolean("skipCheck")
+    if (check && ! databaseExists(dbName)) {
+      throw new SystemException(Codes.ExistDatabase,JsonObject("database"->dbName))
+    } 
     var p = new DefaultPromise[Database]
-    manager ! ("database", p, databaseName)
+    manager ! ("database", p, dbName)
     val database = Await.result(p, 5 seconds)
     database
   }

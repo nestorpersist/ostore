@@ -28,17 +28,14 @@
 package com.persist
 
 import scala.collection.immutable.HashMap
+import JsonOps._
+import scala.util.Sorting
+import Exceptions._
 
-case class JsonParseException(val msg: String, val input: String, val line: Int, val char: Int) extends Exception {
-  override def toString() = {
-    "[" + line + "," + char +"] " + msg +" (" + input +")"
-  }
-}
-
-object JsonParse {
+private[persist] object JsonParse {
 
   type Json = Any
-  
+
   private object lexer {
 
     private object CharKinds extends Enumeration {
@@ -108,7 +105,7 @@ object JsonParse {
       var sb: StringBuilder = null
       chars.next
       var first = chars.mark
-      while(chars.ch != '"'.toInt && chars.ch >= 32) {
+      while (chars.ch != '"'.toInt && chars.ch >= 32) {
         if (chars.ch == '\\'.toInt) {
           if (sb == null) sb = new StringBuilder(50)
           sb.append(chars.substr(first))
@@ -197,8 +194,8 @@ object JsonParse {
       chars.next
       (t, "")
     }
-    
-    private def handleBlank(chars:Chars) = {
+
+    private def handleBlank(chars: Chars) = {
       do {
         chars.next
       } while (chars.kind == Blank)
@@ -215,7 +212,7 @@ object JsonParse {
       var ch: Int = 0
       var kind: CharKind = Other
       var linePos: Int = 1
-      var charPos = 1
+      var charPos = 0
       def next {
         if (pos < size) {
           ch = s(pos).toInt
@@ -312,7 +309,7 @@ object JsonParse {
       case _ => tokens.error("Bad integer")
     }
     tokens.next
-    val r:Any = if (v >= Int.MinValue && v <= Int.MaxValue) v.toInt else v
+    val r: Any = if (v >= Int.MinValue && v <= Int.MaxValue) v.toInt else v
     r
   }
 
@@ -387,6 +384,150 @@ object JsonParse {
     // simple test
     println(JsonOps.Pretty(parse("""{"a":55,
                                      "b":[false,null,99.123,"f\\o\to\ufF32l"],"c":123.1}""")))
+  }
+
+}
+
+private[persist] object JsonUnparse {
+
+  private def quotedChar(codePoint: Int) = {
+    codePoint match {
+      case c if c > 0xffff =>
+        val chars = Character.toChars(c)
+        "\\u%04x\\u%04x".format(chars(0).toInt, chars(1).toInt)
+      case c if c > 0x7e => "\\u%04x".format(c.toInt)
+      case c => c.toChar
+    }
+  }
+
+  /**
+   * Quote a string according to "JSON rules".
+   */
+  private def quote(s: String) = {
+    val charCount = s.codePointCount(0, s.length)
+    "\"" + 0.to(charCount - 1).map { idx =>
+      s.codePointAt(s.offsetByCodePoints(0, idx)) match {
+        case 0x0d => "\\r"
+        case 0x0a => "\\n"
+        case 0x09 => "\\t"
+        case 0x22 => "\\\""
+        case 0x5c => "\\\\"
+        case 0x2f => "\\/" // to avoid sending "</"
+        case c => quotedChar(c)
+      }
+    }.mkString("") + "\""
+  }
+
+  def compact(obj: Any): String = {
+    val sb = new StringBuilder(200)
+    def compact1(obj1: Any) {
+      obj1 match {
+        case s: String => sb.append(quote(s))
+        case null => sb.append("null")
+        case x: Boolean => sb.append(x.toString)
+        case x: Number => sb.append(x.toString)
+        case list: Seq[_] => {
+          if (list.headOption == None) {
+            sb.append("[]")
+          } else {
+            var sep = "["
+            for (elem <- list) {
+              sb.append(sep)
+              compact1(elem)
+              sep = ","
+            }
+            sb.append("]")
+          }
+        }
+        case m: Map[String, _] => {
+          val m2 = m.iterator.toList
+          val m1 = Sorting.stableSort[(String, Any), String](m2, { case (k, v) => k })
+          if (m1.size == 0) {
+            sb.append("{}")
+          } else {
+            var sep = "{"
+            for ((name, elem) <- m1) {
+              sb.append(sep)
+              sb.append(quote(name))
+              sb.append(":")
+              compact1(elem)
+              sep = ","
+            }
+            sb.append("}")
+          }
+        }
+        case x => throw new SystemException(Codes.JsonUnparse, JsonObject("msg" -> "bad json value", "value" -> x.toString()))
+      }
+    }
+    compact1(obj)
+    sb.toString
+  }
+
+  /**
+   * Returns a pretty JSON representation of the given object
+   */
+
+  private def elemCount(obj: Any): Int = {
+    obj match {
+      case array: Array[_] => array.map(elemCount(_)).foldLeft(0) { (acc, n) => acc + n }
+      case list: Seq[_] => list.map(elemCount(_)).foldLeft(0) { (acc, n) => acc + n }
+      case map: scala.collection.Map[_, _] => map.map(v => elemCount(v._2)).foldLeft(0) { (acc, n) => acc + n }
+      case x => 1
+    }
+  }
+
+  private val splitCount = 8
+  //TODO make multiLine more efficient
+  private def multiLine(obj: Any): Boolean = elemCount(obj) > splitCount
+  private def space(cnt: Int): String = " " * cnt
+
+  //  def pretty(obj: Any, incr: Int = 2, indent: Int = 0): JsonQuoted = {
+  def pretty(obj: Any, incr: Int = 2, indent: Int = 0): String = {
+    val rv = space(indent) + (obj match {
+      //case JsonQuoted(body) => body
+      case null => "null"
+      case x: Boolean => x.toString
+      case x: Number => x.toString
+      case array: Array[_] => {
+        if (multiLine(array)) {
+          //array.map(pretty(_, incr, indent + incr).body).mkString("[\n", ",\n", "\n" + space(indent) + "]")
+          array.map(pretty(_, incr, indent + incr)).mkString("[\n", ",\n", "\n" + space(indent) + "]")
+        } else {
+          //array.map(pretty(_, incr, 0).body).mkString("[", ",", "]")
+          array.map(pretty(_, incr, 0)).mkString("[", ",", "]")
+        }
+      }
+      case list: Seq[_] =>
+        if (multiLine(list)) {
+          //list.map(pretty(_, incr, indent + incr).body).mkString("[\n", ",\n", "\n" + space(indent) + "]")
+          list.map(pretty(_, incr, indent + incr)).mkString("[\n", ",\n", "\n" + space(indent) + "]")
+        } else {
+          //list.map(pretty(_, incr, 0).body).mkString("[", ",", "]")
+          list.map(pretty(_, incr, 0)).mkString("[", ",", "]")
+        }
+      case map: scala.collection.Map[_, _] =>
+        if (multiLine(map)) {
+          Sorting.stableSort[(Any, Any), String](map.iterator.toList, { case (k, v) => k.toString }).map {
+            case (k, v) =>
+              space(indent + incr) + quote(k.toString) + ":" +
+                //(if (multiLine(v)) { "\n" + pretty(v, incr, indent + incr + incr).body } else { pretty(v, incr, 0) })
+                (if (multiLine(v)) { "\n" + pretty(v, incr, indent + incr + incr) } else { pretty(v, incr, 0) })
+          }.mkString("{\n", ",\n", "\n" + space(indent) + "}")
+        } else {
+          Sorting.stableSort[(Any, Any), String](map.iterator.toList, { case (k, v) => k.toString }).map {
+            case (k, v) =>
+              //quote(k.toString) + ":" + pretty(v, incr, 0).body
+              quote(k.toString) + ":" + pretty(v, incr, 0)
+          }.mkString("{", ",", "}")
+        }
+      //case x: JsonSerializable => x.toJson()
+      case s:String => quote(s)
+      case x =>
+        //quote(x.toString)
+        throw new SystemException(Codes.JsonUnparse, JsonObject("msg" -> "bad json value", "value" -> x.toString()))
+    })
+    //JsonQuoted(rv)
+    rv
   }
 
 }

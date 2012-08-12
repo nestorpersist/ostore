@@ -96,7 +96,7 @@ private[persist] object Text {
     def from(key: JsonKey): JsonKey = jgetArray(key, 1)
   }
 
-  class TextSearch(c: SyncTable) {
+  class TextSearch(c: Table) {
 
     private def next(kind: String, word: String, title: String, include: Boolean): String = {
       for (key <- c.all(JsonObject("low" -> JsonArray(kind, word, title), "includelow" -> include))) {

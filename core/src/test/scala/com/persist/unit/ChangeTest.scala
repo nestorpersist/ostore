@@ -89,7 +89,7 @@ class ChangeTest extends FunSuite {
     val database = client.database(dbName)
     database.addTables(tableConfig)
 
-    val tab1 = database.syncTable("tab1")
+    val tab1 = database.table("tab1")
 
     for (tableName <- database.allTables) {
       assert(tableName == "tab1", "table not added")

@@ -101,7 +101,7 @@ private[persist] object RestClient1 {
   private def listDatabases(): Future[Option[Json]] = {
     Future {
       var result = JsonArray()
-      for (databaseName <- client.allDatabases()) {
+      for (databaseName <- client.allDatabases) {
         result = databaseName +: result
       }
       Some(result.reverse)
@@ -172,7 +172,7 @@ private[persist] object RestClient1 {
 
   private def getDatabaseInfo(databaseName: String, options: JsonObject): Future[Option[Json]] = {
     Future {
-      val result = client.databaseInfo(databaseName, options)
+      val result = client.database(databaseName).databaseInfo(options)
       Some(result)
     }
   }
@@ -261,7 +261,7 @@ private[persist] object RestClient1 {
 
   private def search(database: Database, tableName: String, s: String): Future[Option[Json]] = {
     Future {
-      val ts = new Text.TextSearch(database.syncTable(tableName))
+      val ts = new Text.TextSearch(database.table(tableName))
       Some(ts.find(s))
     }
   }
@@ -309,17 +309,18 @@ private[persist] object RestClient1 {
       val info = jgetString(options, "info")
       val rings = jgetBoolean(options, "rings")
       val servers = jgetBoolean(options, "servers")
+      val check = JsonObject("skipCheck"->true)
       if (rings) {
-        val database = client.database(databaseName)
+        val database = client.database(databaseName,check)
         listRings(database)
       } else if (servers) {
-        val database = client.database(databaseName)
+        val database = client.database(databaseName,check)
         listServers(database)
       } else if (info != "") {
         getDatabaseInfo(databaseName, options)
       } else {
         // list tables
-        val database = client.database(databaseName)
+        val database = client.database(databaseName,check)
         listTables(database)
       }
     }
@@ -451,7 +452,7 @@ private[persist] object RestClient1 {
         doParts1(databaseName, method, input, options)
       } else {
         val tableName = parts(1)
-        val database = client.database(databaseName)
+        val database = client.database(databaseName,JsonObject("skipCheck"->true))
         if (numParts == 2) {
           doParts2(database, tableName, method, input, options)
         } else if (numParts == 3) {

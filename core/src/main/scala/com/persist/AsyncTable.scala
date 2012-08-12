@@ -29,6 +29,7 @@ import akka.dispatch._
 import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
+import Exceptions._
 
 /**
  * This is the asynchronous interface to OStore tables.
@@ -57,10 +58,9 @@ class AsyncTable private[persist] (databaseName:String, tableName: String, syste
         val (code: String, v1: String) = x
         if (code == Codes.NoPut) {
           false
-        } else if (code == Codes.Ok) {
-          true
         } else {
-          throw new Exception(code)
+          checkCode(code,v1)
+          true
         }
       }
     }
@@ -152,9 +152,7 @@ class AsyncTable private[persist] (databaseName:String, tableName: String, syste
     val f2 = f1.map { x =>
       {
         val (code: String, v1: String) = x
-        if (code != Codes.Ok) {
-          throw new Exception(code)
-        }
+        checkCode(code, v1)
       }
     }
     f2
@@ -189,10 +187,12 @@ class AsyncTable private[persist] (databaseName:String, tableName: String, syste
     val f2 = f1.map { x =>
       {
         val (code: String, v1: String) = x
-        if (code != Codes.Ok) {
-          throw new Exception(code)
+        if (code == Codes.NoPut) {
+          false
+        } else {
+          checkCode(code,v1)
+          true
         }
-        code != Codes.NoPut
       }
     }
     f2
@@ -204,8 +204,8 @@ class AsyncTable private[persist] (databaseName:String, tableName: String, syste
    *
    * @param key the key.
    * @param options optional json object containing options.
-   *  - '''"get="kvc"''' if specified this method returns an object with requested fields
-   *      (Key, Value, vector Clock).
+   *  - '''"get="kvcde"''' if specified this method returns an object with requested fields
+   *      (Key, Value, vector Clock, Deleted, Expires time).
    *  - '''"r"=n''' read from at least n rings before returning. Default is 1.
    *  - '''"ring"="ringName"''' get from this ring.
    *
@@ -222,12 +222,11 @@ class AsyncTable private[persist] (databaseName:String, tableName: String, syste
     val f2 = f1.map { x =>
       {
         val (code: String, v1: String) = x
-        if (code == Codes.Ok) {
-          Some(Json(v1))
-        } else if (code == Codes.NotPresent) {
+        if (code == Codes.NotPresent) {
           None
         } else {
-          throw new Exception(code)
+          checkCode(code, v1)
+          Some(Json(v1))
         }
       }
     }
@@ -244,8 +243,8 @@ class AsyncTable private[persist] (databaseName:String, tableName: String, syste
    *    Options can modify what items are returned and what information is
    *    returned for each item.
    *  - '''"reverse"=true''' if true, return keys in reverse order. Default is false.
-   *  - '''"get="kvc"''' if specified this method returns an object with requested fields
-   *      (Key, Value, vector Clock).
+   *  - '''"get="kvcde"''' if specified this method returns an object with requested fields
+   *      (Key, Value, vector Clock, Deleted, Expires time).
    *  - '''"low"=key''' the lowest key that should be returned.
    *  - '''"includelow"=true''' if true, the low option is inclusive.
    *  If false, the low option is exclusive. Default is false.

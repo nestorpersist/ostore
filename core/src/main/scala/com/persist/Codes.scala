@@ -17,26 +17,38 @@
 
 package com.persist
 
-private[persist] object Codes {
-  // Success
-  final val Ok = "Ok"
-  final val Busy = "Busy" // activity still ongoing
-  final val NotPresent = "NotPresent"
-  final val NoPut = "NoPut" // opt put failed
-  final val Locked = "Locked" // already locked by different guid
+import JsonOps._
 
-  // Missing Actors
-  final val NoDatabaase = "NoDatabase"
+object Codes {
+  
+  private[persist] final val emptyResponse = Compact(JsonObject())
+  
+  // Success
+  private[persist] final val Ok = "Ok"
+  private[persist] final val Busy = "Busy" // activity still ongoing
+  private[persist] final val NotPresent = "NotPresent"
+  private[persist] final val NoPut = "NoPut" // opt put failed
+  private[persist] final val Locked = "Locked" // already locked by different guid
+
+  // Does not exist
+  final val NoDatabase = "NoDatabase"
   final val NoRing = "NoRing"
   final val NoNode = "NoNode"
   final val NoTable = "NoTable"
+    
+  // Already exists
+  final val ExistDatabase = "ExistDatabase"
+  final val ExistRing = "ExistRing"
+    
+  // Not available
+  final val AvailableDatabase = "AvailableDatabase"
 
   // Handoffs
-  final val Handoff = "Handoff"
-  final val Next = "Next"
-  final val Prev = "Prev"
-  final val PrevM = "Prev-"
-  final val Done = "Done"
+  private[persist] final val Handoff = "Handoff"
+  private[persist] final val Next = "Next"
+  private[persist] final val Prev = "Prev"
+  private[persist] final val PrevM = "Prev-"
+  private[persist] final val Done = "Done"
 
   // Failures 
   final val NotAvailable = "NotAvailable"
@@ -44,4 +56,6 @@ private[persist] object Codes {
   final val BadRequest = "BadRequest"
   final val InternalError = "InternalError"
   final val Exist = "Exist"
+  final val JsonParse = "JsonParse"
+  final val JsonUnparse = "JsonUnparse"
 }

@@ -22,6 +22,7 @@ import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.dispatch.DefaultPromise
 import JsonOps._
+import Exceptions._
 
 /**
  * The result of the all method of [[com.persist.AsyncTable]].
@@ -63,6 +64,7 @@ private[persist] class ForwardNextItem(val ring: String, val value: Json, key: S
     if (code == Codes.Done) {
       None
     } else {
+      checkCode(code, result)
       val jresult = Json(result)
       val key = keyEncode(jresult match {
         case j: JsonObject => jget(j, "k")
@@ -128,6 +130,7 @@ private[persist] class BackwardNextItem(val ring: String, val value: Json, key: 
     if (code == Codes.Done) {
       None
     } else {
+      checkCode(code, result)
       val jresult = Json(result)
       val key = keyEncode(jresult match {
         case j: JsonObject => jget(j, "k")

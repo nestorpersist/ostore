@@ -100,7 +100,7 @@ class TimeTest extends FunSuite {
     client.createDatabase(dbName, databaseConfig)
 
     val database = client.database(dbName)
-    val tab1 = database.syncTable("genre")
+    val tab1 = database.table("genre")
     val tab2 = database.asyncTable("genre")
     implicit val executor = system.dispatcher
     implicit val timeout = Timeout(2 hours)

@@ -30,6 +30,7 @@ import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
 import scala.collection.Traversable
+import Exceptions._
 
 private object SyncAllItems {
   def apply(client: AsyncTable, options: JsonObject) = new SyncAllItems(client, options)
@@ -65,7 +66,7 @@ private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: J
           r = Await.result(f, 20 seconds)
           result
         }
-        case None => throw new Exception("No next item")
+        case None => throw RequestError("No next item")
       }
       
     }
@@ -77,7 +78,7 @@ private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: J
  * This is the synchronous interface to OStore tables.
  * Instances of this class are created by the [[com.persist.Database]] syncTable method.
  */
-class SyncTable private[persist] (databaseName:String, tableName: String, asyncClient:AsyncTable) {
+class Table private[persist] (databaseName:String, tableName: String, asyncClient:AsyncTable) {
   // TODO pass in config rather than default to first ring
   // TODO option to get config from remote server
 
@@ -185,8 +186,8 @@ class SyncTable private[persist] (databaseName:String, tableName: String, asyncC
    *
    * @param key the key.
    * @param options optional json object containing options.
-   *  - '''"get="kvc"''' if specified this method returns an object with requested fields
-   *      (Key, Value, vector Clock).
+   *  - '''"get="kvcde"''' if specified this method returns an object with requested fields
+   *      (Key, Value, vector Clock, Deleted, Expires time).
    *  - '''"r"=n''' read from at least n rings before returning. Default is 1.
    *  - '''"ring"="ringName"''' get from this ring.
    *
@@ -210,8 +211,8 @@ class SyncTable private[persist] (databaseName:String, tableName: String, asyncC
    *    Options can modify what items are returned and what information is
    *    returned for each item.
    *  - '''"reverse"=true''' if true, return keys in reverse order. Default is false.
-   *  - '''"get="kvc"''' if specified this method returns an object with requested fields
-   *      (Key, Value, vector Clock).
+   *  - '''"get="kvcde"''' if specified this method returns an object with requested fields
+   *      (Key, Value, vector Clock, Deleted, Expires time).
    *  - '''"low"=key''' the lowest key that should be returned.
    *  - '''"includelow"=true''' if true, the low option is inclusive.
    *  If false, the low option is exclusive. Default is false.

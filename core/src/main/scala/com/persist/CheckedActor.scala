@@ -18,8 +18,10 @@
 package com.persist
 
 import akka.actor.Actor
+import akka.actor.ActorLogging
+import Exceptions._
 
-private[persist] abstract class CheckedActor extends Actor with akka.actor.ActorLogging {
+private[persist] abstract class CheckedActor extends Actor with ActorLogging {
   def rec: PartialFunction[Any, Unit]
   def receive: PartialFunction[Any, Unit] = {
     case msg => {

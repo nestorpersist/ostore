@@ -20,6 +20,7 @@ package com.persist
 import JsonOps._
 import akka.actor.ActorSystem
 import akka.actor.ActorRef
+import Exceptions._
 
 private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =>
   val bal: ServerTableBalance
@@ -118,7 +119,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
           info.storeTable.last match {
             case Some(key) => { key }
             case None => {
-              return // should not occur
+              throw InternalError("sendToNext 1")
             }
           }
         }
@@ -127,13 +128,13 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       val meta = info.storeTable.getMeta(key) match {
         case Some(value: String) => value
         case None => {
-          return // should not occur
+          throw InternalError("sendToNext 2")
         }
       }
       val v = info.storeTable.get(key) match {
         case Some(value: String) => value
         case None => {
-          return // should not occur
+          throw InternalError("sendToNext 3")
         }
       }
       info.high = key

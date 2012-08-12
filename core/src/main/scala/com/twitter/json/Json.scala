@@ -20,6 +20,8 @@ import extensions._
 import scala.util.Sorting
 import scala.util.parsing.combinator._
 
+/*
+
 private[com] trait JsonSerializable {
   def toJson(): String
 }
@@ -277,3 +279,4 @@ private[com] object Json {
 private[com] case class JsonQuoted(body: String) {
   override def toString = body
 }
+*/

@@ -18,10 +18,11 @@
 package com.persist
 
 import scala.collection.immutable.HashMap
-import com.twitter.json.Json.parse
-import com.twitter.json.Json.build
-import com.twitter.json.Json.compact
-import com.twitter.json.Json.pretty
+//import com.twitter.json.Json.parse
+//import com.twitter.json.Json.build
+//import com.twitter.json.Json.compact
+//import com.twitter.json.Json.pretty
+import JsonUnparse._
 import java.net.URLEncoder
 import java.net.URLDecoder
 
@@ -128,7 +129,6 @@ object JsonOps {
    *
    */
   def Compact(j: Json): String = {
-    //build(j).toString()
     compact(j)
   }
 
@@ -139,7 +139,8 @@ object JsonOps {
    *
    */
   def Pretty(j: Json): String = {
-    pretty(j).toString()
+    //pretty(j).toString()
+    pretty(j)
   }
 
   /**
@@ -264,7 +265,7 @@ object JsonOps {
    */
   def jgetLong(a: Json, ilist: Any*): Long = {
     jget(a, ilist: _*) match {
-      case l:Long => l
+      case l: Long => l
       case i: Int => i
       case x => 0
     }
@@ -309,14 +310,14 @@ object JsonOps {
   }
 
   /**
-   * 
+   *
    * An extractor for nested Json values.
-   * 
+   *
    * @param ilist a list of values that are either strings or integers
    *  - A string selects the value of a JsonObject name-value pair where
    *    the name equals the string.
    *  - An integer i selects the ith elements of a JsonArray.
-   *  
+   *
    *  @example {{{
    *     val A = jfield("a")
    *     val B = jfield("b")
@@ -326,7 +327,7 @@ object JsonOps {
    *       case c:C => bar(c)
    *     }
    *  }}}
-   *  
+   *
    */
   case class jfield(ilist: Any*) {
     def unapply(m: Json) = {
@@ -336,9 +337,9 @@ object JsonOps {
   }
 
   /**
-   * 
+   *
    * An extractor composition operator.
-   * 
+   *
    * @example {{{
    *     val A = jfield("a")
    *     val B = jfield("b")
@@ -547,9 +548,9 @@ object JsonOps {
   private[persist] def keyDecode(s: String): JsonKey = {
     try {
       if (s == "") {
-          false  // Min
+        false // Min
       } else if (s == "\uFFFF") {
-          true   // Max
+        true // Max
       } else {
         keyDecode0(s)
       }
