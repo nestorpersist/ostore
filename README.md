@@ -1,6 +1,6 @@
 1.0 Introduction
 
-[Wiki](wiki/ostore)
+[Wiki](ostore/wiki)
 
 OStore is a new comprehensive software system for 
 storing and processing big data.
