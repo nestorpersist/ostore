@@ -218,7 +218,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         val serverName = host + ":" + port
         info.config = info.config.addNode(ringName, nodeName, host, port)
         storeTable.putMeta(databaseName, Compact(info.config.toJson))
-        val f = database ? ("addNode", ringName, nodeName, info.config)
+        val f = database ? ("addNode", ringName, nodeName, host, port, info.config)
         Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
         log.info("Added node " + ringName + "/" + nodeName)

@@ -118,6 +118,12 @@ private[persist] class DatabaseMap(val databaseName: String, var rings: HashMap[
     }
   }
   
+  def deleteTable(tableName:String) {
+    for ((ringName, ringMap) <- rings) {
+      ringMap.tables -= tableName
+    }
+  }
+  
   private def nodeMax(nodes: HashMap[String, TableNodeMap], n1: String, n2: String): String = {
     if (n1 == "") {
       n2
@@ -261,27 +267,32 @@ private[persist] class DatabaseMap(val databaseName: String, var rings: HashMap[
     true
   }
   
+  def addNode(ringName:String, prevNodeName:String, newNodeName:String, host:String, port:Int) {
+    val ring = rings(ringName)
+    val pos = ring.nodes(prevNodeName).pos
+    val nodeMap = NodeMap(databaseName, ringName, newNodeName, pos+1, host, port)
+    for ((tableName,tableMap)<-ring.tables) {
+      val tableNodeMap = TableNodeMap(tableName, nodeMap)
+      tableMap.nodes += (newNodeName -> tableNodeMap)
+    }
+    for ((nodeName1,nodeMap1)<- ring.nodes) {
+      if (nodeMap1.pos > pos) {
+        nodeMap1.pos += 1
+      }
+    }
+    ring.nodes += (newNodeName -> nodeMap)
+    var nodeSeq = List[String]()
+    for (nodeName2<-ring.nodeSeq) {
+      nodeSeq = nodeName2 +: nodeSeq
+      if (nodeName2 == prevNodeName) nodeSeq = newNodeName +: nodeSeq
+    }
+    ring.nodeSeq = nodeSeq.reverse
+  }
+  
   def setNext(ringName:String, nodeName:String, nextNodeName:String, host:String, port:Int) {
     val ring = rings(ringName)
     if (! ring.nodes.contains(nextNodeName)) {
-      val pos = ring.nodes(nodeName).pos
-      val nodeMap = NodeMap(databaseName, ringName, nextNodeName, pos+1, host, port)
-      for ((tableName,tableMap)<-ring.tables) {
-        val tableNodeMap = TableNodeMap(tableName, nodeMap)
-        tableMap.nodes += (nextNodeName -> tableNodeMap)
-      }
-      for ((nodeName1,nodeMap1)<- ring.nodes) {
-        if (nodeMap1.pos > pos) {
-          nodeMap1.pos += 1
-        }
-      }
-      ring.nodes += (nextNodeName -> nodeMap)
-      var nodeSeq = List[String]()
-      for (nodeName2<-ring.nodeSeq) {
-        nodeSeq = nodeName2 +: nodeSeq
-        if (nodeName2 == nodeName) nodeSeq = nextNodeName +: nodeSeq
-      }
-      ring.nodeSeq = nodeSeq.reverse
+      addNode(ringName, nodeName, nextNodeName, host, port)
     }
   }
   

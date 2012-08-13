@@ -94,11 +94,18 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       }
       sender ! (code, "")
     }
-    case ("addNode", ringName: String, nodeName: String, config: DatabaseConfig) => {
+    case ("addNode", ringName: String, nodeName: String, host:String, port:Int, config: DatabaseConfig) => {
+      val prevNodeName = config.rings(ringName).prevNodeName(nodeName)
+      val f0 = send ? ("addNode", ringName, prevNodeName, nodeName, host, port)
+      Await.result(f0, 5 seconds)
       for ((ringName1, ringInfo) <- rings) {
-        val nodeName1 = if (ringName == ringName1) nodeName else ""
-        val f = ringInfo.ring ? ("addNode", nodeName1, config)
-        val v = Await.result(f, 5 seconds)
+        if (ringName == ringName1) {
+          val f = ringInfo.ring ? ("addNode", nodeName, config)
+          val v = Await.result(f, 5 seconds)
+        } else {
+          val f = ringInfo.ring ? ("addNode", "", config)
+          val v = Await.result(f, 5 seconds)
+        }
       }
       this.config = config
       sender ! Codes.Ok
@@ -115,6 +122,8 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
         }
       }
       this.config = config
+      val f0 = send ? ("deleteNode", ringName, nodeName)
+      Await.result(f0, 5 seconds)
       sender ! Codes.Ok
     }
     case ("addRing", ringName: String, nodes: JsonArray, config: DatabaseConfig) => {
@@ -198,6 +207,8 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       sender ! Codes.Ok
     }
     case ("addTable1", tableName: String, config: DatabaseConfig) => {
+      val f0 = send ? ("addTable", tableName)
+      Await.result(f0, 5 seconds)
       for ((ringName, ringInfo) <- rings) {
         val f = ringInfo.ring ? ("addTable1", tableName, config)
         val v = Await.result(f, 5 seconds)
@@ -220,6 +231,8 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       sender ! Codes.Ok
     }
     case ("deleteTable2", tableName: String) => {
+      val f0 = send ? ("deleteTable", tableName)
+      Await.result(f0, 5 seconds)
       for ((ringName, ringInfo) <- rings) {
         val f = ringInfo.ring ? ("deleteTable2", tableName)
         val v = Await.result(f, 5 seconds)

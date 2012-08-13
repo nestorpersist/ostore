@@ -27,7 +27,6 @@ object Codes {
   private[persist] final val Ok = "Ok"
   private[persist] final val Busy = "Busy" // activity still ongoing
   private[persist] final val NotPresent = "NotPresent"
-  private[persist] final val NoPut = "NoPut" // opt put failed
   private[persist] final val Locked = "Locked" // already locked by different guid
 
   // Does not exist
@@ -35,6 +34,7 @@ object Codes {
   final val NoRing = "NoRing"
   final val NoNode = "NoNode"
   final val NoTable = "NoTable"
+  final val NoItem = "NoItem"
     
   // Already exists
   final val ExistDatabase = "ExistDatabase"
@@ -51,6 +51,7 @@ object Codes {
   private[persist] final val Done = "Done"
 
   // Failures 
+  final val Conflict = "Conflict" // opt put failed
   final val NotAvailable = "NotAvailable"
   final val ReadOnly = "ReadOnly"
   final val BadRequest = "BadRequest"

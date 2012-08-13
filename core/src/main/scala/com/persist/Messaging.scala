@@ -65,7 +65,7 @@ private[persist] class Msgs(messaging: Messaging) {
   private var timer: Cancellable = null
   private var timerWhen = 0L
 
-  private def timeout(cnt: Int, delay:Boolean): Int = {
+  private def timeout(cnt: Int, delay: Boolean): Int = {
     if (cnt < 5) {
       if (delay) 1 else 2
     } else if (cnt < 20) {
@@ -95,10 +95,10 @@ private[persist] class Msgs(messaging: Messaging) {
     }
   }
 
-  private def addEvent(msg: Msg, delay:Boolean) {
+  private def addEvent(msg: Msg, delay: Boolean) {
     val now = System.currentTimeMillis()
     val uid = msg.uid
-    val when = now + timeout(msg.cnt,delay)
+    val when = now + timeout(msg.cnt, delay)
     var done = false
     var when1 = when
     do {
@@ -240,7 +240,22 @@ private[persist] class Messaging(config: DatabaseConfig) extends CheckedActor wi
       map.deleteRing(ringName)
       sender ! Codes.Ok
     }
-    // TODO (add,delete)(node,table)
+    case ("addTable", tableName: String) => {
+      map.addTable(tableName)
+      sender ! Codes.Ok
+    }
+    case ("deleteTable", tableName: String) => {
+      map.deleteTable(tableName)
+      sender ! Codes.Ok
+    }
+    case ("addNode", ringName: String, prevNodeName: String, newNodeName: String, host: String, port: Int) => {
+      map.addNode(ringName, prevNodeName, newNodeName, host, port)
+      sender ! Codes.Ok
+    }
+    case ("deleteNode", ringName: String, nodeName: String) => {
+      map.deleteNode(ringName, nodeName)
+      sender ! Codes.Ok
+    }
     case ("timer") => {
       msgs.timerAction
     }

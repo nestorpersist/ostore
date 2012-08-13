@@ -36,10 +36,7 @@ import akka.util.Timeout
 import akka.util.duration._
 import akka.dispatch.ExecutionContext
 import akka.dispatch.Promise
-
-private[persist] class NotFoundException(val msg: String) extends Exception
-private[persist] class BadRequestException(val msg: String) extends Exception
-private[persist] class ConflictException(val msg: String) extends Exception
+import Exceptions._
 
 private[persist] class QParse extends JavaTokenParsers {
   private def decode(a: Any): String = {
@@ -89,8 +86,8 @@ private[persist] object RestClient1 {
   //lazy val manager = client.manager()
   lazy implicit val ec = ExecutionContext.defaultExecutionContext(system)
   implicit val timeout = Timeout(5 seconds)
-
-  private def getOptions(s: String): JsonObject = {
+  
+    private def getOptions(s: String): JsonObject = {
     if (s == "") {
       JsonObject()
     } else {
@@ -113,7 +110,10 @@ private[persist] object RestClient1 {
     f map { v =>
       v match {
         case Some(j: Json) => Some(j)
-        case None => throw new NotFoundException("Item not found for key " + Compact(key))
+        case None => {
+          throw new SystemException(Codes.NoItem,
+            JsonObject("database"->aclient.databaseName,"table"->aclient.tableName,"key"->key))
+        }
       }
     }
   }
@@ -121,12 +121,18 @@ private[persist] object RestClient1 {
   private def doPut(aclient: AsyncTable, key: JsonKey, cv: Json, value: Json, options: JsonObject): Future[Option[Json]] = {
     if (cv != null) {
       aclient.conditionalPut(key, value, cv, options - "update") map { success =>
-        if (!success) throw new ConflictException("Item has changed: " + Compact(key))
+        if (!success) {
+          throw new SystemException(Codes.Conflict,
+            JsonObject("database"->aclient.databaseName,"table"->aclient.tableName,"key"->key))
+          }
         None
       }
     } else if (jgetBoolean(options, "create")) {
       aclient.create(key, value, options - "create") map { success =>
-        if (!success) throw new ConflictException("Item already exists: " + Compact(key))
+        if (!success) {
+          throw new SystemException(Codes.Conflict,
+            JsonObject("database"->aclient.databaseName,"table"->aclient.tableName,"key"->key))
+        }
         None
       }
     } else {
@@ -139,7 +145,10 @@ private[persist] object RestClient1 {
   private def doDelete(aclient: AsyncTable, key: JsonKey, cv: Json, value: Json, options: JsonObject): Future[Option[Json]] = {
     if (cv != null) {
       aclient.conditionalDelete(key, cv, options - "update") map { success =>
-        if (!success) throw new ConflictException("Item has changed: " + Compact(key))
+        if (!success) {
+          throw new SystemException(Codes.Conflict,
+            JsonObject("database"->aclient.databaseName,"table"->aclient.tableName,"key"->key))
+        }
         None
       }
     } else {
@@ -164,7 +173,9 @@ private[persist] object RestClient1 {
         case "deleteNodes" => client.database(databaseName).deleteNodes(config)
         case "addRings" => client.database(databaseName).addRings(config)
         case "deleteRings" => client.database(databaseName).deleteRings(config)
-        case x => throw new BadRequestException("bad database post cmd: " + x)
+        case x => {
+          throw new SystemException(Codes.BadRequest, JsonObject("msg"->"bad database post command", "cmd"->x))
+        }
       }
       None
     }
@@ -335,7 +346,7 @@ private[persist] object RestClient1 {
         if (info != "") {
           getServerInfo(database, parts(1), options)
         } else {
-          Promise.failed(new Exception("bad cmd"))
+          Promise.failed(RequestException("bad cmd"))
         }
 
       } else if (parts(0) == "ring") {
@@ -347,7 +358,7 @@ private[persist] object RestClient1 {
           listNodes(database, ringName)
         }
       } else {
-        Promise.failed(new Exception("bad cmd"))
+        Promise.failed(RequestException("bad cmd"))
       }
     } else {
       val tableName = parts(0)
@@ -412,7 +423,7 @@ private[persist] object RestClient1 {
             }
             case "delete" => doDelete(asyncTable, key, cv, input, options)
             case x => {
-              Promise.failed(new Exception("bad cmd"))
+              Promise.failed(RequestException("bad cmd"))
             }
           }
         } else {
@@ -421,27 +432,20 @@ private[persist] object RestClient1 {
             case "put" => doPut(asyncTable, key, null, input, options)
             case "delete" => doDelete(asyncTable, key, null, input, options)
             case x => {
-              Promise.failed(new Exception("bad method"))
+              val ex = new SystemException(Codes.BadRequest,JsonObject("msg"->"bad method","method"->x))
+              Promise.failed(ex)
             }
           }
         }
       } catch {
         case ex: Exception => {
-          ex.getMessage() match {
-            case "bad table" => {
-              Promise.failed(new BadRequestException("No such table: " + tableName))
-            }
-            case x => Promise.failed(ex)
-          }
+          Promise.failed(ex)
         }
       }
     }
   }
 
   private def doAllParts(method: String, path: String, input: Json, options: JsonObject): Future[Option[Json]] = {
-    // TODO make sure database and table exists, else throw correct error
-    // BadRequestException("No such database: " + databaseName)
-    // BadRequestException("No such table: " + tableName))
     val parts = path.split("/")
     val numParts = parts.length
     if (numParts == 1 && parts(0) == "") {
@@ -459,7 +463,7 @@ private[persist] object RestClient1 {
           val keyString = parts(2)
           doParts3(database, tableName, keyString, method, input, options)
         } else {
-          Promise.failed(new BadRequestException("Bad url form"))
+          Promise.failed(RequestException("Bad url form"))
         }
       }
     }

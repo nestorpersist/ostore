@@ -18,8 +18,21 @@
 package com.persist
 
 import com.persist.JsonOps._
+import scala.collection.immutable.HashMap
 
 object Exceptions {
+  
+  private val httpCode = HashMap[String,(Int,String)](
+      Codes.JsonParse -> (400, "BAD_REQUEST"),
+      Codes.JsonUnparse -> (400, "BAD_REQUEST"),
+      Codes.BadRequest -> (400, "BAD_REQUEST"),
+      Codes.NoDatabase -> (404, "NOT_FOUND"),
+      Codes.NoRing -> (404, "NOT_FOUND"),
+      Codes.NoNode -> (404, "NOT_FOUND"),
+      Codes.NoTable -> (404, "NOT_FOUND"),
+      Codes.Conflict -> (409, "CONFLICT")
+      )
+  
 
   class SystemException(val kind: String, val info: Json) extends Exception {
     override def toString(): String = kind + ":" + Compact(info)
@@ -38,9 +51,9 @@ object Exceptions {
     JsonObject("class" -> name, "msg" -> msg)
   }
 
-  private[persist] def InternalError(msg: String) = new SystemException(Codes.InternalError, JsonObject("msg" -> msg))
+  def InternalException(msg: String) = new SystemException(Codes.InternalError, JsonObject("msg" -> msg))
 
-  private[persist] def RequestError(msg: String) = new SystemException(Codes.BadRequest, JsonObject("msg" -> msg))
+  def RequestException(msg: String) = new SystemException(Codes.BadRequest, JsonObject("msg" -> msg))
 
   private[persist] def exceptionToCode(ex: Exception): (String, String) = {
     ex match {
@@ -57,17 +70,18 @@ object Exceptions {
     ex match {
       case ex1: SystemException => {
         val body = JsonObject("kind" -> ex1.kind, "info" -> ex1.info)
-        ex1.kind match {
-          case Codes.InternalError => {
-            (500, "INTERNAL_SERVER_ERROR", body)
-          }
-          case _ => {
-            (500, "UNKNOWN_SERVER_ERROR", body)
+        httpCode.get(ex1.kind) match {
+          case Some((httpCode, short)) => {
+              (httpCode, short, body)
+          } 
+          case None => {
+            (500, "INTERNAL_ERROR", body)
+            
           }
         }
       }
       case ex2 => {
-        (500, "INTERNAL_SERVER_ERROR", Compact(getExceptionJson(ex2)))
+        (500, "INTERNAL_ERROR", getExceptionJson(ex2))
       }
     }
   }

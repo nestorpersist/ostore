@@ -66,7 +66,7 @@ private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: J
           r = Await.result(f, 20 seconds)
           result
         }
-        case None => throw RequestError("No next item")
+        case None => throw RequestException("No next item")
       }
       
     }

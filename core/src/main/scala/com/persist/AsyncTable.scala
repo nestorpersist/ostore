@@ -35,7 +35,7 @@ import Exceptions._
  * This is the asynchronous interface to OStore tables.
  * Instances of this class are created by the [[com.persist.Database]] asyncTable method.
  */
-class AsyncTable private[persist] (databaseName:String, tableName: String, system: ActorSystem, send: ActorRef) {
+class AsyncTable private[persist] (val databaseName:String, val tableName: String, system: ActorSystem, send: ActorRef) {
 
   private implicit val executor = system.dispatcher
 
@@ -56,7 +56,7 @@ class AsyncTable private[persist] (databaseName:String, tableName: String, syste
     val f2 = f1.map { x =>
       {
         val (code: String, v1: String) = x
-        if (code == Codes.NoPut) {
+        if (code == Codes.Conflict) {
           false
         } else {
           checkCode(code,v1)
@@ -187,7 +187,7 @@ class AsyncTable private[persist] (databaseName:String, tableName: String, syste
     val f2 = f1.map { x =>
       {
         val (code: String, v1: String) = x
-        if (code == Codes.NoPut) {
+        if (code == Codes.Conflict) {
           false
         } else {
           checkCode(code,v1)

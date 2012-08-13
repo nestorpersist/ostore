@@ -27,6 +27,7 @@ import akka.pattern._
 import akka.util.duration._
 import akka.util.Timeout
 import akka.dispatch.Future
+import Exceptions._
 
 private[persist] object HttpConstants {
   val SP = ByteString(" ")
@@ -180,11 +181,11 @@ private[persist] object HttpServer {
 
   def doRequest(method: String, path: String, q: String, body: String): Future[Response] = {
     val jbody = if (method == "put" || method == "post") {
-      if (body == "") throw new BadRequestException("missing body for " + method)
+      if (body == "") throw RequestException("missing body for " + method)
       try {
         Json(body)
       } catch {
-        case ex: Exception => throw new BadRequestException("Can't parse json input: " + ex.getMessage())
+        case ex: Exception => throw RequestException("Can't parse json input: " + ex.getMessage())
       }
     } else {
       null
@@ -202,13 +203,11 @@ private[persist] object HttpServer {
     }
     val f2 = f1.recover { r =>
       r match {
-        case ex: BadRequestException => Response(400, "BAD_REQUEST", ex.msg)
-        case ex: NotFoundException => Response(404, "NOT_FOUND", ex.msg)
-        case ex: ConflictException => Response(409, "CONFLICT", ex.msg)
-        case ex: Exception => {
-          println("Internal server error: " + ex.toString())
-          ex.printStackTrace()
-          Response(500, "INTERNAL_SERVER_ERROR", ex.getMessage())
+        //case ex: BadRequestException => Response(400, "BAD_REQUEST", ex.msg)
+        //case ex: ConflictException => Response(409, "CONFLICT", ex.msg)
+        case ex:Exception => {
+          val (httpCode, short, msg) = exceptionToHttp(ex) 
+          Response(httpCode, short, Compact(msg))
         }
       }
     }

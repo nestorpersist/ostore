@@ -132,7 +132,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       val oldD = jgetBoolean(oldMeta, "d")
       if (! oldD && jgetBoolean(request, "create")) {
         // Create and already exists
-        return (Codes.NoPut, emptyResponse)
+        return (Codes.Conflict, emptyResponse)
       }
       val oldvS = if (oldD) {
         "null"
@@ -147,7 +147,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       if (requestcv != null) {
         if (ClockVector.compare(oldcv, requestcv) != '=') {
           // Opt put and value has changed
-          return (Codes.NoPut, emptyResponse)
+          return (Codes.Conflict, emptyResponse)
         }
       }
       val d = info.uidGen.get
@@ -190,7 +190,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       if (requestcv != null) {
         if (ClockVector.compare(oldcv, requestcv) != '=') {
           // Opt delete and value has changed
-          return (Codes.NoPut, emptyResponse)
+          return (Codes.Conflict, emptyResponse)
         }
       }
       val d = info.uidGen.get
@@ -288,7 +288,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
               }
             }
             case None => {
-              throw InternalError("getNext")
+              throw InternalException("getNext")
             }
           }
         }
@@ -327,7 +327,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
               }
             }
             case None => {
-              throw InternalError("getPrev")
+              throw InternalException("getPrev")
             }
           }
         }

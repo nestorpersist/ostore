@@ -119,7 +119,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
           info.storeTable.last match {
             case Some(key) => { key }
             case None => {
-              throw InternalError("sendToNext 1")
+              throw InternalException("sendToNext 1")
             }
           }
         }
@@ -128,13 +128,13 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       val meta = info.storeTable.getMeta(key) match {
         case Some(value: String) => value
         case None => {
-          throw InternalError("sendToNext 2")
+          throw InternalException("sendToNext 2")
         }
       }
       val v = info.storeTable.get(key) match {
         case Some(value: String) => value
         case None => {
-          throw InternalError("sendToNext 3")
+          throw InternalException("sendToNext 3")
         }
       }
       info.high = key
