@@ -18,4 +18,4 @@ of features. Also APIs will probably change in
 non-upward compatible ways. Error checking is partially missing
 and it has not been tuned for performace.
 
-The OStore code is licensed under the Apache 2.0 license.
+The <b>OStore</b> code is licensed under the Apache 2.0 license.
