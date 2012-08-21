@@ -21,7 +21,7 @@ import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import com.persist.JsonOps._
 
-private[persist] class Check {
+object Check {
   // TODO this code is slow, lots of optimizations possible
   // TODO be able to run continuously as background operation
 
@@ -87,6 +87,7 @@ private[persist] class Check {
 
   private def checkTable(database: Database, databaseName: String, tableName: String) {
     // TODO clean up tombstones
+    // TODO merge iterate over all rings
     val table = database.table(tableName)
     for (ring <- database.allRings) {
       // TODO do multiple items in parallel

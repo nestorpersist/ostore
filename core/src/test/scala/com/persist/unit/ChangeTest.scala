@@ -146,7 +146,7 @@ class ChangeTest extends FunSuite {
     for (tableName <- database.allTables) {
       assert(false, "table not deleted")
     }
-    client.stopDataBase(dbName)
+    client.stopDatabase(dbName)
     client.deleteDatabase(dbName)
 
     client.stop()

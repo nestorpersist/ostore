@@ -21,18 +21,16 @@ import com.persist.JsonOps._
 import scala.collection.immutable.HashMap
 
 object Exceptions {
-  
-  private val httpCode = HashMap[String,(Int,String)](
-      Codes.JsonParse -> (400, "BAD_REQUEST"),
-      Codes.JsonUnparse -> (400, "BAD_REQUEST"),
-      Codes.BadRequest -> (400, "BAD_REQUEST"),
-      Codes.NoDatabase -> (404, "NOT_FOUND"),
-      Codes.NoRing -> (404, "NOT_FOUND"),
-      Codes.NoNode -> (404, "NOT_FOUND"),
-      Codes.NoTable -> (404, "NOT_FOUND"),
-      Codes.Conflict -> (409, "CONFLICT")
-      )
-  
+
+  private val httpCode = HashMap[String, (Int, String)](
+    Codes.JsonParse -> (400, "BAD_REQUEST"),
+    Codes.JsonUnparse -> (400, "BAD_REQUEST"),
+    Codes.BadRequest -> (400, "BAD_REQUEST"),
+    Codes.NoDatabase -> (404, "NOT_FOUND"),
+    Codes.NoRing -> (404, "NOT_FOUND"),
+    Codes.NoNode -> (404, "NOT_FOUND"),
+    Codes.NoTable -> (404, "NOT_FOUND"),
+    Codes.Conflict -> (409, "CONFLICT"))
 
   class SystemException(val kind: String, val info: Json) extends Exception {
     override def toString(): String = kind + ":" + Compact(info)
@@ -72,11 +70,11 @@ object Exceptions {
         val body = JsonObject("kind" -> ex1.kind, "info" -> ex1.info)
         httpCode.get(ex1.kind) match {
           case Some((httpCode, short)) => {
-              (httpCode, short, body)
-          } 
+            (httpCode, short, body)
+          }
           case None => {
             (500, "INTERNAL_ERROR", body)
-            
+
           }
         }
       }
@@ -89,6 +87,46 @@ object Exceptions {
   private[persist] def checkCode(code: String, info: String) {
     if (code != Codes.Ok) {
       throw new SystemException(code, Json(info))
+    }
+  }
+
+  private[persist] def checkName(name: String) {
+    var bad = false
+    if (name.length() == 0) {
+      bad = true
+    } else {
+      if (!name(0).isLetter) bad = true
+    }
+    for (ch <- name) {
+      if (!ch.isLetter && !ch.isDigit) bad = true
+    }
+    if (bad) {
+      throw new SystemException(Codes.BadRequest, JsonObject("msg" -> "bad name", "name" -> name))
+    }
+  }
+
+  private def checkNamedConfig(config: Json) {
+    config match {
+      case t: JsonObject => {
+        t.get("name") match {
+          case Some(s: String) => checkName(s)
+          case Some(x) => throw new SystemException(Codes.BadRequest, JsonObject("msg" -> "bad name", "name" -> x))
+          case None => throw new SystemException(Codes.BadRequest, JsonObject("msg" -> "missing name", "config" -> t))
+        }
+      }
+      case x => throw new SystemException(Codes.BadRequest, JsonObject("msg" -> "bad config", "config" -> x))
+    }
+  }
+
+  private[persist] def checkConfig(config: Json) {
+    for (table <- jgetArray(config, "tables")) {
+      checkNamedConfig(table)
+    }
+    for (ring <- jgetArray(config, "rings")) {
+      checkNamedConfig(ring)
+      for (node <- jgetArray(ring, "nodes")) {
+        checkNamedConfig(node)
+      }
     }
   }
 }

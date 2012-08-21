@@ -36,7 +36,7 @@ import Exceptions._
  * Instances of this class are created by the [[com.persist.Database]] asyncTable method.
  */
 class AsyncTable private[persist] (val databaseName:String, val tableName: String, system: ActorSystem, send: ActorRef) {
-
+  
   private implicit val executor = system.dispatcher
 
   private def put1(key: JsonKey, value: Json, vectorClock: Option[Json],

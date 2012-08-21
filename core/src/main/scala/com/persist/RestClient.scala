@@ -76,7 +76,7 @@ private[persist] object QParser extends QParse {
   def parse(s: String) = parseAll(q, s).get
 }
 
-private[persist] object RestClient1 {
+private[persist] object RestClient {
 
   var system: ActorSystem = null
 
@@ -166,7 +166,7 @@ private[persist] object RestClient1 {
         case "create" => client.createDatabase(databaseName, config)
         case "delete" => client.deleteDatabase(databaseName)
         case "start" => client.startDatabase(databaseName)
-        case "stop" => client.stopDataBase(databaseName)
+        case "stop" => client.stopDatabase(databaseName)
         case "addTables" => client.database(databaseName).addTables(config)
         case "deleteTables" => client.database(databaseName).deleteTables(config)
         case "addNodes" => client.database(databaseName).addNodes(config)
@@ -307,17 +307,23 @@ private[persist] object RestClient1 {
   }
 
   def doAll(method: String, path: String, q: String, input: Json): (Boolean, Future[Option[Json]]) = {
-    val options = getOptions(q)
-    val isPretty = jgetBoolean(options, "pretty")
-    val f = doAllParts(method, path, input, options - "pretty")
-    (isPretty, f)
+    try {
+      val options = getOptions(q)
+      val isPretty = jgetBoolean(options, "pretty")
+      val f = doAllParts(method, path, input, options - "pretty")
+      (isPretty, f)
+    } catch {
+      case ex => {
+        (false,Promise.failed(RequestException("can't parse query string")))
+      }
+    }
   }
 
   private def doParts1(databaseName: String, method: String, input: Json, options: JsonObject): Future[Option[Json]] = {
     if (method == "post") {
       databaseAct(databaseName, input)
     } else {
-      val info = jgetString(options, "info")
+      val get = jgetString(options, "get")
       val rings = jgetBoolean(options, "rings")
       val servers = jgetBoolean(options, "servers")
       val check = JsonObject("skipCheck"->true)
@@ -327,7 +333,7 @@ private[persist] object RestClient1 {
       } else if (servers) {
         val database = client.database(databaseName,check)
         listServers(database)
-      } else if (info != "") {
+      } else if (get != "") {
         getDatabaseInfo(databaseName, options)
       } else {
         // list tables
@@ -342,16 +348,16 @@ private[persist] object RestClient1 {
     val numParts = parts.size
     if (numParts == 2) {
       if (parts(0) == "server") {
-        val info = jgetString(options, "info")
-        if (info != "") {
+        val get = jgetString(options, "get")
+        if (get != "") {
           getServerInfo(database, parts(1), options)
         } else {
           Promise.failed(RequestException("bad cmd"))
         }
 
       } else if (parts(0) == "ring") {
-        val info = jgetString(options, "info")
-        if (info != "") {
+        val get = jgetString(options, "get")
+        if (get != "") {
           getRingInfo(database, parts(1), options)
         } else {
           val ringName = parts(1)
@@ -385,12 +391,12 @@ private[persist] object RestClient1 {
         val isMonitor = jgetBoolean(options, "monitor")
         val isReport = jgetBoolean(options, "report")
         val searchString = jgetString(options, "search")
-        val info = jgetString(options, "info")
+        val get = jgetString(options, "get")
         if (isMonitor) {
           monitor(database, tableName)
         } else if (isReport) {
           report(database, tableName)
-        } else if (info != "") {
+        } else if (get != "") {
           getTableInfo(database, tableName, options)
         } else if (searchString != "") {
           // Full text search test code

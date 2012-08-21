@@ -36,8 +36,9 @@ import Exceptions._
 // TODO multipart actions should occur as single step
 // TODO lock and send actions only to ring involved (e.g.addNode)
 // TODO deal with removal of the primary server
+// TODO pass guid on all server locked calls
 
-class Manager(host: String, port: Int) extends CheckedActor {
+private[persist] class Manager(host: String, port: Int) extends CheckedActor {
   private val system = context.system
   private implicit val timeout = Timeout(5 seconds)
   private implicit val executor = system.dispatcher
@@ -244,7 +245,7 @@ class Manager(host: String, port: Int) extends CheckedActor {
   }
 
   private def allDatabases(): Iterable[String] = {
-    val f = server ? ("allDatabases")
+    val f = server ? ("allDatabases", "", emptyRequest)
     val (code: String, s: String) = Await.result(f, 5 seconds)
     checkCode(code, s)
     val databases = jgetArray(Json(s))
@@ -374,7 +375,8 @@ class Manager(host: String, port: Int) extends CheckedActor {
     val request = JsonObject("config" -> jconfig)
     dba.act("none", check) {
       dba.pass("newDatabase", request)
-      dba.pass("startDatabase2")
+      //dba.pass("startDatabase2")
+      dba.pass("start",JsonObject("user"->true,"balance"->true))
     }
   }
 
@@ -389,7 +391,8 @@ class Manager(host: String, port: Int) extends CheckedActor {
     val dba = DatabaseActions(databaseName)
     dba.act("stop") {
       dba.pass("startDatabase1")
-      dba.pass("startDatabase2")
+      //dba.pass("startDatabase2")
+      dba.pass("start",JsonObject("user"->true,"balance"->true))
     }
   }
 
@@ -477,7 +480,9 @@ class Manager(host: String, port: Int) extends CheckedActor {
 
         // Start it all up
         if (creatingNewServer) {
-          dba.pass("startDatabase2", request, newServers)
+          dba.pass("start",JsonObject("user"->true,"balance"->true))
+          //dba.pass("startDatabase2", request, newServers)
+          dba.pass("start",request + ("user"->true,"balance"->true),newServers)
         }
         dba.pass("start", JsonObject("balance" -> true, "user" -> true))
       }
@@ -660,9 +665,9 @@ class Manager(host: String, port: Int) extends CheckedActor {
         allServers(databaseName)
       }
     }
-    case ("databaseExists", p: Promise[Json], databaseName: String, options: JsonObject) => {
+    case ("databaseExists", p: Promise[Json], databaseName: String) => {
       complete(p) {
-        databaseExists(databaseName, options)
+        databaseExists(databaseName, emptyJsonObject)
       }
     }
     case ("databaseInfo", p: Promise[Json], databaseName: String, options: JsonObject) => {

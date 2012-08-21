@@ -28,7 +28,17 @@ import com.typesafe.config.ConfigFactory
 @RunWith(classOf[JUnitRunner])
 class SimpleTest extends FunSuite {
   
-  def shared(serverConfig:Json) {
+
+  test("simple test") {
+    val serverConfig = Json("""
+    {
+     "path":"/tmp/simple",
+     "host":"127.0.0.1", "port":8011
+    }        
+    """)
+    println("Starting Server")
+    Server.start(serverConfig, true)
+
     val dbName = "testdb"
     val databaseConfig = Json("""
     { 
@@ -37,10 +47,6 @@ class SimpleTest extends FunSuite {
        "nodes":[ {"name":"n1", "host":"127.0.0.1", "port":8011} ] } ]
      }
      """)
-
-    println("Starting Server")
-    Server.start(serverConfig, true)
-
     val system = ActorSystem("ostoreclient", ConfigFactory.load.getConfig("client"))
     val client = new Client(system)
     client.createDatabase(dbName, databaseConfig)
@@ -67,6 +73,7 @@ class SimpleTest extends FunSuite {
       assert(k == expectK, "forward failed")
     }
     println("")
+    
     for ((k,expectK) <- tab1.all(JsonObject("reverse" -> true)).zip(expect.reverse)) {
       println("bwd:" + k)
       assert(k == expectK, "backward failed")
@@ -77,34 +84,15 @@ class SimpleTest extends FunSuite {
     val monitor1 = database.monitor("tab1")
     println("Monitor:" + Pretty(monitor1))
 
-    client.stopDataBase(dbName)
+    client.stopDatabase(dbName)
     client.deleteDatabase(dbName)
 
-    client.stop()
-    system.shutdown()
+    client.stop
+    system.shutdown
 
     println("Stopping Server")
     Server.stop
     println("DONE") 
-  }
-
-  test("test with JDBM3 store") {
-    val serverConfig = Json("""
-    {
-     "path":"/tmp/simple",
-     "host":"127.0.0.1", "port":8011
-    }        
-    """)
-    shared(serverConfig)
-  }
-
-  test("test with in-memory store") {
-    val serverConfig = Json("""
-    {
-     "host":"127.0.0.1", "port":8011
-    }
-    """)
-    shared(serverConfig)
   }
 
 }

@@ -119,7 +119,7 @@ class TimeTest extends FunSuite {
     val monitor1 = database.monitor("genre")
     println("Monitor:" + Pretty(monitor1))
 
-    client.stopDataBase(dbName)
+    client.stopDatabase(dbName)
     client.deleteDatabase(dbName)
 
     client.stop()

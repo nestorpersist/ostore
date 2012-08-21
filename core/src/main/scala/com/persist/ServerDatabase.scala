@@ -78,10 +78,12 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       }
       sender ! Codes.Ok
     }
-    case ("start", balance: Boolean, user: Boolean) => {
-      for ((ringName, ringInfo) <- rings) {
-        val f = ringInfo.ring ? ("start", balance, user)
-        val v = Await.result(f, 5 seconds)
+    case ("start", ringName:String, nodeName:String, balance: Boolean, user: Boolean) => {
+      for ((ringName1, ringInfo) <- rings) {
+        if (ringName == "" || ringName == ringName1) {
+          val f = ringInfo.ring ? ("start", nodeName, balance, user)
+          val v = Await.result(f, 5 seconds)
+        }
       }
       sender ! Codes.Ok
     }

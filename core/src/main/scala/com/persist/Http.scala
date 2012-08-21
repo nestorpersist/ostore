@@ -190,11 +190,11 @@ private[persist] object HttpServer {
     } else {
       null
     }
-    val (isPretty, f): (Boolean, Future[Option[Json]]) = RestClient1.doAll(method, path, q, jbody)
+    val (isPretty, f): (Boolean, Future[Option[Json]]) = RestClient.doAll(method, path, q, jbody)
     val f1 = f.map { result =>
       result match {
         case Some(j) => {
-            Response(200, "OK", if (isPretty) { Pretty(j) } else { Compact(j) })
+          Response(200, "OK", if (isPretty) { Pretty(j) } else { Compact(j) })
         }
         case None => {
           Response(200, "OK", "")
@@ -208,6 +208,10 @@ private[persist] object HttpServer {
         case ex:Exception => {
           val (httpCode, short, msg) = exceptionToHttp(ex) 
           Response(httpCode, short, Compact(msg))
+        }
+        case x => {
+          println("RECOVER FAILURE:"+x)
+          Response(500, "recover", "bad")
         }
       }
     }

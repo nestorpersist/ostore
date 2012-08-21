@@ -21,6 +21,7 @@ import JsonOps._
 import akka.actor.ActorRef
 import MapReduce._
 import scala.collection.immutable.HashMap
+import Codes.emptyResponse
 
 private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly =>
   val mr: ServerTableMapReduce
@@ -104,7 +105,8 @@ private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly
       val dest = Map("ring" -> info.ringName)
       val ret = "" // TODO will eventually hook this up
       val passMeta = Compact(JsonObject("c" -> JsonObject(info.tableName -> t)))
-      info.send ! ("map", dest, ret, to, key, (prefix, passMeta, value))
+      //info.send ! ("map", dest, ret, to, key, (prefix, passMeta, value))
+      info.send ! ("map", info.ringName, to, key, (prefix, passMeta, value))
     }
 
     private def deletePair(to: String, prefix: String, key: String, value: String) {
@@ -114,7 +116,8 @@ private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly
       val ret = "" // TODO will eventually hook this up
       val passMeta = Compact(JsonObject("c" -> JsonObject(info.tableName -> t), "d" -> true))
       //info.send ! ("mapd", dest, ret, mi.to, oldK, "")
-      info.send ! ("map", dest, ret, to, key, (prefix, passMeta, "null"))
+      //info.send ! ("map", dest, ret, to, key, (prefix, passMeta, "null"))
+      info.send ! ("map", info.ringName, to, key, (prefix, passMeta, "null"))
     }
 
     private def mapPairs(to: String, prefix: String, dedup: Boolean, hasOld: Boolean, hasNew: Boolean,
@@ -358,7 +361,7 @@ private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly
           }
         }
       }
-      (Codes.Ok, "null")
+      (Codes.Ok, emptyResponse)
     }
 
     def reduceOut(key: String, oldMeta: String, oldValue: String, meta: String, value: String) {
@@ -419,7 +422,8 @@ private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly
           val ret = "" // TODO will eventually hook this up
           //val t = System.currentTimeMillis()
           val t = info.uidGen.get
-          info.send ! ("reduce", dest, ret, ri.to, keyEncode(prefix), (info.nodeName, Compact(newsum1), t))
+          //info.send ! ("reduce", dest, ret, ri.to, keyEncode(prefix), (info.nodeName, Compact(newsum1), t))
+          info.send ! ("reduce", info.ringName, ri.to, keyEncode(prefix), (info.nodeName, Compact(newsum1), t))
         }
       }
     }
@@ -460,7 +464,7 @@ private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly
         info.storeTable.putBoth(key, cmeta, csum)
         doMR(key, oldMetaS, oldSum, cmeta, csum)
       }
-      (Codes.Ok, "null")
+      (Codes.Ok, emptyResponse)
     }
 
     def doMR(key: String, oldMeta: String, oldValue: String, meta: String, value: String) {

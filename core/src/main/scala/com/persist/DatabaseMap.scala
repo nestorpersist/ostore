@@ -47,7 +47,6 @@ private[persist] case class RingMap(
     val pos1 = if (pos < 0) nodeSeq.size - 1 else pos
     nodeSeq(pos1)
   }
-
 }
 
 private[persist] case class TableMap(
@@ -93,7 +92,8 @@ private[persist] object DatabaseMap {
         nodes += (nodeName -> nodeMap)
       }
       var tables = HashMap[String, TableMap]()
-      rings += (ringName -> RingMap(tables,nodes,nodeSeq.reverse))
+      //rings += (ringName -> RingMap(tables,nodes,nodeSeq.reverse))
+      rings += (ringName -> RingMap(tables,nodes,nodeSeq))
     }
     val map = new DatabaseMap(databaseName, rings)
     for ((tableName, tableConfig) <- config.tables) {

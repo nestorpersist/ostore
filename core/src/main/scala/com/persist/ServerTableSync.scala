@@ -20,6 +20,7 @@ package com.persist
 import akka.actor.Actor
 import akka.actor.ActorRef
 import JsonOps._
+import Codes.emptyResponse
 
 private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
   val sync: ServerTableSync
@@ -34,7 +35,8 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
         if (name != info.ringName) {
           val dest = Map("ring" -> name)
           val ret = "" // TODO will eventually hook this up
-          info.send ! ("sync", dest, ret, info.tableName, key, vals)
+          //info.send ! ("sync", dest, ret, info.tableName, key, vals)
+          info.send ! ("sync", name, info.tableName, key, vals)
         }
       }
     }
@@ -43,7 +45,8 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
       val dest = Map("ring" -> ringName)
       val vals = (info.absentMetaS, "null", meta, value)
       val ret = "" // TODO will eventually hook this up
-      info.send ! ("sync", dest, ret, info.tableName, key, vals)
+      //info.send ! ("sync", dest, ret, info.tableName, key, vals)
+      info.send ! ("sync", ringName, info.tableName, key, vals)
     }
     
     def reconcile(value1: Json, value2: Json): Json = {
@@ -91,7 +94,7 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
           mr.doMR(key, oldMetaS, value2, Compact(cv), Compact(value))
         }
       }
-      (Codes.Ok, "null")
+      (Codes.Ok, emptyResponse)
     }
 
   }

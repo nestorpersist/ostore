@@ -27,6 +27,7 @@ import akka.dispatch.Await
 import akka.util.duration._
 import akka.pattern._
 import akka.dispatch.ExecutionContext
+import Exceptions._
 
 /**
  * This is the API for accessing a specific OStore database.
@@ -49,6 +50,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
   }
 
   def tableInfo(tableName: String, options: JsonObject = emptyJsonObject): Json = {
+    checkName(tableName)
     var p = new DefaultPromise[Json]
     manager ! ("tableInfo", p, databaseName, tableName, options)
     val v = Await.result(p, 5 seconds)
@@ -75,6 +77,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
   }
   
   def ringInfo(ringName: String, options: JsonObject = emptyJsonObject): Json = {
+    checkName(ringName)
     var p = new DefaultPromise[Json]
     manager ! ("ringInfo", p, databaseName, ringName, options)
     val v = Await.result(p, 5 seconds)
@@ -88,6 +91,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    * @return the node names.
    */
   def allNodes(ringName: String): Iterable[String] = {
+    checkName(ringName)
     var p = new DefaultPromise[Iterable[String]]
     manager ! ("allNodes", p, databaseName, ringName)
     val v = Await.result(p, 5 seconds)
@@ -95,6 +99,8 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
   }
 
   def nodeInfo(ringName: String, nodeName: String, options: JsonObject = emptyJsonObject): Json = {
+    checkName(ringName)
+    checkName(nodeName)
     var p = new DefaultPromise[Json]
     manager ! ("nodeInfo", p, databaseName, ringName, nodeName, options)
     val v = Await.result(p, 5 seconds)
@@ -129,6 +135,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    *   @param config The configuration (see the Wiki).
    */
   def addTables(config: Json) {
+    checkConfig(config)
     var p = new DefaultPromise[String]
     manager ! ("addTables", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
@@ -142,6 +149,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    *   @param config The configuration (see the Wiki).
    */
   def deleteTables(config: Json) {
+    checkConfig(config)
     var p = new DefaultPromise[String]
     manager ! ("deleteTables", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
@@ -160,6 +168,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    *   @param config The configuration (see the Wiki).
    */
   def addNodes(config: Json) {
+    checkConfig(config)
     var p = new DefaultPromise[String]
     manager ! ("addNodes", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
@@ -175,6 +184,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    *   @param config The configuration (see the Wiki).
    */
   def deleteNodes(config: Json) {
+    checkConfig(config)
     var p = new DefaultPromise[String]
     manager ! ("deleteNodes", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
@@ -190,6 +200,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    *   @param config The configuration (see the Wiki).
    */
   def addRings(config: Json) {
+    checkConfig(config)
     var p = new DefaultPromise[String]
     manager ! ("addRings", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
@@ -204,12 +215,14 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    *   @param config The configuration (see the Wiki).
    */
   def deleteRings(config: Json) {
+    checkConfig(config)
     var p = new DefaultPromise[String]
     manager ! ("deleteRings", p, databaseName, config)
     val v = Await.result(p, 5 seconds)
   }
 
   def replaceNode(config: Json) {
+    checkConfig(config)
     println("replaceNode NYI")
   }
 
@@ -217,6 +230,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    * Temporary debugging method.
    */
   def report(tableName: String): Json = {
+    checkName(tableName)
     var p = new DefaultPromise[Json]
     manager ? ("report", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)
@@ -227,6 +241,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    * Temporary debugging method
    */
   def monitor(tableName: String): Json = {
+    checkName(tableName)
     var p = new DefaultPromise[Json]
     manager ? ("monitor", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)
@@ -241,6 +256,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    * @return The synchronous API for the named table.
    */
   def table(tableName: String) = {
+    checkName(tableName)
     var p = new DefaultPromise[Table]
     manager ? ("table", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)
@@ -255,6 +271,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    * @return The asynchronous API for the named table.
    */
   def asyncTable(tableName: String) = {
+    checkName(tableName)
     var p = new DefaultPromise[AsyncTable]
     manager ? ("asyncTable", p, databaseName, tableName)
     val v = Await.result(p, 5 seconds)

@@ -75,10 +75,12 @@ private[persist] class ServerRing(databaseName: String, ringName: String, send: 
       }
       sender ! Codes.Ok
     }
-    case ("start", balance: Boolean, user: Boolean) => {
-      for ((nodeName, nodeInfo) <- nodes) {
-        val f = nodeInfo.node ? ("start", balance, user)
-        val v = Await.result(f, 5 seconds)
+    case ("start", nodeName:String, balance: Boolean, user: Boolean) => {
+      for ((nodeName1, nodeInfo) <- nodes) {
+        if (nodeName == "" || nodeName == nodeName1) {
+          val f = nodeInfo.node ? ("start", balance, user)
+          val v = Await.result(f, 5 seconds)
+        }
       }
       sender ! Codes.Ok
     }

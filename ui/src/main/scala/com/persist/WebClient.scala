@@ -67,7 +67,7 @@ class WebClient() {
   }
 
   def getDatabaseStatus(databaseName: String): String = {
-    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "?info=s")).mkString
+    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "?get=s")).mkString
     val jinfo = Json(info)
     jgetString(jinfo, "s")
   }

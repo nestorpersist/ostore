@@ -103,7 +103,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
 
   private val restPort = jgetInt(serverConfig, "rest")
   if (restPort != 0) {
-    RestClient1.system = system
+    RestClient.system = system
     Http.start(system, restPort)
   }
 
@@ -185,8 +185,14 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
       case "start" => {
         val balance = jgetBoolean(request, "balance")
         val user = jgetBoolean(request, "user")
-        val f = database ? ("start", balance, user)
+        val ring = jgetString(request,"ring")
+        val node = jgetString(request,"node")
+        val f = database ? ("start", ring, node, balance, user)
         Await.result(f, 5 seconds)
+        if (user) {
+          info.state = "active"
+          log.info("Database started " + databaseName)  
+        }
         sender ! (Codes.Ok, emptyResponse)
       }
       case "stop" => {
@@ -340,6 +346,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         sender ! (Codes.Ok, emptyResponse)
         log.info("Database starting " + databaseName)
       }
+      /*
       case "startDatabase2" => {
         val f = database ? ("start", true, true)
         Await.result(f, 5 seconds)
@@ -347,6 +354,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         sender ! (Codes.Ok, emptyResponse)
         log.info("Database started " + databaseName)
       }
+      */
       case "deleteDatabase" => {
         val path = jgetString(serverConfig, "path")
         val fname = path + "/" + databaseName
@@ -580,7 +588,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         }
 
       }
-      if (!handled) log.error("*****DeadLetter:" + d.recipient.path + ":" + d.message + ":" + serverName)
+      if (!handled) log.error("*****DeadLetter:" + d.sender.path + "=>" + d.recipient.path + ":" + d.message + ":" + serverName)
     }
     case ("lock", databaseName: String, rs: String) => {
       val request = Json(rs)
@@ -617,7 +625,8 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
     }
     case ("newDatabase", databaseName: String, rs: String) => {
       if (databases.contains(databaseName)) {
-        sender ! (Codes.ExistDatabase, emptyResponse)
+        val response = JsonObject("database"->databaseName)
+        sender ! (Codes.ExistDatabase, Compact(response))
       } else {
         val request = Json(rs)
         val dbConfig = jget(request, "config")
@@ -633,7 +642,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         log.info("Created database " + databaseName)
       }
     }
-    case ("allDatabases") => {
+    case ("allDatabases", dummy:String, rs:String) => {
       var result = JsonArray()
       for ((name, info) <- databases) {
         result = name +: result
