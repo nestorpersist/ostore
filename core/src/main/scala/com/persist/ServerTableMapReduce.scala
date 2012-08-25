@@ -233,11 +233,11 @@ private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly
         val prePair = getPrevalue(jkey, fromprefix)
         val oldPairs = if (hasOld) {
           mi.map match {
-            case m: MapMany => m.toMany(jkey, joldValue)
-            case m: Map2Many => {
+            case m: Map => m.to(jkey, joldValue)
+            case m: Map2 => {
               prePair match {
                 case Some((prekey: JsonKey, prevalue: Json)) => {
-                  m.toMany(prekey, prevalue, jkey, joldValue)
+                  m.to(prekey, prevalue, jkey, joldValue)
                 }
                 case None => List[(JsonKey, Json)]()
               }
@@ -248,11 +248,11 @@ private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly
         }
         val newPairs = if (hasNew) {
           mi.map match {
-            case m: MapMany => m.toMany(jkey, jvalue)
-            case m: Map2Many => {
+            case m: Map => m.to(jkey, jvalue)
+            case m: Map2 => {
               prePair match {
                 case Some((prekey: JsonKey, prevalue: Json)) => {
-                  m.toMany(prekey, prevalue, jkey, jvalue)
+                  m.to(prekey, prevalue, jkey, jvalue)
                 }
                 case None => List[(JsonKey, Json)]()
               }
@@ -274,17 +274,17 @@ private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly
       val jitemValue = Json(itemValue)
       for (mi <- maps) {
         mi.map match {
-          case m: Map2Many => {
+          case m: Map2 => {
             if (m.fromprefix == prefix) {
               val dedup = jgetBoolean(m.options, "dedup")
               val toprefix = jgetString(m.options, "toprefix")
               val oldPairs = if (hasOld) {
-                m.toMany(jkey, joldvalue, jitemKey, jitemValue)
+                m.to(jkey, joldvalue, jitemKey, jitemValue)
               } else {
                 List[(JsonKey, Json)]()
               }
               val newPairs = if (hasNew) {
-                m.toMany(jkey, jvalue, jitemKey, jitemValue)
+                m.to(jkey, jvalue, jitemKey, jitemValue)
               } else {
                 List[(JsonKey, Json)]()
               }

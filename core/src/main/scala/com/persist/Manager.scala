@@ -37,6 +37,7 @@ import Exceptions._
 // TODO lock and send actions only to ring involved (e.g.addNode)
 // TODO deal with removal of the primary server
 // TODO pass guid on all server locked calls
+// TODO timer to get an updated list of servers every ??? seconds
 
 private[persist] class Manager(host: String, port: Int) extends CheckedActor {
   private val system = context.system

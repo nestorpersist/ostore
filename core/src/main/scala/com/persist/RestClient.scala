@@ -86,8 +86,8 @@ private[persist] object RestClient {
   //lazy val manager = client.manager()
   lazy implicit val ec = ExecutionContext.defaultExecutionContext(system)
   implicit val timeout = Timeout(5 seconds)
-  
-    private def getOptions(s: String): JsonObject = {
+
+  private def getOptions(s: String): JsonObject = {
     if (s == "") {
       JsonObject()
     } else {
@@ -112,7 +112,7 @@ private[persist] object RestClient {
         case Some(j: Json) => Some(j)
         case None => {
           throw new SystemException(Codes.NoItem,
-            JsonObject("database"->aclient.databaseName,"table"->aclient.tableName,"key"->key))
+            JsonObject("database" -> aclient.databaseName, "table" -> aclient.tableName, "key" -> key))
         }
       }
     }
@@ -123,15 +123,15 @@ private[persist] object RestClient {
       aclient.conditionalPut(key, value, cv, options - "update") map { success =>
         if (!success) {
           throw new SystemException(Codes.Conflict,
-            JsonObject("database"->aclient.databaseName,"table"->aclient.tableName,"key"->key))
-          }
+            JsonObject("database" -> aclient.databaseName, "table" -> aclient.tableName, "key" -> key))
+        }
         None
       }
     } else if (jgetBoolean(options, "create")) {
       aclient.create(key, value, options - "create") map { success =>
         if (!success) {
           throw new SystemException(Codes.Conflict,
-            JsonObject("database"->aclient.databaseName,"table"->aclient.tableName,"key"->key))
+            JsonObject("database" -> aclient.databaseName, "table" -> aclient.tableName, "key" -> key))
         }
         None
       }
@@ -147,7 +147,7 @@ private[persist] object RestClient {
       aclient.conditionalDelete(key, cv, options - "update") map { success =>
         if (!success) {
           throw new SystemException(Codes.Conflict,
-            JsonObject("database"->aclient.databaseName,"table"->aclient.tableName,"key"->key))
+            JsonObject("database" -> aclient.databaseName, "table" -> aclient.tableName, "key" -> key))
         }
         None
       }
@@ -174,7 +174,7 @@ private[persist] object RestClient {
         case "addRings" => client.database(databaseName).addRings(config)
         case "deleteRings" => client.database(databaseName).deleteRings(config)
         case x => {
-          throw new SystemException(Codes.BadRequest, JsonObject("msg"->"bad database post command", "cmd"->x))
+          throw new SystemException(Codes.BadRequest, JsonObject("msg" -> "bad database post command", "cmd" -> x))
         }
       }
       None
@@ -204,7 +204,7 @@ private[persist] object RestClient {
 
   private def getServerInfo(database: Database, serverName: String, options: JsonObject): Future[Option[Json]] = {
     Future {
-      val result = database.tableInfo(serverName, options)
+      val result = database.serverInfo(serverName, options)
       Some(result)
     }
   }
@@ -314,7 +314,7 @@ private[persist] object RestClient {
       (isPretty, f)
     } catch {
       case ex => {
-        (false,Promise.failed(RequestException("can't parse query string")))
+        (false, Promise.failed(RequestException("can't parse query string")))
       }
     }
   }
@@ -326,18 +326,18 @@ private[persist] object RestClient {
       val get = jgetString(options, "get")
       val rings = jgetBoolean(options, "rings")
       val servers = jgetBoolean(options, "servers")
-      val check = JsonObject("skipCheck"->true)
+      val check = JsonObject("skipCheck" -> true)
       if (rings) {
-        val database = client.database(databaseName,check)
+        val database = client.database(databaseName, check)
         listRings(database)
       } else if (servers) {
-        val database = client.database(databaseName,check)
+        val database = client.database(databaseName, check)
         listServers(database)
       } else if (get != "") {
         getDatabaseInfo(databaseName, options)
       } else {
         // list tables
-        val database = client.database(databaseName,check)
+        val database = client.database(databaseName, check)
         listTables(database)
       }
     }
@@ -346,73 +346,53 @@ private[persist] object RestClient {
   private def doParts2(database: Database, name: String, method: String, input: Json, options: JsonObject): Future[Option[Json]] = {
     val parts = name.split(":")
     val numParts = parts.size
-    if (numParts == 2) {
-      if (parts(0) == "server") {
-        val get = jgetString(options, "get")
-        if (get != "") {
-          getServerInfo(database, parts(1), options)
-        } else {
-          Promise.failed(RequestException("bad cmd"))
-        }
-
-      } else if (parts(0) == "ring") {
-        val get = jgetString(options, "get")
-        if (get != "") {
-          getRingInfo(database, parts(1), options)
-        } else {
-          val ringName = parts(1)
-          listNodes(database, ringName)
-        }
+    if (parts(0) == "server") {
+      val sname = name.substring(parts(0).size + 1)
+      val get = jgetString(options, "get")
+      if (get != "") {
+        getServerInfo(database, sname, options)
       } else {
         Promise.failed(RequestException("bad cmd"))
       }
-    } else {
-      val tableName = parts(0)
-      /*
-      if (method == "post") {
-        val cmd = jgetString(input, "cmd")
-        cmd match {
-          case "add" => {
-            Future {
-              Some(database.addTable(tableName))
-            }
-          }
-          case "delete" => {
-            Future {
-              Some(database.deleteTable(tableName))
-            }
-          }
-          case x => {
-            Promise.failed(new Exception("bad cmd"))
-          }
-        }
+
+    } else if (parts(0) == "ring" && numParts == 2) {
+      val get = jgetString(options, "get")
+      if (get != "") {
+        getRingInfo(database, parts(1), options)
       } else {
-      */
-        val isMonitor = jgetBoolean(options, "monitor")
-        val isReport = jgetBoolean(options, "report")
-        val searchString = jgetString(options, "search")
-        val get = jgetString(options, "get")
-        if (isMonitor) {
-          monitor(database, tableName)
-        } else if (isReport) {
-          report(database, tableName)
-        } else if (get != "") {
-          getTableInfo(database, tableName, options)
-        } else if (searchString != "") {
-          // Full text search test code
-          search(database, tableName, searchString)
-        } else {
-          listKeys(database, tableName, options)
-        }
+        val ringName = parts(1)
+        listNodes(database, ringName)
+      }
+    } else if (numParts == 1) {
+      val tableName = parts(0)
+      val isMonitor = jgetBoolean(options, "monitor")
+      val isReport = jgetBoolean(options, "report")
+      val searchString = jgetString(options, "search")
+      val get = jgetString(options, "get")
+      if (isMonitor) {
+        monitor(database, tableName)
+      } else if (isReport) {
+        report(database, tableName)
+      } else if (get != "") {
+        getTableInfo(database, tableName, options)
+      } else if (searchString != "") {
+        // Full text search test code
+        search(database, tableName, searchString)
+      } else {
+        listKeys(database, tableName, options)
+      }
       //}
+    } else {
+      Promise.failed(RequestException("bad cmd"))
     }
+
   }
 
   private def doParts3(database: Database, tableName: String, keyString: String, method: String, input: Json, options: JsonObject): Future[Option[Json]] = {
     val parts = tableName.split(":")
     val numParts = parts.size
-    if (numParts == 2) {
-      getNodeInfo(database, tableName, parts(1), options)
+    if (numParts == 2 && parts(0) == "ring") {
+      getNodeInfo(database, parts(1), keyString, options)
     } else {
       var key = keyUriDecode(keyString)
       try {
@@ -438,7 +418,7 @@ private[persist] object RestClient {
             case "put" => doPut(asyncTable, key, null, input, options)
             case "delete" => doDelete(asyncTable, key, null, input, options)
             case x => {
-              val ex = new SystemException(Codes.BadRequest,JsonObject("msg"->"bad method","method"->x))
+              val ex = new SystemException(Codes.BadRequest, JsonObject("msg" -> "bad method", "method" -> x))
               Promise.failed(ex)
             }
           }
@@ -462,7 +442,7 @@ private[persist] object RestClient {
         doParts1(databaseName, method, input, options)
       } else {
         val tableName = parts(1)
-        val database = client.database(databaseName,JsonObject("skipCheck"->true))
+        val database = client.database(databaseName, JsonObject("skipCheck" -> true))
         if (numParts == 2) {
           doParts2(database, tableName, method, input, options)
         } else if (numParts == 3) {

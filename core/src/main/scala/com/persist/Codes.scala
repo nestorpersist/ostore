@@ -51,6 +51,8 @@ object Codes {
   private[persist] final val Done = "Done"
 
   // Failures 
+  final val NYI = "NYI"
+  final val Timeout = "Timeout"
   final val Conflict = "Conflict" // opt put failed
   final val NotAvailable = "NotAvailable"
   final val ReadOnly = "ReadOnly"

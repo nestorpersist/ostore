@@ -76,9 +76,12 @@ private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: J
 
 /**
  * This is the synchronous interface to OStore tables.
- * Instances of this class are created by the [[com.persist.Database]] syncTable method.
+ * Instances of this class are created by the [[com.persist.Database]] table method.
+ * 
+ * @param databaseName the name of the database.
+ * @param tableName the name of the table. 
  */
-class Table private[persist] (databaseName:String, tableName: String, asyncClient:AsyncTable) {
+class Table private[persist] (val databaseName:String, val tableName: String, asyncClient:AsyncTable) {
   // TODO pass in config rather than default to first ring
   // TODO option to get config from remote server
 

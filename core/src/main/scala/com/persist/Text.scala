@@ -79,8 +79,8 @@ private[persist] object Text {
     def w: Parser[Option[String]] = word ^^ { case w => fix(w) }
   }
 
-  class MapTextIndex(val options: Json) extends MapReduce.MapMany {
-    def toMany(key: JsonKey, value: Json): Traversable[(JsonKey, Json)] = {
+  class MapTextIndex(val options: Json) extends MapReduce.Map {
+    def to(key: JsonKey, value: Json): Traversable[(JsonKey, Json)] = {
       val title = jgetString(key)
       val words = jgetString(value)
       val s1 = {

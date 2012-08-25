@@ -22,6 +22,8 @@ import scala.collection.immutable.TreeMap
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 
+// TODO retain deleted node, table and ring names
+
 private[persist] case class ServerConfig(
   val host: String,
   val port: Int) {

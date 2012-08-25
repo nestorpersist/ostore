@@ -29,30 +29,32 @@ import akka.event.Logging
 import Exceptions._
 import akka.actor.ActorLogging
 import akka.dispatch.Promise
+import Codes.emptyResponse
+import akka.actor.Props
 
-private[persist] class Messaging(config: DatabaseConfig) extends CheckedActor with ActorLogging {
+private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) extends CheckedActor with ActorLogging {
 
-  val system = context.system
-  val map = DatabaseMap(config)
-  val msgs = new Msgs()
-  val databaseName = config.name
+  private val system = context.system
+  private val map = DatabaseMap(config)
+  private val msgs = new Msgs()
+  private val databaseName = config.name
+  val change = context.actorOf(Props(new Change(config, client, self)), name = "change")
 
-  private[persist] class Msg(
-    val uid: Long,
-    val cmd: String,
+  private class Msg(
+    var cmd: String,
     val ringName: String,
     val tableName: String,
-    val key: String,
-    val value: Any,
-    val less: Boolean,
-    val reply: Option[Promise[Any]] = None) {
+    var key: String,
+    val value: Any) {
 
+    var uid:Long = 0L
     var nodeName = ""
     var event: Long = 0L
-    var cnt: Int = 0
+    var retryCount : Int = 0   // number of retries
+    var count: Int = 0         // number of different uid's used
 
-    private def report(cnt: Int): Boolean = {
-      cnt > 0 && (cnt % 10) == 0
+    private def report(): Boolean = {
+      retryCount > 0 && (retryCount % 10) == 0
     }
 
     def toJson(): JsonObject = {
@@ -61,19 +63,36 @@ private[persist] class Messaging(config: DatabaseConfig) extends CheckedActor wi
     }
 
     def send() {
+      val less = cmd.endsWith("-")
       val info = map.get(ringName, tableName, key, less)
       val ref = info.getRef(system)
       nodeName = info.node.nodeName
-      if (report(cnt)) {
-        val info = toJson() + ("msg" -> "retry", "cnt" -> cnt)
+      if (report()) {
+        val info = toJson() + ("msg" -> "retry", "cnt" -> retryCount)
         log.warning(Compact(info))
       }
-      cnt += 1
+      retryCount += 1
       ref ! (cmd, uid, key, value)
     }
   }
 
-  private[persist] class Msgs() {
+  private class ServerMsg(
+    cmd: String,
+    ringName: String,
+    tableName: String,
+    key: String,
+    value: Any) extends Msg(cmd, ringName, tableName, key, value)
+  
+  private class ClientMsg(
+    cmd: String,
+    ringName: String,
+    tableName: String,
+    key: String,
+    value: Any,
+    val reply:Promise[Any]) 
+      extends Msg (cmd, ringName, tableName, key, value)
+
+  private class Msgs() {
     private val uidGen = new UidGen
 
     private var msgs = TreeMap[Long, Msg]()
@@ -115,7 +134,7 @@ private[persist] class Messaging(config: DatabaseConfig) extends CheckedActor wi
     private def addEvent(msg: Msg, delay: Boolean) {
       val now = System.currentTimeMillis()
       val uid = msg.uid
-      val when = now + timeout(msg.cnt, delay)
+      val when = now + timeout(msg.retryCount, delay)
       var done = false
       var when1 = when
       do {
@@ -131,6 +150,23 @@ private[persist] class Messaging(config: DatabaseConfig) extends CheckedActor wi
     }
 
     private def send(msg: Msg, delay: Boolean) {
+      msg match {
+        case cm:ClientMsg => {
+          if (msg.retryCount > 3) {
+            cm.reply.success((Codes.Timeout,emptyResponse))
+            return
+          }
+        }
+        case _ =>
+      }
+      if (! map.hasRing(msg.ringName)) {
+        change ! ("noRing", msg.uid, msg.ringName)
+        return
+      } 
+      if (! map.hasTable(msg.tableName)) {
+        change ! ("noTable", msg.uid, msg.tableName)
+        return
+      }
       addEvent(msg, delay)
       if (delay) {
         // delay until timeout
@@ -139,11 +175,17 @@ private[persist] class Messaging(config: DatabaseConfig) extends CheckedActor wi
         msg.send()
       }
     }
-
-    def newMsg(cmd: String, ringName: String, tableName: String, key: String, value: Any, less: Boolean = false, delay: Boolean = false) {
+    
+    def newUid(msg:Msg) {
       val uid = uidGen.get
-      val msg = new Msg(uid, cmd, ringName, tableName, key, value, less)
+      msg.uid = uid
+      msg.retryCount = 0
+      msg.count += 1
       msgs += (uid -> msg)
+    }
+
+    def newMsg(msg:Msg, delay: Boolean = false) {
+      newUid(msg)
       send(msg, delay)
     }
 
@@ -157,6 +199,7 @@ private[persist] class Messaging(config: DatabaseConfig) extends CheckedActor wi
         case Some(msg) => {
           events -= msg.event
           msgs -= uid
+          msg.uid = 0L
         }
         case None =>
       }
@@ -185,34 +228,55 @@ private[persist] class Messaging(config: DatabaseConfig) extends CheckedActor wi
   }
 
   def handleResponse(code: String, response: String, msg: Msg) {
+    msgs.delete(msg.uid)
     code match {
-      case Codes.Ok => {
-        msgs.delete(msg.uid)
-      }
       case Codes.Handoff => {
         val jresponse = Json(response)
         val low = jgetString(jresponse, "low")
         val high = jgetString(jresponse, "high")
-        //val nextNodeName = jgetString(jresponse, "next")
+        val nextNodeName = jgetString(jresponse, "next")
         //val nextHost = jgetString(jresponse, "host")
         //val nextPort = jgetInt(jresponse, "port")
         val changed = map.setLowHigh(msg.ringName, msg.nodeName, msg.tableName, low, high)
-        msgs.delete(msg.uid)
-        msgs.newMsg(msg.cmd, msg.ringName, msg.tableName, msg.key, msg.value, delay = !changed)
+        if (! map.hasRing(msg.ringName)) {
+          msgs.newUid(msg)
+          change ! ("noRing", msg.uid, msg.ringName) 
+          return
+        }
+        if (! map.hasNode(msg.ringName, nextNodeName)) {
+          msgs.newUid(msg)
+          change ! ("noNode", msg.uid, msg.ringName, nextNodeName)
+          return
+        }
+        msgs.newMsg(msg, delay = !changed)
       }
       case Codes.Next => {
         // retry with new key
-        msgs.delete(msg.uid)
-        msgs.newMsg("next", msg.ringName, msg.tableName, response, msg.value)
+        msg.cmd = "next"
+        msg.key = response
+        msgs.newMsg(msg)
       }
       case Codes.PrevM => {
         // retry with new key
-        msgs.delete(msg.uid)
-        msgs.newMsg("prev-", msg.ringName, msg.tableName, response, msg.value, less = true)
+        msg.cmd = "prev-"
+        msg.key = response
+        msgs.newMsg(msg)
       }
-      case code => {
-        val info = msg.toJson() + ("msg" -> "failing server message", "code" -> code)
-        throw new SystemException(Codes.InternalError, info)
+      case _ => {
+        msg match {
+          case cm:ClientMsg => {
+            cm.reply.success((code, response))
+          }
+          case sm:ServerMsg => {
+            if (code == Codes.Ok) {
+              // done
+            } else {
+               val info = msg.toJson() + ("msg" -> "failing server message", "code" -> code)
+               throw new SystemException(Codes.InternalError, info)
+            }
+            
+          }
+        }
       }
     }
   }
@@ -230,10 +294,13 @@ private[persist] class Messaging(config: DatabaseConfig) extends CheckedActor wi
     case (cmd: String, ringName: String, tableName: String, key: String, value: Any) => {
       // server request
       // TODO value should be String so msgs can be stored in persist store
-      msgs.newMsg(cmd, ringName, tableName, key, value)
+      val msg = new ServerMsg(cmd, ringName, tableName, key, value)
+      msgs.newMsg(msg)
     }
     case (cmd: String, ringName: String, reply: Promise[Any], tableName: String, key: String, value: Any) => {
       // client request
+      val msg = new ClientMsg(cmd, ringName, tableName, key, value, reply)
+      msgs.newMsg(msg)
       // TODO NYI
     }
     // TODO client request to server
@@ -250,19 +317,27 @@ private[persist] class Messaging(config: DatabaseConfig) extends CheckedActor wi
     // TODO check for idle
     // TODO r=n, w=n
     case ("addRing", ringName: String, nodes: JsonArray) => {
-      map.addRing(ringName, nodes)
+      if (! map.hasRing(ringName)) {
+         map.addRing(ringName, nodes)
+      }
       sender ! Codes.Ok
     }
     case ("deleteRing", ringName: String) => {
-      map.deleteRing(ringName)
+      if (map.hasRing(ringName)) {
+        map.deleteRing(ringName)
+      }
       sender ! Codes.Ok
     }
     case ("addTable", tableName: String) => {
-      map.addTable(tableName)
+      if (! map.hasTable(tableName)) {
+        map.addTable(tableName)
+      }
       sender ! Codes.Ok
     }
     case ("deleteTable", tableName: String) => {
-      map.deleteTable(tableName)
+      if (map.hasTable(tableName)) {
+        map.deleteTable(tableName)
+      }
       sender ! Codes.Ok
     }
     case ("addNode", ringName: String, prevNodeName: String, newNodeName: String, host: String, port: Int) => {
@@ -272,6 +347,28 @@ private[persist] class Messaging(config: DatabaseConfig) extends CheckedActor wi
     case ("deleteNode", ringName: String, nodeName: String) => {
       map.deleteNode(ringName, nodeName)
       sender ! Codes.Ok
+    }
+    case ("continue", uid:Long) => {
+      msgs.get(uid) match {
+        case Some(msg) => {
+          msgs.delete(msg.uid)
+          msgs.newMsg(msg)
+        }
+        case None => // ignore
+      }
+    }
+    case ("fail", uid:Long, code:Int, response:JsonObject) => {
+      msgs.get(uid) match {
+        case Some(msg:ServerMsg) => {
+          msgs.delete(msg.uid)
+          log.error("Server messaging fail:"+code+":"+Compact(response))
+        } 
+        case Some(msg:ClientMsg) => {
+          msgs.delete(msg.uid)
+          msg.reply.success((code,Compact(response)))
+        }
+        case None => // ignore
+      }
     }
     case ("timer") => {
       msgs.timerAction

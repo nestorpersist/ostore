@@ -92,7 +92,8 @@ private[persist] object HttpIteratees {
   val digit = Set.empty ++ ('0' to '9') map (_.toByte)
   val hexdigit = digit ++ (Set.empty ++ ('a' to 'f') ++ ('A' to 'F') map (_.toByte))
   val subdelim = Set('!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=') map (_.toByte)
-  val pathchar = alpha ++ digit ++ subdelim ++ (Set(':', '@') map (_.toByte))
+  //val pathchar = alpha ++ digit ++ subdelim ++ (Set(':', '@') map (_.toByte))
+  val pathchar = alpha ++ digit ++ subdelim ++ (Set(':', '@', '.') map (_.toByte))
   val querychar = pathchar ++ (Set('/', '?') map (_.toByte))
 
   def readUriPart(allowed: Set[Byte]): IO.Iteratee[String] = for {

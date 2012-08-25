@@ -346,15 +346,6 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         sender ! (Codes.Ok, emptyResponse)
         log.info("Database starting " + databaseName)
       }
-      /*
-      case "startDatabase2" => {
-        val f = database ? ("start", true, true)
-        Await.result(f, 5 seconds)
-        info.state = "active"
-        sender ! (Codes.Ok, emptyResponse)
-        log.info("Database started " + databaseName)
-      }
-      */
       case "deleteDatabase" => {
         val path = jgetString(serverConfig, "path")
         val fname = path + "/" + databaseName
@@ -400,6 +391,14 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         val options = jget(request, "o")
         val get = jgetString(options, "get")
         var result = emptyJsonObject
+        if (get.contains("h")) {
+          val host = info.config.servers(serverName).host
+          result += ("h"->host)
+        }
+        if (get.contains("p")) {
+          val port = info.config.servers(serverName).port
+          result += ("p"->port)
+        }
         sender ! (Codes.Ok, Compact(result))
       }
       case "tableInfo" => {
@@ -468,6 +467,9 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         val options = jget(request, "o")
         val get = jgetString(options, "get")
         var result = emptyJsonObject
+        if (get.contains("s")) {
+          result += ("s"->"ok")
+        }
         sender ! (Codes.Ok, Compact(result))
       }
       case "nodeInfo" => {
@@ -482,6 +484,12 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         }
         if (get.contains("p")) {
           result += ("p" -> config.rings(ringName).nodes(nodeName).server.port)
+        }
+        if (get.contains("b")) {
+          result += ("b" -> config.rings(ringName).prevNodeName(nodeName))
+        }
+        if (get.contains("f")) {
+          result += ("f" -> config.rings(ringName).nextNodeName(nodeName))
         }
         sender ! (Codes.Ok, Compact(result))
       }
@@ -510,11 +518,11 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         val ringName = jgetString(request, "ring")
         info.config.rings.get(ringName) match {
           case Some(info) => {
-            var result = JsonArray()
-            for (name <- info.nodes.keys) {
-              result = name +: result
-            }
-            sender ! (Codes.Ok, Compact(result.reverse))
+            //var result = JsonArray()
+            //for (name <- info.nodes.keys) {
+              //result = name +: result
+            //}
+            sender ! (Codes.Ok, Compact(info.nodeSeq))
           }
           case None => {
             sender ! (Codes.ExistRing, Compact(JsonObject("database" -> databaseName, "ring" -> ringName)))

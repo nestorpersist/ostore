@@ -32,8 +32,10 @@ import Exceptions._
 /**
  * This is the API for accessing a specific OStore database.
  * Instances of this class are created by the [[com.persist.Client]] database method.
+ * 
+ * @param databaseName the name of the database.
  */
-class Database private[persist] (system: ActorSystem, databaseName: String, manager: ActorRef) {
+class Database private[persist] (system: ActorSystem, val databaseName: String, manager: ActorRef) {
   private implicit val timeout = Timeout(5 seconds)
   private lazy implicit val ec = ExecutionContext.defaultExecutionContext(system)
 
@@ -48,7 +50,16 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     val v = Await.result(p, 5 seconds)
     v
   }
-
+    
+  /**
+   * 
+   * Returns information about a table.
+   * 
+   * @param tableName the name of the table.
+   * @param options optional json object containing options.
+   *  - '''"get="rft"''' if specified this method returns an object with requested fields
+   *      (Readonly, From map-reduce, To map-reduce).
+   */
   def tableInfo(tableName: String, options: JsonObject = emptyJsonObject): Json = {
     checkName(tableName)
     var p = new DefaultPromise[Json]
@@ -69,6 +80,14 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     v
   }
   
+  /**
+   * 
+   * Returns information about a database.
+   * 
+   * @param options optional json object containing options.
+   *  - '''"get="sc"''' if specified this method returns an object with requested fields
+   *      (State, Configuration).
+   */
   def databaseInfo(options:JsonObject=emptyJsonObject):Json = {
     var p = new DefaultPromise[Traversable[Json]]
     manager ! ("databaseInfo", p, databaseName,options)
@@ -76,6 +95,15 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     v
   }
   
+  /**
+   * 
+   * Returns information about a ring.
+   * 
+   * @param ringName the name of the ring.
+   * @param options optional json object containing options.
+   *  - '''"get="s"''' if specified this method returns an object with requested fields
+   *      (Status).
+   */
   def ringInfo(ringName: String, options: JsonObject = emptyJsonObject): Json = {
     checkName(ringName)
     var p = new DefaultPromise[Json]
@@ -84,7 +112,7 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     v
   }
 
-  /*
+  /**
    * Returns the names of all the names of database ring.
    * 
    * @param ringName the name of the ring.
@@ -97,7 +125,17 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     val v = Await.result(p, 5 seconds)
     v
   }
-
+  
+  /**
+   * 
+   * Returns information about a node.
+   * 
+   * @param ringName the name of the ring than contains the node.
+   * @param nodeName the name of the node.
+   * @param options optional json object containing options.
+   *  - '''"get="hpfb"''' if specified this method returns an object with requested fields
+   *      (Host, Port, Forward: next node name, Back: prev node name).
+   */
   def nodeInfo(ringName: String, nodeName: String, options: JsonObject = emptyJsonObject): Json = {
     checkName(ringName)
     checkName(nodeName)
@@ -119,9 +157,18 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     v
   }
 
+    /**
+   * 
+   * Returns information about a server.
+   * 
+   * @param serverName the name of the server.
+   * @param options optional json object containing options.
+   *  - '''"get="hp"''' if specified this method returns an object with requested fields
+   *      (Host, Port).
+   */
   def serverInfo(serverName: String, options: JsonObject = emptyJsonObject): Json = {
     var p = new DefaultPromise[Json]
-    manager ! ("nodeInfo", p, databaseName, serverName, options)
+    manager ! ("serverInfo", p, databaseName, serverName, options)
     val v = Await.result(p, 5 seconds)
     v
   }
@@ -144,7 +191,9 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
   /**
    * Deletes one or more tables from the database.
    * The Json configuration specifies the names of the tables
-   * to be removed.
+   * to be removed. 
+   * Once a table has been deleted, that table name may
+   * not be used for a new table in the same database.
    *
    *   @param config The configuration (see the Wiki).
    */
@@ -180,6 +229,8 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    * from which nodes are to be removed and for each ring the name
    * of the nodes to be removed. Each ring must be
    * left with at least one node.
+   * Once a node has been deleted, that node name may
+   * not be used for a new node in the same ring.
    *
    *   @param config The configuration (see the Wiki).
    */
@@ -211,6 +262,8 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
    * The Json configuration specifies the names of the rings
    * to be removed. Every node of a specified ring is removed.
    * There must be at least one ring left.
+   * Once a ring has been deleted, that ring name may
+   * not be used for a new ring in the same database.
    *
    *   @param config The configuration (see the Wiki).
    */
@@ -221,9 +274,15 @@ class Database private[persist] (system: ActorSystem, databaseName: String, mana
     val v = Await.result(p, 5 seconds)
   }
 
-  def replaceNode(config: Json) {
+  /**
+   * Replaces a (damaged or failing) node. Not currently implemented.
+   * 
+   * @param ringName the name the ring.
+   * @param config configuration for the new replacement node.
+   */
+  def replaceNode(ringName:String, nodeName:String, config: Json) {
     checkConfig(config)
-    println("replaceNode NYI")
+    throw new SystemException(Codes.NYI,JsonObject("msg"->"replaceNode not yet implemented"))
   }
 
   /**
