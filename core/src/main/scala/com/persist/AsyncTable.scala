@@ -225,7 +225,7 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
     val f2 = f1.map { x =>
       {
         val (code: String, v1: String) = x
-        if (code == Codes.NotPresent) {
+        if (code == Codes.NoItem) {
           None
         } else {
           checkCode(code, v1)

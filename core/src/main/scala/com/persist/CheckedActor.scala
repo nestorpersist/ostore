@@ -20,6 +20,7 @@ package com.persist
 import akka.actor.Actor
 import akka.actor.ActorLogging
 import Exceptions._
+import JsonOps._
 
 private[persist] abstract class CheckedActor extends Actor with ActorLogging {
   def rec: PartialFunction[Any, Unit]
@@ -27,15 +28,24 @@ private[persist] abstract class CheckedActor extends Actor with ActorLogging {
     case msg => {
       try {
         val body1: PartialFunction[Any, Unit] = rec.orElse {
-          case x: Any => { 
-            val s = "Unmatched message " + x.toString() + " : " + self.toString()
+          case x: Any => {
+            val info = JsonObject(
+              "msg" -> msg.toString(),
+              "from" -> sender.toString(),
+              "to" -> self.toString())
+            val s = "Unmatched message " + Compact(info)
             log.error(s)
           }
         }
         body1(msg)
       } catch {
         case ex: Exception => {
-          val s = "Unhandled exception in %s while processing %s".format(self.toString(), msg.toString())
+          val info = JsonObject(
+            "msg" -> msg.toString(),
+            "from" -> sender.toString(),
+            "to" -> self.toString(),
+            "ex" -> ex.toString())
+          val s = "Unhandled exception " + Compact(info)
           log.error(ex, s)
         }
       }

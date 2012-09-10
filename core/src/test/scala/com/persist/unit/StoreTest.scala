@@ -39,10 +39,9 @@ class StoreTest extends FunSuite {
      """)
 
     println("Starting Server")
-    Server.start(serverConfig, true)
+    val server = new Server(serverConfig, true)
 
-    val system = ActorSystem("ostoreclient", ConfigFactory.load.getConfig("client"))
-    val client = new Client(system)
+    val client = new Client()
     client.createDatabase(dbName, databaseConfig)
 
     val database = client.database(dbName)
@@ -81,10 +80,9 @@ class StoreTest extends FunSuite {
     client.deleteDatabase(dbName)
 
     client.stop()
-    system.shutdown()
 
     println("Stopping Server")
-    Server.stop
+    server.stop
     println("DONE") 
   }
 

@@ -80,10 +80,9 @@ class ChangeTest extends FunSuite {
     """)
 
     println("Starting Server")
-    Server.start(serverConfig, true)
+    val server = new Server(serverConfig, true)
 
-    val system = ActorSystem("ostoreclient", ConfigFactory.load.getConfig("client"))
-    val client = new Client(system)
+    val client = new Client()
     client.createDatabase(dbName, databaseConfig)
 
     val database = client.database(dbName)
@@ -101,10 +100,6 @@ class ChangeTest extends FunSuite {
     tab1.put("key5", "val5")
     tab1.delete("key3")
 
-    val v1 = tab1.get("key1")
-    println("key1:" + v1)
-    val v3 = tab1.get("key3")
-    println("key3:" + v3)
     def check(where: String) {
       println(where + ":" + Pretty(database.report("tab1")))
       val expect = List[String]("key1", "key2", "key4", "key5")
@@ -138,9 +133,7 @@ class ChangeTest extends FunSuite {
     
     database.deleteRings(ringConfig1)
     Thread.sleep(1000)
-    println("delete r1" + ":" + Pretty(database.report("tab1")))
-    // client ring fail over NYI
-    //check("delete r1")
+    check("delete r1")
 
     database.deleteTables(tableConfig)
     for (tableName <- database.allTables) {
@@ -150,10 +143,9 @@ class ChangeTest extends FunSuite {
     client.deleteDatabase(dbName)
 
     client.stop()
-    system.shutdown()
 
     println("Stopping Server")
-    Server.stop
+    server.stop
     println("DONE")
   }
 

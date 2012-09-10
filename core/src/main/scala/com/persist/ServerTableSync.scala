@@ -33,8 +33,8 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
       val vals = (oldMeta, oldValue, meta, value)
       for ((name,config) <- info.config.rings) {
         if (name != info.ringName) {
-          val dest = Map("ring" -> name)
-          val ret = "" // TODO will eventually hook this up
+          //val dest = Map("ring" -> name)
+          //val ret = "" // TODO will eventually hook this up
           //info.send ! ("sync", dest, ret, info.tableName, key, vals)
           info.send ! ("sync", name, info.tableName, key, vals)
         }
@@ -42,9 +42,9 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
     }
 
     def toRing(ringName:String, key:String, meta:String, value:String) {
-      val dest = Map("ring" -> ringName)
+      //val dest = Map("ring" -> ringName)
       val vals = (info.absentMetaS, "null", meta, value)
-      val ret = "" // TODO will eventually hook this up
+      //val ret = "" // TODO will eventually hook this up
       //info.send ! ("sync", dest, ret, info.tableName, key, vals)
       info.send ! ("sync", ringName, info.tableName, key, vals)
     }

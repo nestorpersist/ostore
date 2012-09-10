@@ -32,7 +32,7 @@ import akka.dispatch.Promise
 import Codes.emptyResponse
 import akka.actor.Props
 
-private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) extends CheckedActor with ActorLogging {
+private[persist] class Messaging(config: DatabaseConfig, client: Option[Client]) extends CheckedActor {
 
   private val system = context.system
   private val map = DatabaseMap(config)
@@ -47,11 +47,12 @@ private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) 
     var key: String,
     val value: Any) {
 
-    var uid:Long = 0L
+    var actualRingName: String = ""
+    var uid: Long = 0L
     var nodeName = ""
     var event: Long = 0L
-    var retryCount : Int = 0   // number of retries
-    var count: Int = 0         // number of different uid's used
+    var retryCount: Int = 0 // number of retries
+    var count: Int = 0 // number of different uid's used
 
     private def report(): Boolean = {
       retryCount > 0 && (retryCount % 10) == 0
@@ -65,6 +66,7 @@ private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) 
     def send() {
       val less = cmd.endsWith("-")
       val info = map.get(ringName, tableName, key, less)
+      actualRingName = info.node.ringName
       val ref = info.getRef(system)
       nodeName = info.node.nodeName
       if (report()) {
@@ -82,15 +84,15 @@ private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) 
     tableName: String,
     key: String,
     value: Any) extends Msg(cmd, ringName, tableName, key, value)
-  
+
   private class ClientMsg(
     cmd: String,
     ringName: String,
     tableName: String,
     key: String,
     value: Any,
-    val reply:Promise[Any]) 
-      extends Msg (cmd, ringName, tableName, key, value)
+    val reply: Promise[Any])
+    extends Msg(cmd, ringName, tableName, key, value)
 
   private class Msgs() {
     private val uidGen = new UidGen
@@ -151,20 +153,20 @@ private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) 
 
     private def send(msg: Msg, delay: Boolean) {
       msg match {
-        case cm:ClientMsg => {
+        case cm: ClientMsg => {
           if (msg.retryCount > 3) {
-            cm.reply.success((Codes.Timeout,emptyResponse))
+            cm.reply.success((Codes.Timeout, emptyResponse))
             return
           }
         }
         case _ =>
       }
-      if (! map.hasRing(msg.ringName)) {
-        change ! ("noRing", msg.uid, msg.ringName)
+      if (!map.hasRing(msg.ringName)) {
+        change ! ("addRing", msg.uid, msg.ringName)
         return
-      } 
-      if (! map.hasTable(msg.tableName)) {
-        change ! ("noTable", msg.uid, msg.tableName)
+      }
+      if (!map.hasTable(msg.tableName)) {
+        change ! ("addTable", msg.uid, msg.tableName)
         return
       }
       addEvent(msg, delay)
@@ -175,8 +177,8 @@ private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) 
         msg.send()
       }
     }
-    
-    def newUid(msg:Msg) {
+
+    def newUid(msg: Msg) {
       val uid = uidGen.get
       msg.uid = uid
       msg.retryCount = 0
@@ -184,14 +186,13 @@ private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) 
       msgs += (uid -> msg)
     }
 
-    def newMsg(msg:Msg, delay: Boolean = false) {
+    def newMsg(msg: Msg, delay: Boolean = false) {
       newUid(msg)
       send(msg, delay)
     }
 
     def get(uid: Long): Option[Msg] = {
       msgs.get(uid)
-      None
     }
 
     def delete(uid: Long) {
@@ -237,15 +238,17 @@ private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) 
         val nextNodeName = jgetString(jresponse, "next")
         //val nextHost = jgetString(jresponse, "host")
         //val nextPort = jgetInt(jresponse, "port")
-        val changed = map.setLowHigh(msg.ringName, msg.nodeName, msg.tableName, low, high)
-        if (! map.hasRing(msg.ringName)) {
+        val changed = map.setLowHigh(msg.actualRingName, msg.nodeName, msg.tableName, low, high)
+        /*
+        if (! map.hasRing(msg.actualRingName)) {
           msgs.newUid(msg)
-          change ! ("noRing", msg.uid, msg.ringName) 
+          change ! ("addRing", msg.uid, msg.actualRingName) 
           return
         }
-        if (! map.hasNode(msg.ringName, nextNodeName)) {
+        */
+        if (!map.hasNode(msg.actualRingName, nextNodeName)) {
           msgs.newUid(msg)
-          change ! ("noNode", msg.uid, msg.ringName, nextNodeName)
+          change ! ("addNode", msg.uid, msg.actualRingName, nextNodeName)
           return
         }
         msgs.newMsg(msg, delay = !changed)
@@ -264,17 +267,25 @@ private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) 
       }
       case _ => {
         msg match {
-          case cm:ClientMsg => {
-            cm.reply.success((code, response))
+          case cm: ClientMsg => {
+            if (code == Codes.NoRing) {
+              msgs.newUid(msg)
+              val rings = map.allRings()
+              change ! ("deleteRing", msg.uid, msg.actualRingName,rings)
+            } else if (code == Codes.NoNode) {
+              msgs.newUid(msg)
+              change ! ("deleteNode", msg.uid, msg.actualRingName, msg.nodeName)
+            } else {
+              cm.reply.success((code, response))
+            }
           }
-          case sm:ServerMsg => {
+          case sm: ServerMsg => {
             if (code == Codes.Ok) {
               // done
             } else {
-               val info = msg.toJson() + ("msg" -> "failing server message", "code" -> code)
-               throw new SystemException(Codes.InternalError, info)
+              val info = msg.toJson() + ("msg" -> "failing server message", "code" -> code)
+              throw new SystemException(Codes.InternalError, info)
             }
-            
           }
         }
       }
@@ -301,7 +312,6 @@ private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) 
       // client request
       val msg = new ClientMsg(cmd, ringName, tableName, key, value, reply)
       msgs.newMsg(msg)
-      // TODO NYI
     }
     // TODO client request to server
     // TODO client request to monitor
@@ -311,44 +321,44 @@ private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) 
         case Some(msg) => {
           handleResponse(code, response, msg)
         }
-        case None => // Discard it (already processed)
+        case None => // Discard it (already processed) 
       }
     }
     // TODO check for idle
     // TODO r=n, w=n
-    case ("addRing", ringName: String, nodes: JsonArray) => {
-      if (! map.hasRing(ringName)) {
-         map.addRing(ringName, nodes)
+    case (0, "addRing", ringName: String, nodes: JsonArray) => {
+      if (!map.hasRing(ringName)) {
+        map.addRing(ringName, nodes)
       }
       sender ! Codes.Ok
     }
-    case ("deleteRing", ringName: String) => {
+    case (0, "deleteRing", ringName: String) => {
       if (map.hasRing(ringName)) {
         map.deleteRing(ringName)
       }
       sender ! Codes.Ok
     }
-    case ("addTable", tableName: String) => {
-      if (! map.hasTable(tableName)) {
+    case (0, "addTable", tableName: String) => {
+      if (!map.hasTable(tableName)) {
         map.addTable(tableName)
       }
       sender ! Codes.Ok
     }
-    case ("deleteTable", tableName: String) => {
+    case (0, "deleteTable", tableName: String) => {
       if (map.hasTable(tableName)) {
         map.deleteTable(tableName)
       }
       sender ! Codes.Ok
     }
-    case ("addNode", ringName: String, prevNodeName: String, newNodeName: String, host: String, port: Int) => {
+    case (0, "addNode", ringName: String, prevNodeName: String, newNodeName: String, host: String, port: Int) => {
       map.addNode(ringName, prevNodeName, newNodeName, host, port)
       sender ! Codes.Ok
     }
-    case ("deleteNode", ringName: String, nodeName: String) => {
+    case (0, "deleteNode", ringName: String, nodeName: String) => {
       map.deleteNode(ringName, nodeName)
       sender ! Codes.Ok
     }
-    case ("continue", uid:Long) => {
+    case ("continue", uid: Long) => {
       msgs.get(uid) match {
         case Some(msg) => {
           msgs.delete(msg.uid)
@@ -357,15 +367,15 @@ private[persist] class Messaging(config: DatabaseConfig, client:Option[Client]) 
         case None => // ignore
       }
     }
-    case ("fail", uid:Long, code:Int, response:JsonObject) => {
+    case ("fail", uid: Long, code: String, response: JsonObject) => {
       msgs.get(uid) match {
-        case Some(msg:ServerMsg) => {
+        case Some(msg: ServerMsg) => {
           msgs.delete(msg.uid)
-          log.error("Server messaging fail:"+code+":"+Compact(response))
-        } 
-        case Some(msg:ClientMsg) => {
+          log.error("Server messaging fail:" + code + ":" + Compact(response))
+        }
+        case Some(msg: ClientMsg) => {
           msgs.delete(msg.uid)
-          msg.reply.success((code,Compact(response)))
+          msg.reply.success((code, Compact(response)))
         }
         case None => // ignore
       }

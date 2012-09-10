@@ -1,4 +1,4 @@
-package com.misc
+package com.persist
 
 /*
 
@@ -15,7 +15,7 @@ package com.misc
 
 import scala.io.Source
 
-private[com] class Stemmer {
+private[persist] class Stemmer {
 
   // word to be stemmed.
   var b = ""

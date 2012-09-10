@@ -35,7 +35,7 @@ import Exceptions._
  * 
  * @param databaseName the name of the database.
  */
-class Database private[persist] (system: ActorSystem, val databaseName: String, manager: ActorRef) {
+class Database private[persist] (system: ActorSystem, val databaseName: String, manager: ActorRef, client:Client) {
   private implicit val timeout = Timeout(5 seconds)
   private lazy implicit val ec = ExecutionContext.defaultExecutionContext(system)
 
@@ -254,7 +254,7 @@ class Database private[persist] (system: ActorSystem, val databaseName: String, 
     checkConfig(config)
     var p = new DefaultPromise[String]
     manager ! ("addRings", p, databaseName, config)
-    val v = Await.result(p, 5 seconds)
+    val v = Await.result(p, 60 seconds)
   }
 
   /**
@@ -317,7 +317,7 @@ class Database private[persist] (system: ActorSystem, val databaseName: String, 
   def table(tableName: String) = {
     checkName(tableName)
     var p = new DefaultPromise[Table]
-    manager ? ("table", p, databaseName, tableName)
+    manager ? ("table", p, databaseName, tableName, client)
     val v = Await.result(p, 5 seconds)
     v
   }
@@ -332,7 +332,7 @@ class Database private[persist] (system: ActorSystem, val databaseName: String, 
   def asyncTable(tableName: String) = {
     checkName(tableName)
     var p = new DefaultPromise[AsyncTable]
-    manager ? ("asyncTable", p, databaseName, tableName)
+    manager ? ("asyncTable", p, databaseName, tableName, client)
     val v = Await.result(p, 5 seconds)
     v
   }

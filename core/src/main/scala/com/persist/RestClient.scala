@@ -37,6 +37,9 @@ import akka.util.duration._
 import akka.dispatch.ExecutionContext
 import akka.dispatch.Promise
 import Exceptions._
+import akka.dispatch.Await
+import akka.pattern._
+import com.typesafe.config.ConfigFactory
 
 private[persist] class QParse extends JavaTokenParsers {
   private def decode(a: Any): String = {
@@ -76,16 +79,42 @@ private[persist] object QParser extends QParse {
   def parse(s: String) = parseAll(q, s).get
 }
 
-private[persist] object RestClient {
+/*
+ * {
+ *    "port":8081,
+ *    "client":{
+ *      "host":"hostname",
+ *      "port":8010,
+ *      "name":"rest"
+ *    },
+ *    "server":{
+ *       "host":"hostname",
+ *       "port":8011
+ *    }
+ * }
+ */
+private[persist] class RestClient(config:Json) extends HttpAction {
 
-  var system: ActorSystem = null
+  private var port = jgetInt(config, "port")
+  if (port == 0) port = 8081
+  // TODO default client name to "rest"
+  // TODO when associated with server, use server messaging
+  // TODO make RestClient available as API and command line main
 
-  // TODO should use server manager and sends
-  lazy val client = new Client(system, "127.0.0.1", 8011)
-
-  //lazy val manager = client.manager()
+  val client = new Client(config)
+  val system = client.system
   lazy implicit val ec = ExecutionContext.defaultExecutionContext(system)
   implicit val timeout = Timeout(5 seconds)
+
+  val httpServer = system.actorOf(Props(new HttpServer(port, this, "rest")),name="@http")
+  val f = httpServer ? ("start")
+  Await.result(f, 5 seconds)
+  
+  private[persist] def stop() {
+    val f = httpServer ? ("stop")
+    Await.result(f, 5 seconds)
+    system.stop(httpServer)
+  }
 
   private def getOptions(s: String): JsonObject = {
     if (s == "") {
@@ -307,13 +336,27 @@ private[persist] object RestClient {
   }
 
   def doAll(method: String, path: String, q: String, input: Json): (Boolean, Future[Option[Json]]) = {
-    try {
-      val options = getOptions(q)
-      val isPretty = jgetBoolean(options, "pretty")
-      val f = doAllParts(method, path, input, options - "pretty")
-      (isPretty, f)
+    val opt = try {
+      Some(getOptions(q))
     } catch {
-      case ex => {
+      case ex => None
+    }
+    opt match {
+      case Some(options: JsonObject) => {
+        val isPretty = jgetBoolean(opt, "pretty")
+        try {
+          val f = doAllParts(method, path, input, options - "pretty")
+          (isPretty, f)
+        } catch {
+          case ex:SystemException => {
+            (false, Promise.failed(ex))
+          }
+          case x => {
+            (false, Promise.failed(InternalException("doAll:"+x.toString())))
+          }
+        }
+      }
+      case x => {
         (false, Promise.failed(RequestException("can't parse query string")))
       }
     }
@@ -354,7 +397,6 @@ private[persist] object RestClient {
       } else {
         Promise.failed(RequestException("bad cmd"))
       }
-
     } else if (parts(0) == "ring" && numParts == 2) {
       val get = jgetString(options, "get")
       if (get != "") {
@@ -381,7 +423,6 @@ private[persist] object RestClient {
       } else {
         listKeys(database, tableName, options)
       }
-      //}
     } else {
       Promise.failed(RequestException("bad cmd"))
     }

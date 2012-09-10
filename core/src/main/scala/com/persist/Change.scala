@@ -25,6 +25,7 @@ import akka.dispatch.Await
 import JsonOps._
 
 private[persist] class Change(config: DatabaseConfig, optc: Option[Client], messaging: ActorRef) extends CheckedActor with ActorLogging {
+  // TODO check all ring, node, table name accesses 
 
   private implicit val timeout = Timeout(5 seconds)
 
@@ -33,67 +34,112 @@ private[persist] class Change(config: DatabaseConfig, optc: Option[Client], mess
     case None => None
   }
 
+  private def addRing(database: Database, ringName: String) {
+    var nodes = emptyJsonArray
+    for (nodeName <- database.allNodes(ringName)) {
+      val request = JsonObject("get" -> "hp")
+      val info = database.nodeInfo(ringName, nodeName, request)
+      val host = jgetString(info, "h")
+      val port = jgetInt(info, "p")
+      nodes = JsonObject("name"-> nodeName, "host" -> host, "port" -> port) +: nodes
+    }
+    val f = messaging ? (0, "addRing", ringName, nodes.reverse)
+    Await.result(f, 5 seconds)
+
+  }
+
   def rec = {
-    case ("noRing", uid: Long, ringName: String) => {
+    case ("addRing", uid: Long, ringName: String) => {
       optdb match {
         case Some(database) => {
           if (database.allRings().exists(_ == ringName)) {
-            var nodes = emptyJsonArray
-            for (nodeName <- database.allNodes(ringName)) {
-                val request = JsonObject("get"->"hp")
-                val info = database.nodeInfo(ringName, nodeName, request)
-                val host = jgetString(info,"h")
-                val port = jgetInt(info, "p")
-                nodes = JsonObject("host"->host, "port"->port) +: nodes
-            }
-            val f = messaging ? ("addRing", ringName, nodes.reverse)
-            Await.result(f, 5 seconds)
+            addRing(database, ringName)
             messaging ! ("continue", uid)
           } else {
-            messaging ! ("fail", uid, Codes.NoRing, JsonObject("ring"->ringName))
+            messaging ! ("fail", uid, Codes.NoRing, JsonObject("ring" -> ringName))
           }
         }
         case None => {
-          messaging ! ("fail", uid, Codes.NoRing, JsonObject("ring"->ringName))
+          messaging ! ("fail", uid, Codes.NoRing, JsonObject("ring" -> ringName))
         }
       }
     }
-    case ("noTable", uid: Long, tableName: String) => {
+    case ("addTable", uid: Long, tableName: String) => {
       optdb match {
         case Some(database) => {
           if (database.allTables().exists(_ == tableName)) {
-            val f = messaging ? ("addTable", tableName)
+            val f = messaging ? (0, "addTable", tableName)
             Await.result(f, 5 seconds)
             messaging ! ("continue", uid)
           } else {
-            messaging ! ("fail", uid, Codes.NoTable, JsonObject("table"->tableName))
+            messaging ! ("fail", uid, Codes.NoTable, JsonObject("table" -> tableName))
           }
         }
         case None => {
-          messaging ! ("fail", uid, Codes.NoTable, JsonObject("table"->tableName))
+          messaging ! ("fail", uid, Codes.NoTable, JsonObject("table" -> tableName))
         }
       }
     }
-    case ("noNode", uid:Long, ringName:String, nodeName:String) => {
+    case ("addNode", uid: Long, ringName: String, nodeName: String) => {
       optdb match {
         case Some(database) => {
           if (database.allNodes(ringName).exists(_ == nodeName)) {
-            val request = JsonObject("get"->"bhp")
+            val request = JsonObject("get" -> "bhp")
             val info = database.nodeInfo(ringName, nodeName, request)
             val prevNodeName = jgetString(info, "b")
             val host = jgetString(info, "h")
-            val port =jgetInt(info, "p")
-            val f = messaging ? ("addNode", prevNodeName, nodeName, host, port)
+            val port = jgetInt(info, "p")
+            val f = messaging ? (0, "addNode", ringName, prevNodeName, nodeName, host, port)
             Await.result(f, 5 seconds)
             messaging ! ("continue", uid)
           } else {
-            messaging ! ("fail", uid, Codes.NoNode, JsonObject("ring"->ringName,"node"->nodeName))
+            messaging ! ("fail", uid, Codes.NoNode, JsonObject("ring" -> ringName, "node" -> nodeName))
           }
         }
         case None => {
-          messaging ! ("fail", uid, Codes.NoNode, JsonObject("ring"->ringName,"node"->nodeName))
+          messaging ! ("fail", uid, Codes.NoNode, JsonObject("ring" -> ringName, "node" -> nodeName))
         }
-      }      
+      }
+    }
+    case ("deleteNode", uid: Long, ringName: String, nodeName: String) => {
+      // TODO check for other nodes before deleting the last node
+      optdb match {
+        case Some(database) => {
+          if (database.allNodes(ringName).exists(_ == nodeName)) {
+            messaging ! ("fail", uid, Codes.InternalError, JsonObject("msg" -> "missing node", "ring" -> ringName, "node" -> nodeName))
+          } else {
+            val f = messaging ? (0, "deleteNode", ringName, nodeName)
+            Await.result(f, 5 seconds)
+            messaging ! ("continue", uid)
+          }
+        }
+        case None => {
+          messaging ! ("fail", uid, Codes.NoNode, JsonObject("ring" -> ringName, "node" -> nodeName))
+
+        }
+      }
+    }
+    case ("deleteRing", uid: Long, ringName: String, mapRings: JsonArray) => {
+      optdb match {
+        case Some(database) => {
+          val rings = database.allRings()
+          if (rings.exists(_ == ringName)) {
+            messaging ! ("fail", uid, Codes.InternalError, JsonObject("msg" -> "missing ring", "ring" -> ringName))
+          } else {
+            for (ring <- rings) {
+              if (ring != ringName && !mapRings.exists(_ == ring)) {
+                addRing(database, ring)
+              }
+            }
+            val f = messaging ? (0, "deleteRing", ringName)
+            Await.result(f, 5 seconds)
+            messaging ! ("continue", uid)
+          }
+        }
+        case None => {
+          messaging ! ("fail", uid, Codes.NoRing, JsonObject("ring" -> ringName))
+        }
+      }
     }
   }
 

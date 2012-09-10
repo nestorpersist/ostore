@@ -21,11 +21,11 @@ import com.vaadin.Application
 import com.vaadin.ui._
 import com.vaadin.ui.Button.ClickListener
 import com.vaadin.ui.themes._
-import JsonUtil._
+import JsonOps._
 import scala.collection.JavaConversions._
 import com.vaadin.data.Property
 import java.util.regex.Pattern
-import com.twitter.json.JsonException
+import Exceptions._
 
 object EditWindow {
   private def checkJson(err: Label, s: String, isKey: Boolean): Option[Json] = {
@@ -33,7 +33,7 @@ object EditWindow {
     try {
       Some(Json(s))
     } catch {
-      case ex: JsonException => {
+      case ex: JsonParseException => {
         err.setValue(ex.getMessage())
         None
       }

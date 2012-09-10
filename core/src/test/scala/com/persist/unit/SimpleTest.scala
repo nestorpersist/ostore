@@ -37,7 +37,7 @@ class SimpleTest extends FunSuite {
     }        
     """)
     println("Starting Server")
-    Server.start(serverConfig, true)
+    val server = new Server(serverConfig, true)
 
     val dbName = "testdb"
     val databaseConfig = Json("""
@@ -47,8 +47,7 @@ class SimpleTest extends FunSuite {
        "nodes":[ {"name":"n1", "host":"127.0.0.1", "port":8011} ] } ]
      }
      """)
-    val system = ActorSystem("ostoreclient", ConfigFactory.load.getConfig("client"))
-    val client = new Client(system)
+    val client = new Client()
     client.createDatabase(dbName, databaseConfig)
 
     val database = client.database(dbName)
@@ -88,10 +87,9 @@ class SimpleTest extends FunSuite {
     client.deleteDatabase(dbName)
 
     client.stop
-    system.shutdown
 
     println("Stopping Server")
-    Server.stop
+    server.stop()
     println("DONE") 
   }
 

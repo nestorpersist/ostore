@@ -35,6 +35,7 @@ import scala.collection.immutable.TreeMap
 import java.io.File
 import scala.io.Source
 import akka.event.Logging
+import com.typesafe.config.ConfigValueFactory
 
 // Server Actor Paths
 //       /user/@server
@@ -62,7 +63,7 @@ private[persist] class DatabaseInfo(
   var config: DatabaseConfig,
   var state: String)
 
-private[persist] class Server(serverConfig: Json, create: Boolean) extends CheckedActor {
+private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends CheckedActor {
   private implicit val timeout = Timeout(5 seconds)
 
   private def deletePath(f: File) {
@@ -74,8 +75,14 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
     f.delete()
   }
 
-  private val host = jgetString(serverConfig, "host")
-  private val port = jgetInt(serverConfig, "port")
+  private val akkaConfig = ConfigFactory.load
+  private var akkaClientConfig = akkaConfig.getConfig("client")
+  private val akkaServerConfig = akkaConfig.getConfig("server")
+
+  private var host = jgetString(serverConfig, "host")
+  if (host == "") host = akkaServerConfig.getString("akka.remote.netty.hostname")
+  private var port = jgetInt(serverConfig, "port")
+  if (port == 0) port = akkaServerConfig.getInt("akka.remote.netty.port")
   private val serverName = host + ":" + port
 
   private val path = jgetString(serverConfig, "path")
@@ -101,10 +108,26 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
   // databaseName -> locking guid or "" if unlocked
   private var locks = TreeMap[String, String]()
 
-  private val restPort = jgetInt(serverConfig, "rest")
-  if (restPort != 0) {
-    RestClient.system = system
-    Http.start(system, restPort)
+  private val restInfo = jget(serverConfig, "rest")
+  private var restClient: RestClient = null
+  if (restInfo != null) {
+    var httpPort = jgetInt(restInfo, "port")
+    if (httpPort == 0) httpPort = 8081
+    var clientPort = jgetInt(restInfo, "client", "port")
+    if (clientPort == 0) clientPort
+    if (clientPort == 0) port = akkaClientConfig.getInt("akka.remote.netty.port")
+    var clientName = jgetString(restInfo, "client", "name")
+    if (clientName == "") clientName = "rest"
+    val clientConfig = JsonObject(
+      "port" -> httpPort,
+      "client" -> JsonObject(
+        "host" -> host,
+        "port" -> clientPort,
+        "name" -> clientName),
+      "server" -> JsonObject(
+        "host" -> host,
+        "port" -> port))
+    restClient = new RestClient(clientConfig)
   }
 
   if (exists) {
@@ -185,13 +208,13 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
       case "start" => {
         val balance = jgetBoolean(request, "balance")
         val user = jgetBoolean(request, "user")
-        val ring = jgetString(request,"ring")
-        val node = jgetString(request,"node")
+        val ring = jgetString(request, "ring")
+        val node = jgetString(request, "node")
         val f = database ? ("start", ring, node, balance, user)
         Await.result(f, 5 seconds)
         if (user) {
           info.state = "active"
-          log.info("Database started " + databaseName)  
+          log.info("Database started " + databaseName)
         }
         sender ! (Codes.Ok, emptyResponse)
       }
@@ -208,6 +231,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         val ringName = jgetString(request, "ring")
         val avail = jgetBoolean(request, "avail")
         val config = info.config.enableRing(ringName, avail)
+        // TODO enable user ops on new ring node table nodes
         sender ! (Codes.Ok, emptyResponse)
       }
       case "busyBalance" => {
@@ -393,11 +417,11 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         var result = emptyJsonObject
         if (get.contains("h")) {
           val host = info.config.servers(serverName).host
-          result += ("h"->host)
+          result += ("h" -> host)
         }
         if (get.contains("p")) {
           val port = info.config.servers(serverName).port
-          result += ("p"->port)
+          result += ("p" -> port)
         }
         sender ! (Codes.Ok, Compact(result))
       }
@@ -468,7 +492,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         val get = jgetString(options, "get")
         var result = emptyJsonObject
         if (get.contains("s")) {
-          result += ("s"->"ok")
+          result += ("s" -> "ok")
         }
         sender ! (Codes.Ok, Compact(result))
       }
@@ -520,12 +544,12 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
           case Some(info) => {
             //var result = JsonArray()
             //for (name <- info.nodes.keys) {
-              //result = name +: result
+            //result = name +: result
             //}
             sender ! (Codes.Ok, Compact(info.nodeSeq))
           }
           case None => {
-            sender ! (Codes.ExistRing, Compact(JsonObject("database" -> databaseName, "ring" -> ringName)))
+            sender ! (Codes.NoRing, Compact(JsonObject("database" -> databaseName, "ring" -> ringName)))
           }
         }
       }
@@ -564,7 +588,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
                           config.tables.get(tableName) match {
                             case Some(tableConfig) => {
                               if (info.state != "active") {
-                                sender1 ! (Codes.AvailableDatabase, uid, Compact(JsonObject("database" -> databaseName, "state" -> info.state)))
+                                sender1 ! (Codes.NotAvailable, uid, Compact(JsonObject("database" -> databaseName, "state" -> info.state)))
                               } else {
                                 // Should never get here
                                 log.error("*****Internal Error DeadLetter:" + d.recipient.path + ":" + d.message)
@@ -633,7 +657,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
     }
     case ("newDatabase", databaseName: String, rs: String) => {
       if (databases.contains(databaseName)) {
-        val response = JsonObject("database"->databaseName)
+        val response = JsonObject("database" -> databaseName)
         sender ! (Codes.ExistDatabase, Compact(response))
       } else {
         val request = Json(rs)
@@ -650,7 +674,7 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
         log.info("Created database " + databaseName)
       }
     }
-    case ("allDatabases", dummy:String, rs:String) => {
+    case ("allDatabases", dummy: String, rs: String) => {
       var result = JsonArray()
       for ((name, info) <- databases) {
         result = name +: result
@@ -674,40 +698,88 @@ private[persist] class Server(serverConfig: Json, create: Boolean) extends Check
     }
     case ("stop") => {
       log.info("Stopping server")
-      if (restPort != 0) Http.stop
+      if (restClient != null) restClient.stop()
       storeTable.close()
       sender ! Codes.Ok
     }
   }
 }
 
-object Server {
+/**
+ * An OStore Server.
+ * 
+ * @param config the server configuration (see Wiki).
+ * @param create if true any existing database files are discarded.
+ */
+class Server(config: Json, create: Boolean) {
+  
+/**
+ * Constructor with config an empty configuration and create false.
+ * 
+ * @param config the server configuration (see Wiki).
+ */
+  def this() = this(emptyJsonObject, false)
+/**
+ * Constructor with create false.
+ * 
+ * @param config the server configuration (see Wiki).
+ */
+  def this(config:Json) = this(config, false)
+/**
+ * Constructor with config an empty configuration
+ * 
+ * @param config the server configuration (see Wiki).
+ */
+  def this(create:Boolean) = this(emptyJsonObject, create)
+  
   private implicit val timeout = Timeout(200 seconds)
-  private var server: ActorRef = null
+  private var serverActor: ActorRef = null
   private var system: ActorSystem = null
 
-  def start(config: Json, create: Boolean = false) {
-    // TODO get port from config
-    system = ActorSystem("ostore", ConfigFactory.load.getConfig("server"))
-    server = system.actorOf(Props(new Server(config, create)), name = "@server")
-    val f = server ? ("start")
-    Await.result(f, 200 seconds)
+  private var akkaConfig = ConfigFactory.load.getConfig("server")
+  private val host = jgetString(config, "host")
+  private val port = jgetInt(config, "port")
+  if (host != "") {
+    akkaConfig = akkaConfig.withValue("akka.remote.netty.host", ConfigValueFactory.fromAnyRef(host))
   }
+  if (port != 0) {
+    akkaConfig = akkaConfig.withValue("akka.remote.netty.port", ConfigValueFactory.fromAnyRef(port))
+  }
+ // println("Config:" + akkaConfig)
+  system = ActorSystem("ostore", akkaConfig)
+  serverActor = system.actorOf(Props(new ServerActor(config, create)), name = "@server")
+  private val f = serverActor ? ("start")
+  Await.result(f, 200 seconds)
 
-  def stop {
+  /**
+   * Stops the server process.
+   * All databases on that server should be stopped.
+   */
+  def stop() {
     // TODO make sure server is started and no active databases
-    val f = server ? ("stop")
+    val f = serverActor ? ("stop")
     Await.result(f, 5 seconds)
-    val f1 = gracefulStop(server, 5 seconds)(system) // will stop all its children too!
+    val f1 = gracefulStop(serverActor, 5 seconds)(system) // will stop all its children too!
     Await.result(f1, 5 seconds)
     system.shutdown()
     // TODO throw exception if any internal errors detected
   }
+}
 
+/**
+ * An object for running on OStore from SBT or the command line.
+ */
+object Server {
+  /**
+   * Main routine.
+   *
+   * @param args The first arg is the path to the server configuration file. If
+   * absent the path defaults to config/server.json.
+   */
   def main(args: Array[String]) {
     val fname = if (args.size > 0) { args(0) } else { "config/server.json" }
     val config = Source.fromFile(fname).mkString
-    start(Json(config))
+    val server = new Server(Json(config))
   }
 }
 

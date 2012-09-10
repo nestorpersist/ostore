@@ -52,14 +52,15 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
   private var sends = new TreeMap[String, ActorRef]()
   private var databases = new TreeMap[String, Database]()
 
-  private def getAsyncTable(databaseName: String, tableName: String): AsyncTable = {
+  private def getAsyncTable(databaseName: String, tableName: String, client:Client): AsyncTable = {
     val send = sends.get(databaseName) match {
       case Some(s) => s
       case None => {
         val info = databaseInfo(databaseName, JsonObject("get" -> "c"))
         val jconfig = jget(info, "c")
         val config = DatabaseConfig(databaseName, jconfig)
-        val s = system.actorOf(Props(new Send(system, config)))
+        //val s = system.actorOf(Props(new Send(system, config)))
+        val s = system.actorOf(Props(new Messaging(config, Some(client))),name="@messaging")
         val f = s ? ("start")
         Await.result(f, 5 seconds)
         sends += (databaseName -> s)
@@ -69,15 +70,15 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
     new AsyncTable(databaseName, tableName, system, send)
   }
 
-  private def getTable(databaseName: String, tableName: String): Table = {
-    new Table(databaseName, tableName, getAsyncTable(databaseName, tableName))
+  private def getTable(databaseName: String, tableName: String, client:Client): Table = {
+    new Table(databaseName, tableName, getAsyncTable(databaseName, tableName, client))
   }
 
-  private def getDatabase(databaseName: String): Database = {
+  private def getDatabase(databaseName: String, client:Client): Database = {
     databases.get(databaseName) match {
       case Some(d) => d
       case None => {
-        val d = new Database(system, databaseName, self)
+        val d = new Database(system, databaseName, self, client)
         databases += (databaseName -> d)
         d
       }
@@ -512,19 +513,20 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
     dba.act("active", request) {
       val oldServers = dba.getServers
       var newServers = List[String]()
+      var allServers = oldServers
       for (node <- nodes) {
         val nodeName = jgetString(node, "name")
         val host = jgetString(node, "host")
         val port = jgetInt(node, "port")
         val serverName = host + ":" + port
-        if (!oldServers.contains(serverName)) {
-          if (!newServers.contains(serverName)) {
-            newServers = newServers :+ serverName
-          }
+        if (!allServers.contains(serverName)) {
+          allServers = allServers :+ serverName
+        }
+        if (!newServers.contains(serverName)) {
+          newServers = newServers :+ serverName
         }
       }
       dba.lock(newServers) {
-        val allServers = oldServers ::: newServers
         val info = databaseInfo(databaseName, JsonObject("get" -> "c"))
         val jconfig = jget(info, "c")
         val config = DatabaseConfig(databaseName, jconfig)
@@ -547,6 +549,9 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
 
         // wait copy complete
         dba.wait("ringReady", request)
+
+        // let the new ring accept user requests
+        dba.pass("start",request + ("user"->true),servers = newServers)
         
         // set state to available (old and new servers)
         dba.pass("setRingAvailable", request + ("avail"->true), servers = allServers)
@@ -626,19 +631,19 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
   }
 
   def rec = {
-    case ("database", p: Promise[Database], databaseName: String) => {
+    case ("database", p: Promise[Database], databaseName: String, client:Client) => {
       complete(p) {
-        getDatabase(databaseName)
+        getDatabase(databaseName, client)
       }
     }
-    case ("table", p: Promise[Table], databaseName: String, tableName: String) => {
+    case ("table", p: Promise[Table], databaseName: String, tableName: String, client:Client) => {
       complete(p) {
-        getTable(databaseName, tableName)
+        getTable(databaseName, tableName, client)
       }
     }
-    case ("asyncTable", p: Promise[AsyncTable], databaseName: String, tableName: String) => {
+    case ("asyncTable", p: Promise[AsyncTable], databaseName: String, tableName: String, client:Client) => {
       complete(p) {
-        getAsyncTable(databaseName, tableName)
+        getAsyncTable(databaseName, tableName, client)
       }
     }
     case ("allDatabases", p: Promise[Iterable[String]]) => {

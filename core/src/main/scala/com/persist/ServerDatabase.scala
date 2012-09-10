@@ -98,7 +98,7 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
     }
     case ("addNode", ringName: String, nodeName: String, host:String, port:Int, config: DatabaseConfig) => {
       val prevNodeName = config.rings(ringName).prevNodeName(nodeName)
-      val f0 = send ? ("addNode", ringName, prevNodeName, nodeName, host, port)
+      val f0 = send ? (0, "addNode", ringName, prevNodeName, nodeName, host, port)
       Await.result(f0, 5 seconds)
       for ((ringName1, ringInfo) <- rings) {
         if (ringName == ringName1) {
@@ -124,7 +124,7 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
         }
       }
       this.config = config
-      val f0 = send ? ("deleteNode", ringName, nodeName)
+      val f0 = send ? (0, "deleteNode", ringName, nodeName)
       Await.result(f0, 5 seconds)
       sender ! Codes.Ok
     }
@@ -140,7 +140,8 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       if (add) {
         newRing(ringName)
       }
-      val f0 = send ? ("addRing", ringName, nodes)
+      println("ADDRING:"+ringName+":"+Compact(nodes))
+      val f0 = send ? (0, "addRing", ringName, nodes)
       Await.result(f0, 5 seconds)
       for ((ringName1, ringInfo) <- rings) {
         val f = ringInfo.ring ? ("addRing", ringName, nodes, config)
@@ -181,7 +182,7 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       sender ! Codes.Ok
     }
     case ("deleteRing2",ringName:String) => {
-      val f0 = send ? ("deleteRing", ringName)
+      val f0 = send ? (0, "deleteRing", ringName)
       Await.result(f0, 5 seconds)
       for ((ringName1, ringInfo) <- rings) {
         if (ringName1 == ringName) {
@@ -209,7 +210,7 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       sender ! Codes.Ok
     }
     case ("addTable1", tableName: String, config: DatabaseConfig) => {
-      val f0 = send ? ("addTable", tableName)
+      val f0 = send ? (0, "addTable", tableName)
       Await.result(f0, 5 seconds)
       for ((ringName, ringInfo) <- rings) {
         val f = ringInfo.ring ? ("addTable1", tableName, config)
@@ -233,7 +234,7 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       sender ! Codes.Ok
     }
     case ("deleteTable2", tableName: String) => {
-      val f0 = send ? ("deleteTable", tableName)
+      val f0 = send ? (0, "deleteTable", tableName)
       Await.result(f0, 5 seconds)
       for ((ringName, ringInfo) <- rings) {
         val f = ringInfo.ring ? ("deleteTable2", tableName)

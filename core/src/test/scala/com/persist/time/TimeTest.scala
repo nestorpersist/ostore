@@ -93,10 +93,10 @@ class TimeTest extends FunSuite {
      """)
 
     println("Starting Server")
-    Server.start(serverConfig,true)
+    val server = new Server(serverConfig,true)
 
-    val system = ActorSystem("ostoreclient", ConfigFactory.load.getConfig("client"))
-    val client = new Client(system)
+    val client = new Client()
+    val system = client.system
     client.createDatabase(dbName, databaseConfig)
 
     val database = client.database(dbName)
@@ -125,7 +125,7 @@ class TimeTest extends FunSuite {
     client.stop()
 
     println("Stopping Server")
-    Server.stop
+    server.stop
     println("DONE")
   }
 

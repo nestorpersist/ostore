@@ -110,8 +110,10 @@ object Check {
   }
 
   def main(args: Array[String]) {
-    val system = ActorSystem("ostoreclient", ConfigFactory.load.getConfig("client"))
-    val client = new Client(system)
+    // TODO support a configuration
+    // TODO other command line options
+    // TODO scala callable method(s)
+    val client = new Client()
     for (databaseName <- client.allDatabases) {
       checkDatabase(client, databaseName)
     }

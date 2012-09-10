@@ -18,38 +18,143 @@
 package com.persist
 
 import scala.collection.immutable.HashMap
-import com.twitter.json.Json.parse
-import com.twitter.json.Json.build
-import com.twitter.json.Json.pretty
+//import com.twitter.json.Json.parse
+//import com.twitter.json.Json.build
+//import com.twitter.json.Json.compact
+//import com.twitter.json.Json.pretty
+import JsonUnparse._
 import java.net.URLEncoder
 import java.net.URLDecoder
 
-object JsonUtil {
+/**
+ *
+ * Provides types and functions for working with the OStore Json types.
+ *
+ * In OStore, Json is represented by immutable Scala types.
+ * Instead of having separate Json types, type aliases are
+ * defined for Json forms.
+ *
+ * Scala types used for Json are
+ *
+ *  - Json Object. Immutable Map[String,Json]
+ *  - Json Array. Immutable Seq[Json]
+ *  - Json String. String
+ *  - Json Boolean. Boolean
+ *  - Json Number. Int, Long, BigDecimal
+ *  - Json Null. Null
+ *
+ */
+object JsonOps {
 
+  /**
+   *
+   * A type alias for all Json forms.
+   * Json values should be restriced by convention
+   * to only those types used to represent Json.
+   *
+   */
   type Json = Any
+
+  /**
+   *
+   * A type alias for OStore Json keys.
+   * JsonKey values should be restricted to
+   * permitted OStore key forms.
+   *
+   *  - String.
+   *  - Number (restricted to integers that can fit in a Long).
+   *  - Array of JsonKeys.
+   */
   type JsonKey = Json
 
+  /**
+   *
+   * A type alias for of Json Objects.
+   */
   type JsonObject = Map[String, Json]
-  type JsonPair = (String, Json)
-  def JsonObject(i: JsonPair*): JsonObject = new HashMap[String, Json]() ++ i
+
+  //type JsonPair = (String, Json)
+
+  /**
+   *
+   * A constructor for JsonObject.
+   *
+   * @param Pairs a sequence of name value pairs.
+   *
+   * @return the constructed Json Object.
+   */
+  def JsonObject(pairs: (String, Json)*): JsonObject = new HashMap[String, Json]() ++ pairs
+
+  /**
+   *
+   * An empty JsonObject.
+   */
   val emptyJsonObject = JsonObject()
 
+  /**
+   *
+   * A type alias for Json Arrays.
+   */
   type JsonArray = Seq[Json]
-  def JsonArray(i: Json*): JsonArray = List() ++ i
+
+  /**
+   *
+   * A constructor for JsonArray.
+   *
+   * @param elements a sequence of array element values.
+   *
+   * @return the constructed Json Array.
+   *
+   */
+  def JsonArray(elements: Json*): JsonArray = List() ++ elements
+
+  /**
+   *
+   * An empty JsonArray.
+   */
   val emptyJsonArray = JsonArray()
 
+  /**
+   *
+   * A Json parser.
+   */
   def Json(s: String): Json = {
-    parse(s)
+    //parse(s)
+    com.persist.JsonParse.parse(s)
   }
 
+  /**
+   *
+   * A Json unparser. It produces the most compact single line string form.
+   *
+   */
   def Compact(j: Json): String = {
-    build(j).toString()
+    compact(j)
   }
 
+  /**
+   *
+   * A Json unparser. It produces a multiple line form
+   * designed for human readability.
+   *
+   */
   def Pretty(j: Json): String = {
-    pretty(j).toString()
+    //pretty(j).toString()
+    pretty(j)
   }
 
+  /**
+   *
+   * Get a value within a nested Json value.
+   *
+   * @param ilist a list of values that are either strings or integers
+   *  - A string selects the value of a JsonObject name-value pair where
+   *    the name equals the string.
+   *  - An integer i selects the ith elements of a JsonArray.
+   *
+   * @return the selected value or null if not present.
+   *
+   */
   def jget(a: Json, ilist: Any*): Json = {
     if (ilist.size == 0) {
       a
@@ -70,14 +175,33 @@ object JsonUtil {
     }
   }
 
-  def jsize(a: Json): Int = {
-    a match {
+  /**
+   *
+   * Get the size of a Json value.
+   *  - For a Json Object the number of name-value pairs.
+   *  - For a Json Array the number of elements.
+   *  - For anything else, 0.
+   */
+  def jsize(j: Json): Int = {
+    j match {
       case a1: JsonObject => a1.size
       case a1: JsonArray => a1.size
       case x => 0
     }
   }
 
+  /**
+   *
+   * Get a string value within a nested Json value.
+   *
+   * @param ilist a list of values that are either strings or integers
+   *  - A string selects the value of a JsonObject name-value pair where
+   *    the name equals the string.
+   *  - An integer i selects the ith elements of a JsonArray.
+   *
+   * @return the selected string value or "" if not present.
+   *
+   */
   def jgetString(a: Json, ilist: Any*): String = {
     jget(a, ilist: _*) match {
       case s: String => s
@@ -85,6 +209,18 @@ object JsonUtil {
     }
   }
 
+  /**
+   *
+   * Get a boolean value within a nested Json value.
+   *
+   * @param ilist a list of values that are either strings or integers
+   *  - A string selects the value of a JsonObject name-value pair where
+   *    the name equals the string.
+   *  - An integer i selects the ith elements of a JsonArray.
+   *
+   * @return the selected boolean value or false if not present.
+   *
+   */
   def jgetBoolean(a: Json, ilist: Any*): Boolean = {
     jget(a, ilist: _*) match {
       case b: Boolean => b
@@ -92,13 +228,41 @@ object JsonUtil {
     }
   }
 
+  /**
+   *
+   * Get an integer value within a nested Json value.
+   *
+   * @param ilist a list of values that are either strings or integers
+   *  - A string selects the value of a JsonObject name-value pair where
+   *    the name equals the string.
+   *  - An integer i selects the ith elements of a JsonArray.
+   *
+   * @return the selected integer value or 0 if not present.
+   *
+   */
   def jgetInt(a: Json, ilist: Any*): Int = {
     jget(a, ilist: _*) match {
+      case l: Long => {
+        val i = l.toInt
+        if (i == l) { i } else { 0 }
+      }
       case i: Int => i
       case x => 0
     }
   }
 
+  /**
+   *
+   * Get a long value within a nested Json value.
+   *
+   * @param ilist a list of values that are either strings or integers
+   *  - A string selects the value of a JsonObject name-value pair where
+   *    the name equals the string.
+   *  - An integer i selects the ith elements of a JsonArray.
+   *
+   * @return the selected long value or 0 if not present.
+   *
+   */
   def jgetLong(a: Json, ilist: Any*): Long = {
     jget(a, ilist: _*) match {
       case l: Long => l
@@ -107,6 +271,18 @@ object JsonUtil {
     }
   }
 
+  /**
+   *
+   * Get a JsonArray value within a nested Json value.
+   *
+   * @param ilist a list of values that are either strings or integers
+   *  - A string selects the value of a JsonObject name-value pair where
+   *    the name equals the string.
+   *  - An integer i selects the ith elements of a JsonArray.
+   *
+   * @return the selected JsonArray value or an empty JsonArray if not present.
+   *
+   */
   def jgetArray(a: Json, ilist: Any*): JsonArray = {
     jget(a, ilist: _*) match {
       case s: JsonArray => s
@@ -114,36 +290,125 @@ object JsonUtil {
     }
   }
 
+  /**
+   *
+   * Get a JsonObject value within a nested Json value.
+   *
+   * @param ilist a list of values that are either strings or integers
+   *  - A string selects the value of a JsonObject name-value pair where
+   *    the name equals the string.
+   *  - An integer i selects the ith elements of a JsonArray.
+   *
+   * @return the selected JsonObject value or an empty JsonObject if not present.
+   *
+   */
   def jgetObject(a: Json, ilist: Any*): JsonObject = {
-    a match {
+    jget(a, ilist: _*) match {
       case m: JsonObject => m
       case x => emptyJsonObject
     }
   }
 
-  case class jfield(i: Any) {
+  /**
+   *
+   * An extractor for nested Json values.
+   *
+   * @param ilist a list of values that are either strings or integers
+   *  - A string selects the value of a JsonObject name-value pair where
+   *    the name equals the string.
+   *  - An integer i selects the ith elements of a JsonArray.
+   *
+   *  @example {{{
+   *     val A = jfield("a")
+   *     val B = jfield("b")
+   *     val C = jfield("c")
+   *     jval match {
+   *       case a:A & b:B => foo(a,b)
+   *       case c:C => bar(c)
+   *     }
+   *  }}}
+   *
+   */
+  case class jfield(ilist: Any*) {
     def unapply(m: Json) = {
-      val result = jget(m, i)
+      val result = jget(m, ilist: _*)
       if (result == null) { None } else { Some(result) }
     }
   }
 
+  /**
+   *
+   * An extractor composition operator.
+   *
+   * @example {{{
+   *     val A = jfield("a")
+   *     val B = jfield("b")
+   *     val C = jfield("c")
+   *     jval match {
+   *       case a:A & b:B => foo(a,b)
+   *       case c:C => bar(c)
+   *     }
+   *  }}}
+   */
   object & {
     def unapply(a: Any) = Some(a, a)
   }
 
+  /**
+   *
+   * Compares two JsonKeys.
+   *
+   * @param a the first key.
+   * @param b the second key.
+   *
+   * @return
+   *  - 0 if the two keys are equal.
+   *  - <0 if a is less than b in key order.
+   *  - >0 if a is greater than b in key order.
+   *
+   */
   def keyCompare(a: Json, b: Json): Int = {
     keyEncode(a).compareTo(keyEncode(b))
   }
 
+  /**
+   *
+   * Compares two JsonKeys for equality.
+   *
+   * @param a the first key.
+   * @param b the second key.
+   *
+   * @return true if the two keys are equal.
+   *
+   */
   def keyEq(a: Json, b: Json): Boolean = {
     keyCompare(a, b) == 0
   }
 
+  /**
+   *
+   * Compares two JsonKeys.
+   *
+   * @param a the first key.
+   * @param b the second key.
+   *
+   * @return true if a is less than b in key ordering.
+   *
+   */
   def keyLs(a: Json, b: Json): Boolean = {
     keyCompare(a, b) < 0
   }
 
+  /**
+   *
+   * Determines if one JsonKey is a prefix of another JsonKey.
+   *
+   * @param a the first key
+   * @param b the second key
+   *
+   * @return true if a is a prefix of b.
+   *
+   */
   def keyPrefix(a: JsonKey, b: JsonKey): Boolean = {
     val a1 = keyEncode(a)
     val b1 = keyEncode(b)
@@ -214,11 +479,11 @@ object JsonUtil {
     }
   }
 
-  def keyEncode(j: JsonKey): String = {
+  private[persist] def keyEncode(j: JsonKey): String = {
     keyEncode1(j, true)
   }
 
-  private def keyDecode1(s: String, i: Integer): (JsonKey, Integer) = {
+  private def keyDecode1(s: String, i: Int): (JsonKey, Int) = {
     val len = s.length()
     val pos0 = i + 1
     val code = s(i)
@@ -271,7 +536,7 @@ object JsonUtil {
     }
   }
 
-  def keyDecode0(s: String): JsonKey = {
+  private def keyDecode0(s: String): JsonKey = {
     val len = s.length()
     val (j, pos) = keyDecode1(s, 0)
     if (pos != len) {
@@ -280,9 +545,15 @@ object JsonUtil {
     j
   }
 
-  def keyDecode(s: String): JsonKey = {
+  private[persist] def keyDecode(s: String): JsonKey = {
     try {
-      keyDecode0(s)
+      if (s == "") {
+        false // Min
+      } else if (s == "\uFFFF") {
+        true // Max
+      } else {
+        keyDecode0(s)
+      }
     } catch {
       case ex => {
         // internal error
@@ -293,6 +564,14 @@ object JsonUtil {
     }
   }
 
+  /**
+   *
+   * An encoder for REST key forms.
+   * Converts an OStore key to a string form that
+   * can be used as a key within the query part of
+   * a url for the OStore REST api.
+   *
+   */
   def keyUriEncode(j: JsonKey): String = {
     j match {
       case s: String => {
@@ -375,6 +654,14 @@ object JsonUtil {
       (keyUriDecode2(s1), pos1)
     }
   }
+
+  /**
+   *
+   * An decoder for REST key forms.
+   * Converts a key within the query part of
+   * a url for the OStore REST api to a JsonKey.
+   *
+   */
   def keyUriDecode(s: String): JsonKey = {
     val (s1, pos1) = keyUriDecode1(s, 0)
     s1

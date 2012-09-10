@@ -27,6 +27,8 @@ import com.persist.JsonOps._
 private[persist] case class RingMap(
   var tables: HashMap[String, TableMap],
   // TODO nodeconfig => nodeMap
+  // TODO check all ring, name and table accesses
+
   // NodeMap => TableNodeMap
   var nodes: Map[String, NodeMap],
   // server names
@@ -212,20 +214,24 @@ private[persist] class DatabaseMap(val databaseName: String, var rings: HashMap[
       case None => false
     }
   }
-  
-  def hasNode(ringName:String, nodeName:String): Boolean ={
-    val (ringName, ringMap) = rings.head
-    ringMap.nodes.get(nodeName) match {
-      case Some(nodeMap) => true
+
+  def hasNode(ringName: String, nodeName: String): Boolean = {
+    rings.get(ringName) match {
+      case Some(ringMap) => {
+        ringMap.nodes.get(nodeName) match {
+          case Some(nodeMap) => true
+          case None => false
+        }
+      }
       case None => false
     }
   }
 
   def get(ringName1: String, tableName: String, key: String, less: Boolean): TableNodeMap = {
     val (ringName, ringMap) = if (ringName1 == "") {
-        rings.head
+      rings.head
     } else {
-        (ringName1, rings(ringName1))
+      (ringName1, rings(ringName1))
     }
     val tmap = ringMap.tables.get(tableName)
     tmap match {
@@ -356,24 +362,27 @@ private[persist] class DatabaseMap(val databaseName: String, var rings: HashMap[
   }
 
   def addRing(ringName: String, nodes1: JsonArray) {
-    val (firstRingName, firstRingMap) = rings.head
     var nodes = Map[String, NodeMap]()
     var nodeSeq = List[String]()
-    var tables = HashMap[String, TableMap]()
-    for ((node, pos) <- nodes1.zipWithIndex) {
+    for ((node,pos) <- nodes1.zipWithIndex) {
       val nodeName = jgetString(node, "name")
       val host = jgetString(node, "host")
       val port = jgetInt(node, "port")
-      val serverName = host + ":" + port
-      val nodeMap = NodeMap(databaseName, ringName, nodeName, pos,
-        host, port)
-      nodes += (nodeName -> nodeMap)
-      var tableNodes = HashMap[String, TableNodeMap]()
-      for ((tableName, tableInfo) <- firstRingMap.tables) {
-        tableNodes += (tableName -> TableNodeMap(tableName, nodeMap))
-      }
-      tables += (nodeName -> TableMap(tableNodes))
       nodeSeq = nodeName +: nodeSeq
+      val nodeMap = NodeMap(databaseName, ringName, nodeName, pos,
+          host, port)
+        nodes += (nodeName -> nodeMap)
+    }
+    val (firstRingName, firstRingMap) = rings.head
+    var tables = HashMap[String, TableMap]()
+    for ((tableName, tableInfo) <- firstRingMap.tables) {
+      var tableNodes = HashMap[String, TableNodeMap]()
+      for ((node, pos) <- nodes1.zipWithIndex) {
+        val nodeName = jgetString(node, "name")
+        val nodeMap = nodes(nodeName)
+        tableNodes += (nodeName -> TableNodeMap(tableName, nodeMap))
+      }
+      tables += (tableName -> TableMap(tableNodes))
     }
     val ringMap = RingMap(tables, nodes, nodeSeq.reverse)
     rings += (ringName -> ringMap)
@@ -381,6 +390,14 @@ private[persist] class DatabaseMap(val databaseName: String, var rings: HashMap[
 
   def deleteRing(ringName: String) {
     rings -= ringName
+  }
+
+  def allRings(): JsonArray = {
+    var result = emptyJsonArray
+    for (ringName <- rings.keys) {
+      result = ringName +: result
+    }
+    result.reverse
   }
 
 }

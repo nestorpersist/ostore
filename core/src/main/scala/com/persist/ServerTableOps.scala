@@ -93,7 +93,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
         case Some(ms) => {
           val m = Json(ms)
           if (jgetBoolean(m, "d") && ! get.contains("d")) {
-            (Codes.NotPresent, emptyResponse)
+            (Codes.NoItem, emptyResponse)
           } else {
             val value = info.storeTable.get(key)
             value match {
@@ -105,7 +105,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
             }
           }
         }
-        case None => (Codes.NotPresent, emptyResponse)
+        case None => (Codes.NoItem, emptyResponse)
       }
     }
 

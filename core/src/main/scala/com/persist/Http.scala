@@ -15,6 +15,10 @@
  *  limitations under the License.
 */
 
+/* 
+ * This code is mostly from the IO example given in the Akka documentation.
+ */
+
 package com.persist
 
 import akka.actor._
@@ -37,6 +41,10 @@ private[persist] object HttpConstants {
   val PERCENT = ByteString("%")
   val PATH = ByteString("/")
   val QUERY = ByteString("?")
+}
+
+private[persist] trait HttpAction {
+  def doAll(method:String, path:String, q:String, body:Json):(Boolean,Future[Option[Json]])
 }
 
 private[persist] case class Request(meth: String, path: List[String], query: Option[String], httpver: String, headers: List[Header], body: Option[ByteString])
@@ -92,7 +100,6 @@ private[persist] object HttpIteratees {
   val digit = Set.empty ++ ('0' to '9') map (_.toByte)
   val hexdigit = digit ++ (Set.empty ++ ('a' to 'f') ++ ('A' to 'F') map (_.toByte))
   val subdelim = Set('!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=') map (_.toByte)
-  //val pathchar = alpha ++ digit ++ subdelim ++ (Set(':', '@') map (_.toByte))
   val pathchar = alpha ++ digit ++ subdelim ++ (Set(':', '@', '.') map (_.toByte))
   val querychar = pathchar ++ (Set('/', '?') map (_.toByte))
 
@@ -146,33 +153,42 @@ private[persist] object HttpIteratees {
     }
 }
 
-private[persist] class HttpServer(port: Int) extends Actor {
+private[persist] class HttpServer(port: Int, httpAction: HttpAction, name:String) extends CheckedActor {
 
   val state = IO.IterateeRef.Map.async[IO.Handle]()(context.dispatcher)
   var channel: ServerHandle = null // .close() to shutdown
+  val httpActions = new HttpActions(httpAction)
 
   override def preStart {
     channel = IOManager(context.system) listen new InetSocketAddress(port)
   }
 
-  def receive = {
-    case ("start") => sender ! Codes.Ok
+  def rec = {
+    case ("start") => {
+      log.info("Running " + name + " server on port " + port)
+      sender ! Codes.Ok
+    }
     case ("stop") => {
       channel.close()
       sender ! Codes.Ok
     }
-    case IO.NewClient(server) =>
+    case IO.NewClient(server) => {
       val socket = server.accept()
-      state(socket) flatMap (_ => HttpServer.processRequest(socket))
-    case IO.Read(socket, bytes) =>
+      state(socket) flatMap (_ => httpActions.processRequest(socket))
+    }
+    case IO.Read(socket, bytes) => {
       state(socket)(IO Chunk bytes)
-    case IO.Closed(socket, cause) =>
+    }
+    case IO.Closed(socket, cause) => {
       state(socket)(IO EOF None)
       state -= socket
+    }
+    case IO.Listening(server,address) =>
+    case IO.Connected(socked,address) =>
   }
 }
 
-private[persist] object HttpServer {
+private[persist] class HttpActions(httpAction: HttpAction) {
   import HttpIteratees._
 
   // TODO must add headers to response
@@ -191,7 +207,7 @@ private[persist] object HttpServer {
     } else {
       null
     }
-    val (isPretty, f): (Boolean, Future[Option[Json]]) = RestClient.doAll(method, path, q, jbody)
+    val (isPretty, f): (Boolean, Future[Option[Json]]) = httpAction.doAll(method, path, q, jbody)
     val f1 = f.map { result =>
       result match {
         case Some(j) => {
@@ -254,25 +270,4 @@ private[persist] object HttpServer {
         }
       }
     }
-}
-
-private[persist] object Http {
-  var server: ActorRef = null
-  var system: ActorSystem = null
-  implicit val timeout = Timeout(5 seconds)
-
-  def start(system: ActorSystem, port: Int) {
-    this.system = system
-    server = system.actorOf(Props(new HttpServer(port)))
-    val f = server ? ("start")
-    Await.result(f, 5 seconds)
-    println("Running rest server on port " + port)
-  }
-
-  def stop {
-    val f = server ? ("stop")
-    Await.result(f, 5 seconds)
-    system.stop(server)
-  }
-
 }

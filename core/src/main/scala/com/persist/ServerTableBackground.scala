@@ -33,7 +33,6 @@ private[persist] trait ServerTableBackgroundComponent { this: ServerTableAssembl
     private var tasks = List[RingCopyTask]()
 
     private def doCopy(ringName: String, key: String) {
-      //println("Copy:" + info.tableName + ":" + Compact(keyDecode(key)) + " from " + info.ringName + "/" + info.nodeName + " to " + ringName)
       val meta = info.storeTable.getMeta(key) match {
         case Some(m: String) => m
         case None => "{}"
