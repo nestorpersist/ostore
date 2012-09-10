@@ -93,6 +93,7 @@ private[persist] object JsonParse {
 
     private def escapeMap = HashMap[Int, String](
       '\\'.toInt -> "\\",
+      '"'.toInt -> "\"",
       '/'.toInt -> "/",
       '\"'.toInt -> "\"",
       'b'.toInt -> "\b",
@@ -134,7 +135,7 @@ private[persist] object JsonParse {
           chars.next
         }
       }
-      if (chars.ch != '"') chars.error("Unexpected string character")
+      if (chars.ch != '"') chars.error("Unexpected string character:"+chars.ch.toChar)
       val s1 = chars.substr(first)
       val s2 = if (sb == null) s1 else {
         sb.append(s1)
@@ -382,8 +383,11 @@ private[persist] object JsonParse {
 
   def main(args: Array[String]) {
     // simple test
-    println(JsonOps.Pretty(parse("""{"a":55,
-                                     "b":[false,null,99.123,"f\\o\to\ufF32l"],"c":123.1}""")))
+    println(JsonOps.Pretty(parse("""
+        
+     {"high":"[*a","host":"127.0.0.1","low":"[","next":"n1","port":8011}""")))
+     //   {"a":55,
+     //                               "b":[false,null,99.123,"f\\o\to\ufF32l"],"c":123.1}""")))
   }
 
 }
@@ -395,7 +399,7 @@ private[persist] object JsonUnparse {
       case c if c > 0xffff =>
         val chars = Character.toChars(c)
         "\\u%04x\\u%04x".format(chars(0).toInt, chars(1).toInt)
-      case c if c > 0x7e => "\\u%04x".format(c.toInt)
+      case c if (c > 0x7e || c < 0x20) => "\\u%04x".format(c.toInt)
       case c => c.toChar
     }
   }
