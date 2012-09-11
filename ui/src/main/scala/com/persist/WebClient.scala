@@ -137,11 +137,31 @@ class WebClient() {
     //e1.consumeContent()
     //println("CLIENT:"+info)
     Json(info)
-}
+  }
 
+  def getRange(databaseName: String, tableName:String, count:Int, 
+      lowKey:Option[JsonKey], includeLow:Boolean, highKey:Option[JsonKey], includeHigh:Boolean,
+      parentKey:Option[JsonKey]):JsonArray = {
+    val low = lowKey match {
+      case Some(k:Json) => "&low=" + keyEncode(k) + (if (includeLow) "&includelow" else "")
+      case None => ""
+    }
+    val high = highKey match {
+      case Some(k:Json) => "&high=" + keyEncode(k) + (if (includeHigh) "&incudehigh" else "")
+      case None => ""
+    }
+    val parent = parentKey match {
+      case Some(k:Json) => "&parent=" + keyEncode(k)
+      case None => ""
+    }
+    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName + "?count=" + count + low + high + parent)).mkString
+    jgetArray(Json(info))
+  }
+  
+  // TODO remove
   def getKeys(databaseName: String, tableName: String, count:Int, lowKey:Json, highKey:Json): (Boolean, Json) = {
-    val low = if (lowKey == null) { "" } else { ",low=" + keyUriEncode(lowKey) }
-    val high = if (highKey == null) { "" } else { ",high=" + keyUriEncode(highKey) + ",reverse" }
+    val low = if (lowKey == null) { "" } else { "&low=" + keyUriEncode(lowKey) }
+    val high = if (highKey == null) { "" } else { "&high=" + keyUriEncode(highKey) + ",reverse" }
     val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName + "?count=" + (count + 1) + low + high)).mkString
     val list = jgetArray(Json(info))
     val list1 = if (list.size > count) { list.dropRight(1) } else { list }
@@ -154,6 +174,7 @@ class WebClient() {
     Json(info)
   }
 
+  // TODO remove
   def getParent(databaseName: String, tableName: String, parent: JsonKey, count:Int, lowKey:Json, highKey:Json): (Boolean, Json) = {
     val low = if (lowKey == null) { "" } else { "&low=" + keyUriEncode(lowKey) }
     val high = if (highKey == null) { "" } else { "&high=" + keyUriEncode(highKey) + "&reverse" }

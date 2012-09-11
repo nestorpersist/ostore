@@ -93,7 +93,6 @@ private[persist] object JsonParse {
 
     private def escapeMap = HashMap[Int, String](
       '\\'.toInt -> "\\",
-      '"'.toInt -> "\"",
       '/'.toInt -> "/",
       '\"'.toInt -> "\"",
       'b'.toInt -> "\b",
@@ -380,16 +379,6 @@ private[persist] object JsonParse {
     if (tokens.kind != EOF) tokens.error("Excess input")
     result
   }
-
-  def main(args: Array[String]) {
-    // simple test
-    println(JsonOps.Pretty(parse("""
-        
-     {"high":"[*a","host":"127.0.0.1","low":"[","next":"n1","port":8011}""")))
-     //   {"a":55,
-     //                               "b":[false,null,99.123,"f\\o\to\ufF32l"],"c":123.1}""")))
-  }
-
 }
 
 private[persist] object JsonUnparse {
