@@ -31,7 +31,8 @@ private[persist] class OStoreUI extends Application {
     setTheme("runo")
 
     object UIAll extends UIAssembly {
-      val act = new UIAct(client)
+      val page = new Page(client)
+      val act = new UIAct(client, page)
       val top = new Top
       val left = new Left
       val right = new Right

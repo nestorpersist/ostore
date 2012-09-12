@@ -129,35 +129,37 @@ class WebClient() {
   }
   
   def getTables(databaseName: String): Json = {
-    //val info = Source.fromURL(new URL("http://" + server + "/" + databaseName)).mkString
     val get = new HttpGet("http://" + server + "/" + databaseName)
     val response = client.execute(get)
     val e1 = response.getEntity()
     val info = getContent(e1)
-    //e1.consumeContent()
-    //println("CLIENT:"+info)
     Json(info)
   }
 
-  def getRange(databaseName: String, tableName:String, count:Int, 
-      lowKey:Option[JsonKey], includeLow:Boolean, highKey:Option[JsonKey], includeHigh:Boolean,
+  def getKeyBatch(databaseName: String, tableName:String, count:Int, 
+      key:Option[JsonKey], includeKey:Boolean, first:Boolean,
       parentKey:Option[JsonKey]):JsonArray = {
-    val low = lowKey match {
-      case Some(k:Json) => "&low=" + keyEncode(k) + (if (includeLow) "&includelow" else "")
-      case None => ""
-    }
-    val high = highKey match {
-      case Some(k:Json) => "&high=" + keyEncode(k) + (if (includeHigh) "&incudehigh" else "")
+    val ks = key match {
+      case Some(k:Json) => {
+        if (first) {
+          "&low=" + keyUriEncode(k) + (if (includeKey) "&includelow" else "")
+          
+        } else {
+          "&reverse&high=" + keyUriEncode(k) + (if (includeKey) "&includehigh" else "")
+        }
+      }
       case None => ""
     }
     val parent = parentKey match {
-      case Some(k:Json) => "&parent=" + keyEncode(k)
+      case Some(k:Json) => "&parent=" + keyUriEncode(k)
       case None => ""
     }
-    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName + "?count=" + count + low + high + parent)).mkString
-    jgetArray(Json(info))
+    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName + "?count=" + count + ks + parent)).mkString
+    val items = jgetArray(Json(info))
+    if (first) items else items.reverse
   }
   
+  /*
   // TODO remove
   def getKeys(databaseName: String, tableName: String, count:Int, lowKey:Json, highKey:Json): (Boolean, Json) = {
     val low = if (lowKey == null) { "" } else { "&low=" + keyUriEncode(lowKey) }
@@ -185,6 +187,7 @@ class WebClient() {
     (list.size > count,
      if (high != "") { list1.reverse } else { list1 } )
   }
+  */
 
   def getRings(databaseName: String): Json = {
     val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "?rings")).mkString

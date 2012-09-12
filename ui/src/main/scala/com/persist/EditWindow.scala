@@ -158,7 +158,7 @@ private[persist] trait EditComponent { this: UIAssembly =>
                   if (save) {
                     client.putItem(databaseName, tableName, jk, jv)
                   }
-                  act.toKeys(databaseName, tableName, false) // reload key list
+                  act.toKeys(databaseName, tableName, "") // reload key list
                   act.toItem(databaseName, tableName, jk)
                 }
                 val ok = client.addItem(databaseName, tableName, jk, jv)

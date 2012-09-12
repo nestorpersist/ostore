@@ -125,13 +125,13 @@ private[persist] trait ButtonsComponent { this: UIAssembly =>
     val t1 = new Button("Show Items")
     t1.addListener(new ClickListener {
       def buttonClick(e: Button#ClickEvent) = {
-        act.toKeys(act.databaseName, act.tableName, true)
+        act.toKeys(act.databaseName, act.tableName, "")
       }
     })
     val t2 = new Button("Show Tree")
     t2.addListener(new ClickListener {
       def buttonClick(e: Button#ClickEvent) = {
-        act.toTree(act.databaseName, act.tableName, JsonArray(), true)
+        act.toTree(act.databaseName, act.tableName, JsonArray(), "")
       }
     })
     val t3 = new Button("Delete Table")
@@ -152,7 +152,7 @@ private[persist] trait ButtonsComponent { this: UIAssembly =>
       def buttonClick(e: Button#ClickEvent) = {
         // TODO should stream in for large tables
         // TODO deal with paging for large tables
-        val items = client.getItems(act.databaseName, act.tableName, act.itemCount + 1)
+        val items = client.getKeyBatch(act.databaseName, act.tableName, 500, None, false, true, None)
         var result = ""
         for (item <- jgetArray(items)) {
           result += Compact(jget(item, "k")) + "\t" + Compact(jget(item, "v")) + "\n"
@@ -175,7 +175,7 @@ private[persist] trait ButtonsComponent { this: UIAssembly =>
           if (delete) {
             client.deleteItem(act.databaseName, act.tableName, act.key)
           }
-          act.toKeys(act.databaseName, act.tableName, false)
+          act.toKeys(act.databaseName, act.tableName, "")
         }
         val ok = client.conditionalDeleteItem(act.databaseName, act.tableName, act.key, act.cv)
         if (ok) {

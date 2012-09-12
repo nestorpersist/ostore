@@ -34,8 +34,6 @@ import Exceptions._
 
 private[persist] object JsonParse {
 
-  type Json = Any
-
   private object lexer {
 
     private object CharKinds extends Enumeration {
@@ -79,7 +77,7 @@ private[persist] object JsonParse {
     private val charAction = new Array[(Chars) => (TokenKind, String)](CharKinds.values.size)
     charAction(Letter.id) = handleLetter
     charAction(Digit.id) = handleDigit
-    charAction(Minus.id) = handleLetter
+    charAction(Minus.id) = handleMinus
     charAction(Quote.id) = handleQuote
     charAction(Colon.id) = handleSimple(COLON)
     charAction(Comma.id) = handleSimple(COMMA)
@@ -309,7 +307,7 @@ private[persist] object JsonParse {
       case _ => tokens.error("Bad integer")
     }
     tokens.next
-    val r: Any = if (v >= Int.MinValue && v <= Int.MaxValue) v.toInt else v
+    val r: Json = if (v >= Int.MinValue && v <= Int.MaxValue) v.toInt else v
     r
   }
 
@@ -411,9 +409,9 @@ private[persist] object JsonUnparse {
     }.mkString("") + "\""
   }
 
-  def compact(obj: Any): String = {
+  def compact(obj: Json): String = {
     val sb = new StringBuilder(200)
-    def compact1(obj1: Any) {
+    def compact1(obj1: Json) {
       obj1 match {
         case s: String => sb.append(quote(s))
         case null => sb.append("null")
@@ -434,7 +432,7 @@ private[persist] object JsonUnparse {
         }
         case m: Map[String, _] => {
           val m2 = m.iterator.toList
-          val m1 = Sorting.stableSort[(String, Any), String](m2, { case (k, v) => k })
+          val m1 = Sorting.stableSort[(String, Json), String](m2, { case (k, v) => k })
           if (m1.size == 0) {
             sb.append("{}")
           } else {
@@ -459,8 +457,7 @@ private[persist] object JsonUnparse {
   /**
    * Returns a pretty JSON representation of the given object
    */
-
-  private def elemCount(obj: Any): Int = {
+  private def elemCount(obj: Json): Int = {
     obj match {
       case array: Array[_] => array.map(elemCount(_)).foldLeft(0) { (acc, n) => acc + n }
       case list: Seq[_] => list.map(elemCount(_)).foldLeft(0) { (acc, n) => acc + n }
@@ -471,55 +468,45 @@ private[persist] object JsonUnparse {
 
   private val splitCount = 8
   //TODO make multiLine more efficient
-  private def multiLine(obj: Any): Boolean = elemCount(obj) > splitCount
+  private def multiLine(obj: Json): Boolean = elemCount(obj) > splitCount
   private def space(cnt: Int): String = " " * cnt
 
-  //  def pretty(obj: Any, incr: Int = 2, indent: Int = 0): JsonQuoted = {
-  def pretty(obj: Any, incr: Int = 2, indent: Int = 0): String = {
+  def pretty(obj: Json, incr: Int = 2, indent: Int = 0): String = {
     val rv = space(indent) + (obj match {
-      //case JsonQuoted(body) => body
       case null => "null"
       case x: Boolean => x.toString
       case x: Number => x.toString
       case array: Array[_] => {
         if (multiLine(array)) {
-          //array.map(pretty(_, incr, indent + incr).body).mkString("[\n", ",\n", "\n" + space(indent) + "]")
           array.map(pretty(_, incr, indent + incr)).mkString("[\n", ",\n", "\n" + space(indent) + "]")
         } else {
-          //array.map(pretty(_, incr, 0).body).mkString("[", ",", "]")
           array.map(pretty(_, incr, 0)).mkString("[", ",", "]")
         }
       }
       case list: Seq[_] =>
         if (multiLine(list)) {
-          //list.map(pretty(_, incr, indent + incr).body).mkString("[\n", ",\n", "\n" + space(indent) + "]")
           list.map(pretty(_, incr, indent + incr)).mkString("[\n", ",\n", "\n" + space(indent) + "]")
         } else {
-          //list.map(pretty(_, incr, 0).body).mkString("[", ",", "]")
           list.map(pretty(_, incr, 0)).mkString("[", ",", "]")
         }
       case map: scala.collection.Map[_, _] =>
         if (multiLine(map)) {
-          Sorting.stableSort[(Any, Any), String](map.iterator.toList, { case (k, v) => k.toString }).map {
+          Sorting.stableSort[(Any, Json), String](map.iterator.toList, { case (k, v) => k.toString }).map {
             case (k, v) =>
               space(indent + incr) + quote(k.toString) + ":" +
-                //(if (multiLine(v)) { "\n" + pretty(v, incr, indent + incr + incr).body } else { pretty(v, incr, 0) })
                 (if (multiLine(v)) { "\n" + pretty(v, incr, indent + incr + incr) } else { pretty(v, incr, 0) })
           }.mkString("{\n", ",\n", "\n" + space(indent) + "}")
         } else {
-          Sorting.stableSort[(Any, Any), String](map.iterator.toList, { case (k, v) => k.toString }).map {
+          Sorting.stableSort[(Any, Json), String](map.iterator.toList, { case (k, v) => k.toString }).map {
             case (k, v) =>
-              //quote(k.toString) + ":" + pretty(v, incr, 0).body
               quote(k.toString) + ":" + pretty(v, incr, 0)
           }.mkString("{", ",", "}")
         }
-      //case x: JsonSerializable => x.toJson()
       case s:String => quote(s)
-      case x =>
-        //quote(x.toString)
+      case x => {
         throw new SystemException(Codes.JsonUnparse, JsonObject("msg" -> "bad json value", "value" -> x.toString()))
+      }
     })
-    //JsonQuoted(rv)
     rv
   }
 

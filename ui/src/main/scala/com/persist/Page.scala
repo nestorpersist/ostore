@@ -23,23 +23,23 @@ class Page(client: WebClient) {
 
   // flat tree
 
-  def up(database: String, table: String, key: JsonKey, count: Int, parent: Option[JsonKey]): (Boolean, Seq[Json], Boolean) = {
-    val keys = client.getRange(database, table, count + 1, None, false, Some(key), true, parent)
+  def up(database: String, table: String, key: Option[JsonKey], count: Int, parent: Option[JsonKey]): (Boolean, Seq[Json], Boolean) = {
+    val keys = client.getKeyBatch(database, table, count + 1, key, true, false, parent)
     if (keys.size == 0) {
-      val keys1 = client.getRange(database, table, count + 1, Some(key), true, None, false, parent)
+      val keys1 = client.getKeyBatch(database, table, count + 1, key, true, true, parent)
       if (keys1.size == count + 1) {
-        (false, keys1.dropRight(1), true)
+        (false, keys1.tail, true)
       } else {
         (false, keys1, false)
       }
     } else if (keys.size == count + 1) {
       val key1 = jget(keys, keys.size - 1)
-      val keys1 = client.getRange(database, table, 1, Some(key1), false, None, false, parent)
+      val keys1 = client.getKeyBatch(database, table, 1, Some(key1), false, true, parent)
       (true, keys.tail, keys1.size == 1)
     } else {
       val count1 = count + 1 - keys.size
       val key1 = jget(keys, keys.size - 1)
-      val keys1 = client.getRange(database, table, count1, Some(key1), false, None, false, parent)
+      val keys1 = client.getKeyBatch(database, table, count1, Some(key1), false, true, parent)
       if (keys1.size == count1) {
         (false, keys ++ keys1.dropRight(1), true)
       } else {
@@ -48,10 +48,10 @@ class Page(client: WebClient) {
     }
   }
 
-  def down(database: String, table: String, key: Json, count: Int, parent: Option[JsonKey]): (Boolean, Seq[Json], Boolean) = {
-    val keys = client.getRange(database, table, count + 1, Some(key), true, None, false, parent)
+  def down(database: String, table: String, key: Option[Json], count: Int, parent: Option[JsonKey]): (Boolean, Seq[Json], Boolean) = {
+    val keys = client.getKeyBatch(database, table, count + 1, key, true, true, parent)
     if (keys.size == 0) {
-      val keys1 = client.getRange(database, table, count + 1, None, false, Some(key), true, parent)
+      val keys1 = client.getKeyBatch(database, table, count + 1, key, true, false, parent)
       if (keys1.size == count + 1) {
         (true, keys1.tail, false)
       } else {
@@ -59,12 +59,13 @@ class Page(client: WebClient) {
       }
     } else if (keys.size == count + 1) {
       val key1 = jget(keys, 0)
-      val keys1 = client.getRange(database, table, 1, None, false, Some(key1), false, parent)
+      val keys1 = client.getKeyBatch(database, table, 1, Some(key1), false, false, parent)
+      println("keys1="+Compact(keys1)+":"+Compact(keys))
       (keys1.size == 1, keys.dropRight(1), true)
     } else {
       val count1 = count + 1 - keys.size
       val key1 = jget(keys, 0)
-      val keys1 = client.getRange(database, table, count1, None, false, Some(key1), false, parent)
+      val keys1 = client.getKeyBatch(database, table, count1, Some(key1), false, false, parent)
       if (keys1.size == count1) {
         (true, keys1.tail ++ keys, false)
       } else {

@@ -276,7 +276,7 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
     val isReverse = jgetBoolean(options, "reverse")
 
     val rincludeLow = jgetBoolean(options, "includelow")
-    val rincludeHigh = jgetBoolean(options, "includeHigh")
+    val rincludeHigh = jgetBoolean(options, "includehigh")
     val rlow = jget(options, "low") match {
       case null => ""
       case j: Json => keyEncode(j)
@@ -300,7 +300,7 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
       case j: Json => {
         val k = keyEncode(j)
         // TODO must be and array
-        val includeParent = jgetBoolean(options, "includeParent")
+        val includeParent = jgetBoolean(options, "includeparent")
         (k, k + "\uFFFF", includeParent, false, j)
       }
     }

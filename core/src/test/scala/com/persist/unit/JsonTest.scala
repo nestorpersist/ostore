@@ -29,7 +29,7 @@ class JsonTest extends FunSuite {
   test("json") {
 
     val s = """
-      {"a":3, "b":"foo", "c":17, "d":[1,2,3,4,5],"e":false}
+      {"a":3, "b":"foo", "c":17, "d":[1,2,3,4,5],"e":false,"f":-3}
       """
     val j = Json(s)
     println("j:" + j)

@@ -65,7 +65,7 @@ private[persist] class QParse extends JavaTokenParsers {
     | "true" ^^ { _ => true }
     | "false" ^^ { _ => false }
     | "null" ^^ { _ => null }
-    | """[^)(,"]*""".r ^^ { x =>
+    | """[^)(,"&]*""".r ^^ { x =>
       val s = decode(x)
       try
         java.lang.Long.decode(s)
@@ -343,7 +343,7 @@ private[persist] class RestClient(config:Json) extends HttpAction {
     }
     opt match {
       case Some(options: JsonObject) => {
-        val isPretty = jgetBoolean(opt, "pretty")
+        val isPretty = jgetBoolean(options, "pretty")
         try {
           val f = doAllParts(method, path, input, options - "pretty")
           (isPretty, f)
