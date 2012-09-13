@@ -21,7 +21,7 @@ The OStore code is licensed under the Apache 2.0 license.
 
 ## Documentation
 1. [Wiki](ostore/wiki)
-1. [ScalaDoc](https://nestorpersist.github.com/ostore)
+1. [ScalaDoc](http://nestorpersist.github.com/ostore)
 
 ## Contact
 If you are interested in doing serious testing of OStore
