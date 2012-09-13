@@ -6,7 +6,7 @@ storing and processing big data.
    2. It is written in Scala and makes extensive use of Akka 
       actors.
    3. Keys are stored in sorted order rather than hashed.
-   4. It supports a continuous incremental map-reduce.
+   4. It supports continuous incremental map-reduce.
 
 ## Current State
 OStore is curently in the early stages of development and not
@@ -21,7 +21,7 @@ The OStore code is licensed under the Apache 2.0 license.
 
 ## Documentation
 1. [Wiki](ostore/wiki)
-1. ScalaDoc link
+1. [ScalaDoc](https://github.com/nestorpersist/ostore)
 
 ## Contact
 If you are interested in doing serious testing of OStore
