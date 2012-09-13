@@ -1,0 +1,14 @@
+{ "tables": [
+    {"name":"beers"},
+    {"name":"breweries"},
+    {"name":"categories"},
+    {"name":"styles"},
+    {"name":"locations"}
+  ],
+  "rings":[
+   {"name":"r1",
+    "nodes":[
+    {"name":"n1", "host":"127.0.0.1", "port":8011 }
+    ]}
+   ]
+}

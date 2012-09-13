@@ -42,7 +42,7 @@ import java.io.InputStreamReader
 import java.io.BufferedReader
 
 class WebClient() {
-  
+
   val server = "127.0.0.1:8081"
 
   // Note GWT uses old version of apache commons http client
@@ -113,7 +113,7 @@ class WebClient() {
     e1.consumeContent()
   }
 
-  private def getContent(e:HttpEntity):String = {
+  private def getContent(e: HttpEntity): String = {
     val rd = new BufferedReader(new InputStreamReader(e.getContent()))
     val sb = new StringBuffer()
     var line = ""
@@ -127,7 +127,7 @@ class WebClient() {
     }
     ""
   }
-  
+
   def getTables(databaseName: String): Json = {
     val get = new HttpGet("http://" + server + "/" + databaseName)
     val response = client.execute(get)
@@ -136,14 +136,14 @@ class WebClient() {
     Json(info)
   }
 
-  def getKeyBatch(databaseName: String, tableName:String, count:Int, 
-      key:Option[JsonKey], includeKey:Boolean, first:Boolean,
-      parentKey:Option[JsonKey]):JsonArray = {
+  def getKeyBatch(databaseName: String, tableName: String, count: Int,
+    key: Option[JsonKey], includeKey: Boolean, first: Boolean,
+    parentKey: Option[JsonKey]): JsonArray = {
     val ks = key match {
-      case Some(k:Json) => {
+      case Some(k: Json) => {
         if (first) {
           "&low=" + keyUriEncode(k) + (if (includeKey) "&includelow" else "")
-          
+
         } else {
           "&reverse&high=" + keyUriEncode(k) + (if (includeKey) "&includehigh" else "")
         }
@@ -151,43 +151,13 @@ class WebClient() {
       case None => ""
     }
     val parent = parentKey match {
-      case Some(k:Json) => "&parent=" + keyUriEncode(k)
+      case Some(k: Json) => "&parent=" + keyUriEncode(k)
       case None => ""
     }
     val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName + "?count=" + count + ks + parent)).mkString
     val items = jgetArray(Json(info))
     if (first) items else items.reverse
   }
-  
-  /*
-  // TODO remove
-  def getKeys(databaseName: String, tableName: String, count:Int, lowKey:Json, highKey:Json): (Boolean, Json) = {
-    val low = if (lowKey == null) { "" } else { "&low=" + keyUriEncode(lowKey) }
-    val high = if (highKey == null) { "" } else { "&high=" + keyUriEncode(highKey) + ",reverse" }
-    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName + "?count=" + (count + 1) + low + high)).mkString
-    val list = jgetArray(Json(info))
-    val list1 = if (list.size > count) { list.dropRight(1) } else { list }
-    (list.size > count,
-     if (high != "") { list1.reverse } else { list1 } )
-  }
-
-  def getItems(databaseName: String, tableName: String, count:Int): Json = {
-    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName + "?get=kv&count=" + count) ).mkString 
-    Json(info)
-  }
-
-  // TODO remove
-  def getParent(databaseName: String, tableName: String, parent: JsonKey, count:Int, lowKey:Json, highKey:Json): (Boolean, Json) = {
-    val low = if (lowKey == null) { "" } else { "&low=" + keyUriEncode(lowKey) }
-    val high = if (highKey == null) { "" } else { "&high=" + keyUriEncode(highKey) + "&reverse" }
-    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName +
-      "?parent=" + keyUriEncode(parent) + "&count=" + (count + 1) + low + high)).mkString
-    val list = jgetArray(Json(info))
-    val list1 = if (list.size > count) { list.dropRight(1) } else { list }
-    (list.size > count,
-     if (high != "") { list1.reverse } else { list1 } )
-  }
-  */
 
   def getRings(databaseName: String): Json = {
     val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "?rings")).mkString
@@ -219,9 +189,9 @@ class WebClient() {
     e1.consumeContent()
   }
 
-  def conditionalPutItem(databaseName: String, tableName: String, key: JsonKey, cv:Json, value: Json):Boolean = {
+  def conditionalPutItem(databaseName: String, tableName: String, key: JsonKey, cv: Json, value: Json): Boolean = {
     val put = new HttpPost("http://" + server + "/" + databaseName + "/" + tableName + "/" + keyUriEncode(key))
-    val request = JsonObject("cmd"->"put","v"->value,"c"->cv)
+    val request = JsonObject("cmd" -> "put", "v" -> value, "c" -> cv)
     val e = new StringEntity(Compact(request))
     put.setEntity(e)
     val response = client.execute(put)
@@ -231,8 +201,8 @@ class WebClient() {
     code == 200
   }
 
-  def addItem(databaseName: String, tableName: String, key: JsonKey, value: Json):Boolean = {
-    val put = new HttpPut("http://" + server + "/" + databaseName + "/" + tableName + "/" + keyUriEncode(key) +"?create")
+  def addItem(databaseName: String, tableName: String, key: JsonKey, value: Json): Boolean = {
+    val put = new HttpPut("http://" + server + "/" + databaseName + "/" + tableName + "/" + keyUriEncode(key) + "?create")
     val e = new StringEntity(Compact(value))
     put.setEntity(e)
     val response = client.execute(put)
@@ -249,10 +219,10 @@ class WebClient() {
     val e1 = response.getEntity()
     e1.consumeContent()
   }
-  
-  def conditionalDeleteItem(databaseName: String, tableName: String, key: JsonKey, cv:Json):Boolean = {
+
+  def conditionalDeleteItem(databaseName: String, tableName: String, key: JsonKey, cv: Json): Boolean = {
     val del = new HttpPost("http://" + server + "/" + databaseName + "/" + tableName + "/" + keyUriEncode(key))
-    val request = JsonObject("cmd"->"delete","c"->cv)
+    val request = JsonObject("cmd" -> "delete", "c" -> cv)
     val e = new StringEntity(Compact(request))
     del.setEntity(e)
     val response = client.execute(del)
@@ -261,12 +231,12 @@ class WebClient() {
     e1.consumeContent()
     code == 200
   }
-  
-  def addTable(databaseName: String, tableName:String) {
-    val del = new HttpPost("http://" + server + "/" + databaseName )
-    val tableConfig = JsonObject("name"->tableName)
-    val config = JsonObject("tables"->tableConfig)
-    val request = JsonObject("cmd"->"addTables", "config"->config)
+
+  def addTable(databaseName: String, tableName: String) {
+    val del = new HttpPost("http://" + server + "/" + databaseName)
+    val tableConfig = JsonObject("name" -> tableName)
+    val config = JsonObject("tables" -> tableConfig)
+    val request = JsonObject("cmd" -> "addTables", "config" -> config)
     val e = new StringEntity(Compact(request))
     del.setEntity(e)
     val response = client.execute(del)
@@ -274,12 +244,12 @@ class WebClient() {
     val e1 = response.getEntity()
     e1.consumeContent()
   }
-   
-  def deleteTable(databaseName: String, tableName:String) {
-    val del = new HttpPost("http://" + server + "/" + databaseName  )
-    val tableConfig = JsonObject("name"->tableName)
-    val config = JsonObject("tables"->tableConfig)
-    val request = JsonObject("cmd"->"deleteTables", "config"->config)
+
+  def deleteTable(databaseName: String, tableName: String) {
+    val del = new HttpPost("http://" + server + "/" + databaseName)
+    val tableConfig = JsonObject("name" -> tableName)
+    val config = JsonObject("tables" -> tableConfig)
+    val request = JsonObject("cmd" -> "deleteTables", "config" -> config)
     val e = new StringEntity(Compact(request))
     del.setEntity(e)
     val response = client.execute(del)

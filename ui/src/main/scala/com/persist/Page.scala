@@ -60,7 +60,6 @@ class Page(client: WebClient) {
     } else if (keys.size == count + 1) {
       val key1 = jget(keys, 0)
       val keys1 = client.getKeyBatch(database, table, 1, Some(key1), false, false, parent)
-      println("keys1="+Compact(keys1)+":"+Compact(keys))
       (keys1.size == 1, keys.dropRight(1), true)
     } else {
       val count1 = count + 1 - keys.size

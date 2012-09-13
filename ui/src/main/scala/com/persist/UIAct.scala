@@ -36,8 +36,7 @@ private[persist] trait ActComponent { this: UIAssembly =>
     //private var highKey: Json = null
     private var lastKey: Option[JsonKey] = None
     // TODO make itemCount depend on window size
-    //val itemCount = 20
-    val itemCount = 5   // for testing
+    val itemCount = 20
 
     var key: JsonKey = null
     var cv: Json = null
@@ -182,122 +181,8 @@ private[persist] trait ActComponent { this: UIAssembly =>
         left.add(Compact(key))
       }
     }
-    /*
-    def toKeys(databaseName: String, tableName: String, reset: Boolean) {
-      if (reset) {
-        lowKey = null
-        highKey = null
-      }
-      val (hasMore, keys) = client.getKeys(databaseName, tableName, itemCount, lowKey, highKey)
-      if (highKey != null) {
-        hasBefore = hasMore
-        hasAfter = true
-      } else if (lowKey != null) {
-        hasBefore = true
-        hasAfter = hasMore
-      } else {
-        hasBefore = false
-        hasAfter = hasMore
-      }
-      setTable(databaseName, tableName)
-      left.setName("Item")
-      left.setUpDown(
-        if (hasBefore) { _ => { highKey = lowKey; lowKey = null; toKeys(databaseName, tableName, false) } } else { null },
-        if (hasAfter) { _ => { lowKey = highKey; highKey = null; toKeys(databaseName, tableName, false) } } else { null })
-      left.setAct((key: String) => {
-        if (key != null) {
-          toItem(databaseName, tableName, Json(key))
-        }
-      },
-        _ => {
-          editWindow.add(all.all, databaseName, tableName, client)
-        })
-      left.clear()
-      lowKey = null
-      highKey = null
-      var first = true
-      for (key <- jgetArray(keys)) {
-        if (first) lowKey = key
-        highKey = key
-        left.add(Compact(key))
-        first = false
-      }
-    }
 
-    private def toTree1(databaseName: String, tableName: String, prefix: JsonArray, reset: Boolean, hasMore: Boolean, keys: Json) {
-      val prefixs = Compact(prefix)
-      //val (hasMore, keys) = client.getParent(databaseName, tableName, prefix, itemCount, lowKey, highKey)
-      if (highKey != null) {
-        hasBefore = hasMore
-        hasAfter = true
-      } else if (lowKey != null) {
-        hasBefore = true
-        hasAfter = hasMore
-      } else {
-        hasBefore = false
-        hasAfter = hasMore
-      }
-      setTable(databaseName, tableName)
-      left.setName("Tree:" + prefixs)
-      left.setUpDown(
-        if (hasBefore) { _ => { highKey = lowKey; lowKey = null; toTree(databaseName, tableName, prefix, false) } } else { null },
-        if (hasAfter) { _ => { lowKey = highKey; highKey = null; toTree(databaseName, tableName, prefix, false) } } else { null })
-      left.setAct((key: String) => {
-        if (key != null) {
-          if (key == prefixs) {
-            // Current
-            toItem(databaseName, tableName, prefix)
-          } else if (key == "..") {
-            // Parent
-            if (prefix.size > 0) {
-              val prefix1 = prefix.dropRight(1)
-              toTree(databaseName, tableName, prefix1, true)
-            }
-          } else {
-            // Child
-            val prefix1 = jgetArray(Json(key))
-            lowKey = null
-            highKey = null
-            val (hasMore1, keys1) = client.getParent(databaseName, tableName, prefix1, itemCount, lowKey, highKey)
-            if (jsize(keys1) > 0) {
-              toTree1(databaseName, tableName, prefix1, true, hasMore, keys1)
-            } else {
-              toItem(databaseName, tableName, Json(key))
-            }
-          }
-        }
-      },
-        _ => { // No add button
-        })
-      left.clear()
-      lowKey = null
-      highKey = null
-      var first = true
-      for (key <- jgetArray(keys)) {
-        if (first) {
-          if (prefix.size > 0) left.add("..")
-          if (!hasBefore) left.add(prefixs)
-          if (first) lowKey = key
-        }
-        highKey = key
-        left.add(Compact(key))
-        first = false
-      }
-      //
-      left.list.select(prefixs)
-    }
-
-    def toTree(databaseName: String, tableName: String, prefix: JsonArray, reset: Boolean) {
-      if (reset) {
-        lowKey = null
-        highKey = null
-      }
-      val (hasMore, keys) = client.getParent(databaseName, tableName, prefix, itemCount, lowKey, highKey)
-      toTree1(databaseName, tableName, prefix, reset, hasMore, keys)
-    }
-    */
-    
-    def toTree(databaseName:String, tableName:String, prefix:JsonArray, where:String) {
+    def toTree(databaseName: String, tableName: String, prefix: JsonArray, where: String) {
       val prefixs = Compact(prefix)
       val (hasUp, keys, hasDown) = if (where == "up") {
         page.up(databaseName, tableName, firstKey, itemCount, Some(prefix))
@@ -337,7 +222,7 @@ private[persist] trait ActComponent { this: UIAssembly =>
         }
       },
         _ => { // No add button
-        })        
+        })
       left.clear()
       var first = true
       for (key <- jgetArray(keys)) {
@@ -347,7 +232,7 @@ private[persist] trait ActComponent { this: UIAssembly =>
         }
         left.add(Compact(key))
         first = false
-      }      
+      }
     }
 
     def toNodes(databaseName: String, ringName: String) {

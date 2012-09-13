@@ -10,11 +10,10 @@
   {"name":"graphroutecount", "reduce":{"from":"graphroute","size":2,"act":"Count"}},
   {"name":"graphcycles", "map":{"from":"graphpath","act":"Cycle"}}
    ],
-  "defaults":{ "host":"127.0.0.1", "port":8011 },
   "rings":[
    {"name":"r1",
     "nodes":[
-    {"name":"n1"}
+    {"name":"n1", "host":"127.0.0.1", "port":8011 }
     ]}
    ]
 }

@@ -84,9 +84,11 @@ object FileWindows {
           ""
         } catch {
           case ex: Exception => {
-            val msg = ex.getMessage()
+            //val msg = ex.getMessage()
+            val msg = ex.toString()
             msg + ": " + item
           }
+          case x => "unknown: "+ x.toString()
         }
       } else {
         "no tab" + ": " + item

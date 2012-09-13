@@ -1,0 +1,141 @@
+1	{"cat_id":1,"style_name":"Classic English-Style Pale Ale","last_mod":"2010-10-24 13:53:31"}
+2	{"cat_id":1,"style_name":"English-Style India Pale Ale","last_mod":"2010-06-15 19:14:38"}
+3	{"cat_id":1,"style_name":"Ordinary Bitter","last_mod":"2010-06-15 19:14:54"}
+4	{"cat_id":1,"style_name":"Special Bitter or Best Bitter","last_mod":"2010-06-15 19:15:02"}
+5	{"cat_id":1,"style_name":"Extra Special Bitter","last_mod":"2010-06-15 19:15:09"}
+6	{"cat_id":1,"style_name":"English-Style Summer Ale","last_mod":"2010-06-15 19:15:20"}
+7	{"cat_id":1,"style_name":"Scottish-Style Light Ale","last_mod":"2010-06-15 19:15:28"}
+8	{"cat_id":1,"style_name":"Scottish-Style Heavy Ale","last_mod":"2010-06-15 19:15:37"}
+9	{"cat_id":1,"style_name":"Scottish-Style Export Ale","last_mod":"2010-06-15 19:15:45"}
+10	{"cat_id":1,"style_name":"English-Style Pale Mild Ale","last_mod":"2010-06-15 19:16:17"}
+11	{"cat_id":1,"style_name":"English-Style Dark Mild Ale","last_mod":"2010-06-15 19:16:27"}
+12	{"cat_id":1,"style_name":"English-Style Brown Ale","last_mod":"2010-06-15 19:16:34"}
+13	{"cat_id":1,"style_name":"Old Ale","last_mod":"2010-06-15 19:16:40"}
+14	{"cat_id":1,"style_name":"Strong Ale","last_mod":"2010-06-15 19:16:46"}
+15	{"cat_id":1,"style_name":"Scotch Ale","last_mod":"2010-06-15 19:16:54"}
+16	{"cat_id":1,"style_name":"British-Style Imperial Stout","last_mod":"2010-06-15 19:17:07"}
+17	{"cat_id":1,"style_name":"British-Style Barley Wine Ale","last_mod":"2010-06-15 19:17:16"}
+18	{"cat_id":1,"style_name":"Robust Porter","last_mod":"2010-06-15 19:17:37"}
+19	{"cat_id":1,"style_name":"Brown Porter","last_mod":"2010-06-15 19:17:43"}
+20	{"cat_id":1,"style_name":"Sweet Stout","last_mod":"2010-06-15 19:17:50"}
+21	{"cat_id":1,"style_name":"Oatmeal Stout","last_mod":"2010-06-15 19:17:56"}
+22	{"cat_id":2,"style_name":"Irish-Style Red Ale","last_mod":"2010-06-15 19:21:04"}
+23	{"cat_id":2,"style_name":"Classic Irish-Style Dry Stout","last_mod":"2010-06-15 19:21:07"}
+24	{"cat_id":2,"style_name":"Foreign (Export)-Style Stout","last_mod":"2010-06-15 19:21:14"}
+25	{"cat_id":2,"style_name":"Porter","last_mod":"2010-06-15 19:21:39"}
+26	{"cat_id":3,"style_name":"American-Style Pale Ale","last_mod":"2010-06-15 19:22:32"}
+27	{"cat_id":3,"style_name":"Fresh Hop Ale","last_mod":"2010-06-15 19:22:41"}
+28	{"cat_id":3,"style_name":"Pale American-Belgo-Style Ale","last_mod":"2010-06-15 19:22:51"}
+29	{"cat_id":3,"style_name":"Dark American-Belgo-Style Ale","last_mod":"2010-06-15 19:23:00"}
+30	{"cat_id":3,"style_name":"American-Style Strong Pale Ale","last_mod":"2010-06-15 19:23:07"}
+31	{"cat_id":3,"style_name":"American-Style India Pale Ale","last_mod":"2010-06-15 19:23:15"}
+32	{"cat_id":3,"style_name":"Imperial or Double India Pale Ale","last_mod":"2010-06-15 19:23:23"}
+33	{"cat_id":3,"style_name":"American-Style Amber/Red Ale","last_mod":"2010-06-15 19:23:30"}
+34	{"cat_id":3,"style_name":"Imperial or Double Red Ale","last_mod":"2010-06-15 19:23:52"}
+35	{"cat_id":3,"style_name":"American-Style Barley Wine Ale","last_mod":"2010-06-15 19:23:59"}
+36	{"cat_id":3,"style_name":"American-Style Wheat Wine Ale","last_mod":"2010-06-15 19:24:08"}
+37	{"cat_id":3,"style_name":"Golden or Blonde Ale","last_mod":"2010-06-15 19:24:15"}
+38	{"cat_id":3,"style_name":"American-Style Brown Ale","last_mod":"2010-06-15 19:24:23"}
+39	{"cat_id":3,"style_name":"Smoke Porter","last_mod":"2010-06-15 19:24:30"}
+40	{"cat_id":3,"style_name":"American-Style Sour Ale","last_mod":"2010-06-15 19:24:58"}
+41	{"cat_id":3,"style_name":"American-Style India Black Ale","last_mod":"2010-06-15 19:25:05"}
+42	{"cat_id":3,"style_name":"American-Style Stout","last_mod":"2010-06-15 19:25:11"}
+43	{"cat_id":3,"style_name":"American-Style Imperial Stout","last_mod":"2010-06-15 19:25:18"}
+44	{"cat_id":3,"style_name":"Specialty Stouts","last_mod":"2010-06-15 19:25:26"}
+45	{"cat_id":3,"style_name":"American-Style Imperial Porter","last_mod":"2010-06-15 19:25:33"}
+46	{"cat_id":3,"style_name":"Porter","last_mod":"2010-06-15 19:25:53"}
+47	{"cat_id":4,"style_name":"German-Style Kolsch","last_mod":"2010-06-15 20:43:02"}
+48	{"cat_id":4,"style_name":"Berliner-Style Weisse","last_mod":"2010-06-15 19:29:33"}
+49	{"cat_id":4,"style_name":"Leipzig-Style Gose","last_mod":"2010-06-15 19:29:40"}
+50	{"cat_id":4,"style_name":"South German-Style Hefeweizen","last_mod":"2010-06-15 19:29:47"}
+51	{"cat_id":4,"style_name":"South German-Style Kristal Weizen","last_mod":"2010-06-15 19:29:55"}
+52	{"cat_id":4,"style_name":"German-Style Leichtes Weizen","last_mod":"2010-06-15 19:30:01"}
+53	{"cat_id":4,"style_name":"South German-Style Bernsteinfarbenes Weizen","last_mod":"2010-06-15 19:30:18"}
+54	{"cat_id":4,"style_name":"South German-Style Dunkel Weizen","last_mod":"2010-06-15 19:30:25"}
+55	{"cat_id":4,"style_name":"South German-Style Weizenbock","last_mod":"2010-06-15 19:30:33"}
+56	{"cat_id":4,"style_name":"Bamberg-Style Weiss Rauchbier","last_mod":"2010-06-15 19:30:47"}
+57	{"cat_id":4,"style_name":"German-Style Brown Ale/Altbier","last_mod":"2010-07-11 16:08:56"}
+58	{"cat_id":4,"style_name":"Kellerbier - Ale","last_mod":"2010-06-15 19:38:57"}
+59	{"cat_id":5,"style_name":"Belgian-Style Flanders/Oud Bruin","last_mod":"2010-06-15 19:32:09"}
+60	{"cat_id":5,"style_name":"Belgian-Style Dubbel","last_mod":"2010-06-15 19:32:15"}
+61	{"cat_id":5,"style_name":"Belgian-Style Tripel","last_mod":"2010-06-15 19:32:23"}
+62	{"cat_id":5,"style_name":"Belgian-Style Quadrupel","last_mod":"2010-06-15 19:32:31"}
+63	{"cat_id":5,"style_name":"Belgian-Style Blonde Ale","last_mod":"2010-06-15 19:32:39"}
+64	{"cat_id":5,"style_name":"Belgian-Style Pale Ale","last_mod":"2010-06-15 19:32:47"}
+65	{"cat_id":5,"style_name":"Belgian-Style Pale Strong Ale","last_mod":"2010-06-15 19:32:55"}
+66	{"cat_id":5,"style_name":"Belgian-Style Dark Strong Ale","last_mod":"2010-06-15 19:33:01"}
+67	{"cat_id":5,"style_name":"Belgian-Style White","last_mod":"2010-06-15 19:33:16"}
+68	{"cat_id":5,"style_name":"Belgian-Style Lambic","last_mod":"2010-06-15 19:33:43"}
+69	{"cat_id":5,"style_name":"Belgian-Style Gueuze Lambic","last_mod":"2010-06-15 19:33:52"}
+70	{"cat_id":5,"style_name":"Belgian-Style Fruit Lambic","last_mod":"2010-06-15 19:34:01"}
+71	{"cat_id":5,"style_name":"Belgian-Style Table Beer","last_mod":"2010-06-15 19:34:08"}
+72	{"cat_id":5,"style_name":"Other Belgian-Style Ales","last_mod":"2010-06-15 19:34:15"}
+73	{"cat_id":5,"style_name":"French-Style Biere de Garde","last_mod":"2010-07-11 15:55:26"}
+74	{"cat_id":5,"style_name":"French & Belgian-Style Saison","last_mod":"2010-06-15 19:34:30"}
+75	{"cat_id":6,"style_name":"International-Style Pale Ale","last_mod":"2010-06-15 19:34:51"}
+76	{"cat_id":6,"style_name":"Australasian-Style Pale Ale","last_mod":"2010-06-15 19:35:01"}
+77	{"cat_id":7,"style_name":"German-Style Pilsener","last_mod":"2010-06-15 19:35:42"}
+78	{"cat_id":7,"style_name":"Bohemian-Style Pilsener","last_mod":"2010-06-15 19:35:54"}
+79	{"cat_id":7,"style_name":"European Low-Alcohol Lager","last_mod":"2010-06-15 19:36:02"}
+80	{"cat_id":7,"style_name":"Munchner-Style Helles","last_mod":"2010-06-15 19:39:29"}
+81	{"cat_id":7,"style_name":"Dortmunder/European-Style Export","last_mod":"2010-06-15 19:36:27"}
+82	{"cat_id":7,"style_name":"Vienna-Style Lager","last_mod":"2010-06-15 19:36:34"}
+83	{"cat_id":7,"style_name":"German-Style Marzen","last_mod":"2010-07-08 17:59:32"}
+84	{"cat_id":7,"style_name":"German-Style Oktoberfest","last_mod":"2010-06-15 19:37:01"}
+85	{"cat_id":7,"style_name":"European-Style Dark","last_mod":"2010-06-15 19:37:09"}
+86	{"cat_id":7,"style_name":"German-Style Schwarzbier","last_mod":"2010-06-15 19:37:36"}
+87	{"cat_id":7,"style_name":"Bamberg-Style Marzen","last_mod":"2010-07-08 17:59:39"}
+88	{"cat_id":7,"style_name":"Bamberg-Style Helles Rauchbier","last_mod":"2010-06-15 19:37:50"}
+89	{"cat_id":7,"style_name":"Bamberg-Style Bock Rauchbier","last_mod":"2010-06-15 19:37:58"}
+90	{"cat_id":7,"style_name":"Traditional German-Style Bock","last_mod":"2010-06-15 19:38:06"}
+91	{"cat_id":7,"style_name":"German-Style Heller Bock/Maibock","last_mod":"2010-06-15 19:38:15"}
+92	{"cat_id":7,"style_name":"German-Style Doppelbock","last_mod":"2010-06-15 19:38:22"}
+93	{"cat_id":7,"style_name":"German-Style Eisbock","last_mod":"2010-06-15 19:38:30"}
+94	{"cat_id":7,"style_name":"Kellerbier - Lager","last_mod":"2010-06-15 19:38:49"}
+95	{"cat_id":8,"style_name":"American-Style Lager","last_mod":"2010-06-15 19:40:43"}
+96	{"cat_id":8,"style_name":"American-Style Light Lager","last_mod":"2010-06-15 19:40:46"}
+97	{"cat_id":8,"style_name":"American-Style Low-Carb Light Lager","last_mod":"2010-06-15 19:41:05"}
+98	{"cat_id":8,"style_name":"American-Style Amber Lager","last_mod":"2010-06-15 19:41:18"}
+99	{"cat_id":8,"style_name":"American-Style Premium Lager","last_mod":"2010-06-15 19:41:26"}
+100	{"cat_id":8,"style_name":"American-Style Pilsener","last_mod":"2010-06-15 19:41:33"}
+101	{"cat_id":8,"style_name":"American-Style Ice Lager","last_mod":"2010-06-15 19:41:43"}
+102	{"cat_id":8,"style_name":"American-Style Malt Liquor","last_mod":"2010-06-15 19:41:51"}
+103	{"cat_id":8,"style_name":"American-Style Amber Lager","last_mod":"2010-06-15 19:41:58"}
+104	{"cat_id":8,"style_name":"American-Style Marzen/Oktoberfest","last_mod":"2010-06-15 19:44:27"}
+105	{"cat_id":8,"style_name":"American-Style Dark Lager","last_mod":"2010-06-15 19:42:28"}
+106	{"cat_id":9,"style_name":"Baltic-Style Porter","last_mod":"2010-06-15 19:42:40"}
+107	{"cat_id":9,"style_name":"Australasian-Style Light Lager","last_mod":"2010-06-15 19:44:09"}
+108	{"cat_id":9,"style_name":"Latin American-Style Light Lager","last_mod":"2010-06-15 19:43:29"}
+109	{"cat_id":9,"style_name":"Tropical-Style Light Lager","last_mod":"2010-06-15 19:43:37"}
+110	{"cat_id":10,"style_name":"International-Style Pilsener","last_mod":"2010-06-15 19:43:49"}
+111	{"cat_id":10,"style_name":"Dry Lager","last_mod":"2010-06-15 19:43:57"}
+112	{"cat_id":11,"style_name":"Session Beer","last_mod":"2010-06-15 19:45:11"}
+113	{"cat_id":11,"style_name":"American-Style Cream Ale or Lager","last_mod":"2010-06-15 19:45:19"}
+114	{"cat_id":11,"style_name":"California Common Beer","last_mod":"2010-06-15 19:45:25"}
+115	{"cat_id":11,"style_name":"Japanese Sake-Yeast Beer","last_mod":"2010-06-15 19:45:34"}
+116	{"cat_id":11,"style_name":"Light American Wheat Ale or Lager","last_mod":"2010-06-15 19:45:42"}
+117	{"cat_id":11,"style_name":"Fruit Wheat Ale or Lager","last_mod":"2010-06-15 19:45:58"}
+118	{"cat_id":11,"style_name":"Dark American Wheat Ale or Lager","last_mod":"2010-06-15 19:46:06"}
+119	{"cat_id":11,"style_name":"American Rye Ale or Lager","last_mod":"2010-06-15 19:46:14"}
+120	{"cat_id":11,"style_name":"German-Style Rye Ale","last_mod":"2010-06-15 19:46:24"}
+121	{"cat_id":11,"style_name":"Fruit Beer","last_mod":"2010-06-15 19:46:33"}
+122	{"cat_id":11,"style_name":"Field Beer","last_mod":"2010-06-15 19:46:41"}
+123	{"cat_id":11,"style_name":"Pumpkin Beer","last_mod":"2010-06-15 19:47:18"}
+124	{"cat_id":11,"style_name":"Chocolate/Cocoa-Flavored Beer","last_mod":"2010-06-15 19:47:27"}
+125	{"cat_id":11,"style_name":"Coffee-Flavored Beer","last_mod":"2010-06-15 19:47:35"}
+126	{"cat_id":11,"style_name":"Herb and Spice Beer","last_mod":"2010-06-15 19:47:40"}
+127	{"cat_id":11,"style_name":"Specialty Beer","last_mod":"2010-06-15 19:47:48"}
+128	{"cat_id":11,"style_name":"Specialty Honey Lager or Ale","last_mod":"2010-06-15 19:47:54"}
+129	{"cat_id":11,"style_name":"Gluten-Free Beer","last_mod":"2010-06-15 19:48:01"}
+130	{"cat_id":11,"style_name":"Smoke Beer","last_mod":"2010-06-15 19:48:10"}
+131	{"cat_id":11,"style_name":"Experimental Beer","last_mod":"2010-06-15 19:48:17"}
+132	{"cat_id":11,"style_name":"Out of Category","last_mod":"2010-06-15 19:48:27"}
+133	{"cat_id":11,"style_name":"Wood- and Barrel-Aged Beer","last_mod":"2010-06-15 19:48:39"}
+134	{"cat_id":11,"style_name":"Wood- and Barrel-Aged Pale to Amber Beer","last_mod":"2010-06-15 19:48:53"}
+135	{"cat_id":11,"style_name":"Wood- and Barrel-Aged Dark Beer","last_mod":"2010-06-15 19:49:01"}
+136	{"cat_id":11,"style_name":"Wood- and Barrel-Aged Strong Beer","last_mod":"2010-06-15 19:49:08"}
+137	{"cat_id":11,"style_name":"Wood- and Barrel-Aged Sour Beer","last_mod":"2010-06-15 19:49:18"}
+138	{"cat_id":11,"style_name":"Aged Beer","last_mod":"2010-06-15 19:49:25"}
+139	{"cat_id":11,"style_name":"Other Strong Ale or Lager","last_mod":"2010-06-15 19:49:32"}
+140	{"cat_id":11,"style_name":"Non-Alcoholic Beer","last_mod":"2010-06-15 19:49:47"}
+141	{"cat_id":11,"style_name":"Winter Warmer","last_mod":"2010-07-11 16:43:25"}
