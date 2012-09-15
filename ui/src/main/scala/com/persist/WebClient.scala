@@ -41,9 +41,10 @@ import org.apache.http.HttpEntity
 import java.io.InputStreamReader
 import java.io.BufferedReader
 
-class WebClient() {
+class WebClient(host:String, port:Int) {
 
-  val server = "127.0.0.1:8081"
+  //val server = "127.0.0.1:8081"
+  val server = host + ":" + port
 
   // Note GWT uses old version of apache commons http client
   val params = new BasicHttpParams();

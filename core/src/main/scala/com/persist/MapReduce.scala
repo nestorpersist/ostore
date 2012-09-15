@@ -19,6 +19,7 @@ package com.persist
 
 import JsonOps._
 import scala.collection.immutable.HashSet
+import Exceptions._
 
 /**
  * Map and reduce operations are defined by extending the traits
@@ -65,9 +66,11 @@ object MapReduce {
   trait MapAll {
     /**
      * Options passed in from the config file for the
-     * map operation.
+     * map operation. 
+     * The system initializes this variable. User code should not
+     * change it.
      */
-    val options: Json
+    var options:Json = emptyJsonObject
     /**
      * The inverse operation for a map.
      *
@@ -120,8 +123,10 @@ object MapReduce {
   trait Map2 extends MapAll {
     /**
      * The prefix subtable name passed in from the config file.
+     * The system initializes this variable. User code should not
+     * change it.
      */
-    val fromprefix: String
+    var fromprefix:String = ""
     /**
      * The prefix mapping function.
      * 
@@ -158,13 +163,17 @@ object MapReduce {
   trait Reduce {
     /**
      * Options passed in from the config file for the
-     * reduce operation.
+     * map operation.
+     * The system initializes this variable. User code should not
+     * change it.
      */
-    val options: Json
+    var options:Json = emptyJsonObject
     /**
-     * The number of elements in the ReduceKey array.
+     * The number of elements in the ReduceKey array passed in from the config file.
+     * The system initializes this variable. User code should not
+     * change it.
      */
-    val size: Int
+    var size:Int = 1
     /**
      * The value of a reduce with no inputs. This is the identity element for the
      * abelian group.
@@ -189,188 +198,73 @@ object MapReduce {
      */
     def subtract(value1: Json, value2: Json): Json
   }
-
-  private class MapIndex(val options: Json) extends Map {
-    private val field = jgetString(options, "field")
-    def to(key: JsonKey, value: Json) = {
-      val newValue = jget(value, field)
-      List((JsonArray(newValue, key), null))
-    }
-    def from(key: JsonKey): JsonKey = {
-      jgetArray(key).tail.head
-    }
-  }
-
-  private class MapIdentity(val options: Json) extends Map {
-    def to(key: JsonKey, value: Json) = List((key, value))
-    def from(key: JsonKey): JsonKey = key
-  }
-
-  private class MapOne(val options: Json) extends Map {
-    def to(key: JsonKey, value: Json) = List((key, 1))
-    def from(key: JsonKey): JsonKey = key
-  }
-
-  private class MapBoth(val options: Json) extends Map {
-    def to(key: JsonKey, value: Json) = List((key, JsonArray(key, value)))
-    def from(key: JsonKey): JsonKey = key
-  }
-
-  private class MapReverse(val options: Json) extends Map {
-    def to(key: JsonKey, value: Json) = {
-      List(key match {
-        case a: JsonArray => (a.reverse, value)
-        case _ => (key, value)
-      })
-    }
-    def from(key: JsonKey): JsonKey = {
-      key match {
-        case a: JsonArray => a.reverse
-        case _ => key
+  
+  private def getMap(className:String, options:Json):Map = {
+    try {
+      val c = Class.forName(className)
+      val obj = c.newInstance()
+      val map = obj.asInstanceOf[Map]
+      map.options = options
+      map
+    } catch {
+      case x=> {
+        val ex = InternalException(x.toString())
+        println(ex.toString())
+        throw ex
       }
     }
   }
-
-  private class MapInvert(val options: Json) extends Map {
-    def to(key: JsonKey, value: Json) = List((JsonArray(value, key), null))
-    def from(key: JsonKey): JsonKey = jget(key, 1)
-  }
-
-  private class MapInvertKey(val options: Json) extends Map {
-    def to(key: JsonKey, value: Json) = List((JsonArray(jget(key, 1), jget(key, 0)), value))
-    def from(key: JsonKey): JsonKey = JsonArray(jget(key, 1), jget(key, 0))
-  }
-
-  private def checkCycle(a: JsonArray): (Boolean, Boolean) = {
-    var first: String = ""
-    var last: String = ""
-    var min: String = ""
-    var i: Int = 0
-    for (elem <- a) {
-      val s = keyEncode(elem)
-      if (i == 0) {
-        first = s
-        min = s
-      }
-      last = s
-      if (s < min) min = s
-      i += 1
-    }
-    (first == last, first == min)
-  }
-
-  private class MapCycle(val options: Json) extends Map {
-    def to(key: JsonKey, value: Json) = {
-      val (cycle, first) = checkCycle(jgetArray(key))
-      if (cycle && first) {
-        List((key, value))
-      } else {
-        List()
+  
+  private def getMap2(className:String, options:Json, fromPrefix:String):Map2 = {
+    try {
+      val c = Class.forName(className)
+      val obj = c.newInstance()
+      val map = obj.asInstanceOf[Map2]
+      map.options = options
+      map.fromprefix = fromPrefix
+      map
+    } catch {
+      case x=> {
+        val ex = InternalException(x.toString())
+        println(ex.toString())
+        throw ex
       }
     }
-    def from(key: JsonKey): JsonKey = key
   }
-
-  private class MapRoute(val options: Json) extends Map {
-    def to(key: JsonKey, value: Json) = {
-      val r = jgetArray(key)
-      val r1 = r.head
-      val r2 = r.last
-      var rx = r.tail.dropRight(1)
-      List((JsonArray(r1, r2, rx), value))
-    }
-    def from(key: JsonKey): JsonKey = {
-      val a = jgetArray(key)
-      val r1 = jget(a, 0)
-      val r2 = jget(a, 1)
-      val rx = jgetArray(a, 2)
-      r1 +: (rx :+ r2)
-    }
-  }
-
+  
   private[persist] def getMap(options: Json): MapAll = {
     val act = jgetString(options, "act")
     val act2 = jgetString(options, "act2")
     if (act != "") {
-      act match {
-        case "Identity" => new MapIdentity(options)
-        case "Index" => new MapIndex(options)
-        case "One" => new MapOne(options)
-        case "Both" => new MapBoth(options)
-        case "Reverse" => new MapReverse(options)
-        case "InvertKey" => new MapInvertKey(options)
-        case "Invert" => new MapInvert(options)
-        case "Cycle" => new MapCycle(options)
-        case "Route" => new MapRoute(options)
-        case "TextIndex" => new Text.MapTextIndex(options)
-        case x => {
-          // TODO use reflection to find class
-          throw new Exception("unknown map act: " + x)
-        }
-      }
+      getMap(act, options)
     } else if (act2 != "") {
       val fromprefix = jgetString(options, "fromprefix")
-      act2 match {
-        case "Traverse2" => new Map2Traverse(options, fromprefix)
-        case x => {
-          // TODO use reflection to find class
-          throw new Exception("unknown map act2: " + x)
-        }
-      }
+      getMap2(act2, options, fromprefix)
     } else {
       throw new Exception("no act specified")
     }
   }
 
-  private class Map2Traverse(val options: Json, val fromprefix: String) extends Map2 {
-    def to(prefixKey: JsonKey, prefixValue: Json, key: JsonKey, value: Json): Traversable[(JsonKey, Json)] = {
-      val keya = jgetArray(key)
-      val prefixKeya = jgetArray(prefixKey)
-      val (cycle, first) = checkCycle(keya)
-      var result = List[(JsonKey, Json)]()
-      if (!cycle) {
-        for (elem <- jgetArray(prefixValue)) {
-          if (!keya.dropRight(1).contains(elem)) {
-            val newKey: Json = elem +: keya
-            result = (newKey, value) +: result
-          }
-        }
+  private def getReduce(className:String, options:Json, size:Int):Reduce = {
+    try {
+      val c = Class.forName(className)
+      val obj = c.newInstance()
+      val reduce = obj.asInstanceOf[Reduce]
+      reduce.options = options
+      reduce.size = size
+      reduce
+    } catch {
+      case x=> {
+        val ex = InternalException(x.toString())
+        println(ex.toString())
+        throw ex
       }
-      result
-    }
-    def from(key: JsonKey): JsonKey = jgetArray(key).tail
-  }
-
-  private class ReduceCount(val options: Json, val size: Int) extends Reduce {
-    val zero = 0
-    def item(key: JsonKey, value: Json): Json = 1
-    def add(accum: Json, value: Json): Json = jgetLong(accum) + jgetLong(value)
-    def subtract(accum: Json, value: Json): Json = jgetLong(accum) - jgetLong(value)
-  }
-
-  private class ReduceKeyPair(val options: Json, val size: Int) extends Reduce {
-    val zero = JsonArray()
-    def item(key: JsonKey, value: Json): Json = jgetArray(key).takeRight(1)
-    def add(accum: Json, value: Json): Json = {
-      val set = new HashSet[Json]() ++ jgetArray(accum) ++ jgetArray(value)
-      set.toList
-    }
-    def subtract(accum: Json, value: Json): Json = {
-      val set = new HashSet[Json]() ++ jgetArray(accum) -- jgetArray(value)
-      set.toList
     }
   }
-
+  
   private[persist] def getReduce(options: Json): Reduce = {
     val act = jgetString(options, "act")
     val size = jgetInt(options, "size")
-    act match {
-      case "Count" => new ReduceCount(options, size)
-      case "KeyPair" => new ReduceKeyPair(options, size)
-      case x => {
-        // TODO use reflection to find class
-        throw new Exception("unknown reduce: " + x)
-      }
-    }
+    getReduce(act, options, size)
   }
 }

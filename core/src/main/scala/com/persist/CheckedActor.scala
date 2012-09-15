@@ -23,6 +23,21 @@ import Exceptions._
 import JsonOps._
 
 private[persist] abstract class CheckedActor extends Actor with ActorLogging {
+  def check[T](x: =>T):T = {
+    try {
+      x
+    } catch {
+      case ex:Throwable => {
+        log.error(ex, "actor failure")
+        throw ex
+      }
+      case x => {
+        val ex = InternalException(x.toString)
+        log.error(ex, "actor failure")
+        throw ex
+      }
+    }
+  }
   def rec: PartialFunction[Any, Unit]
   def receive: PartialFunction[Any, Unit] = {
     case msg => {
@@ -39,7 +54,7 @@ private[persist] abstract class CheckedActor extends Actor with ActorLogging {
         }
         body1(msg)
       } catch {
-        case ex: Exception => {
+        case ex: Throwable => {
           val info = JsonObject(
             "msg" -> msg.toString(),
             "from" -> sender.toString(),

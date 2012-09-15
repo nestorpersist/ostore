@@ -25,7 +25,7 @@ The OStore code is licensed under the Apache 2.0 license.
 
 ## Contact
 If you are interested in doing serious testing of OStore
-or contributing to OStore as a developer please send email
+or contributing to OStore as a developer, please send email
 to 
 
 [nestor@persist.com](mailto:nestor@persist.com)

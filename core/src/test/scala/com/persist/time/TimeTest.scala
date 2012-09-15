@@ -48,7 +48,7 @@ class TimeTest extends FunSuite {
     implicit val executor = context.dispatcher
     for (i <- 1 to cnt) self ! "next"
     var done = 0
-    val r = new BufferedReader(new FileReader(new File("config/genre.data")))
+    val r = new BufferedReader(new FileReader(new File("config/beer/beers.data")))
     var closed = false
     def receive = {
       case "next" => {
@@ -86,7 +86,7 @@ class TimeTest extends FunSuite {
     """)
     val databaseConfig = Json("""
     { 
-     "tables":[ {"name":"genre"} ],
+     "tables":[ {"name":"beers"} ],
      "rings":[ {"name":"r1",
        "nodes":[ {"name":"n1", "host":"127.0.0.1", "port":8011} ] } ]
      }
@@ -100,8 +100,8 @@ class TimeTest extends FunSuite {
     client.createDatabase(dbName, databaseConfig)
 
     val database = client.database(dbName)
-    val tab1 = database.table("genre")
-    val tab2 = database.asyncTable("genre")
+    //val tab1 = database.table("beers")
+    val tab2 = database.asyncTable("beers")
     implicit val executor = system.dispatcher
     implicit val timeout = Timeout(2 hours)
 
@@ -116,7 +116,7 @@ class TimeTest extends FunSuite {
     val t2 = System.currentTimeMillis()
     println("Total=" + (t2 - t1))
 
-    val monitor1 = database.monitor("genre")
+    val monitor1 = database.monitor("beers")
     println("Monitor:" + Pretty(monitor1))
 
     client.stopDatabase(dbName)

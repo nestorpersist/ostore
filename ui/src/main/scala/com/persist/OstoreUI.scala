@@ -18,6 +18,8 @@
 package com.persist
 
 import com.vaadin.Application
+import scala.io.Source
+import JsonOps._
 
 // TODO change icon
 
@@ -27,7 +29,12 @@ private[persist] trait UIAssembly extends ActComponent with ButtonsComponent wit
 private[persist] class OStoreUI extends Application {
   def app = this
   def init(): Unit = {
-    val client = new WebClient()
+    val fname = "config/ui.json"
+    val sconfig = Source.fromFile(fname).mkString
+    val config = Json(sconfig)
+    val host = jgetString(config, "host")
+    val port = jgetInt(config,"port")
+    val client = new WebClient(host, port)
     setTheme("runo")
 
     object UIAll extends UIAssembly {

@@ -1,6 +1,6 @@
 { "tables": [
   {"name":"text"}, 
-  {"name":"index","map":{"from":"text","act":"TextIndex","dedup":true}}
+  {"name":"index","map":{"from":"text","act":"com.persist.map.TextIndex","dedup":true}}
    ],
   "rings":[
    {"name":"r1",

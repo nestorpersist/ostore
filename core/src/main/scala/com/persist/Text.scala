@@ -46,7 +46,7 @@ private[persist] object Text {
     }
   }
 
-  private class Words(kind: String, title: String) extends RegexParsers {
+  class Words(kind: String, title: String) extends RegexParsers {
     private val word = """[a-zA-Z]+""".r
     private val ignore = """[^a-zA-Z]+""".r
     def combine(w: Option[String], a: List[(JsonKey, Json)]): List[(JsonKey, Json)] = {
@@ -78,7 +78,8 @@ private[persist] object Text {
     def w: Parser[Option[String]] = word ^^ { case w => fix(w) }
   }
 
-  class MapTextIndex(val options: Json) extends MapReduce.Map {
+  /*
+  class MapTextIndex(var options: Json) extends MapReduce.Map {
     def to(key: JsonKey, value: Json): Traversable[(JsonKey, Json)] = {
       val title = jgetString(key)
       val words = jgetString(value)
@@ -94,6 +95,7 @@ private[persist] object Text {
     }
     def from(key: JsonKey): JsonKey = jgetArray(key, 1)
   }
+  */
 
   class TextSearch(c: Table) {
 

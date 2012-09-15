@@ -1,14 +1,14 @@
 { "tables": [
   {"name":"graph"}, 
-  {"name":"graphinvert","map":{"from":"graph","act":"InvertKey"}},
-  {"name":"graphfrom","reduce":{"from":"graphinvert","size":1,"act":"KeyPair"}},
+  {"name":"graphinvert","map":{"from":"graph","act":"com.persist.map.InvertKey"}},
+  {"name":"graphfrom","reduce":{"from":"graphinvert","size":1,"act":"com.persist.reduce.KeyPair"}},
   {"name":"graphpath", "prefix":{"name":"links","size":1},
-                       "map":[{"from":"graph","act":"Identity"},
-                              {"from":"graphpath","fromprefix":"links","act2":"Traverse2"},
-                              {"from":"graphfrom","act":"Identity","toprefix":"links"}]},
-  {"name":"graphroute", "map":{"from":"graphpath","act":"Route"}},
-  {"name":"graphroutecount", "reduce":{"from":"graphroute","size":2,"act":"Count"}},
-  {"name":"graphcycles", "map":{"from":"graphpath","act":"Cycle"}}
+                       "map":[{"from":"graph","act":"com.persist.map.Identity"},
+                              {"from":"graphpath","fromprefix":"links","act2":"com.persist.map.Traverse2"},
+                              {"from":"graphfrom","act":"com.persist.map.Identity","toprefix":"links"}]},
+  {"name":"graphroute", "map":{"from":"graphpath","act":"com.persist.map.Route"}},
+  {"name":"graphroutecount", "reduce":{"from":"graphroute","size":2,"act":"com.persist.reduce.Count"}},
+  {"name":"graphcycles", "map":{"from":"graphpath","act":"com.persist.map.Cycle"}}
    ],
   "rings":[
    {"name":"r1",

@@ -32,13 +32,13 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
   store: AbstractStore, monitor: ActorRef, send: ActorRef, initialConfig: DatabaseConfig) extends CheckedActor {
 
   object all extends ServerTableAssembly {
-    val info = new ServerTableInfo(databaseName, ringName, nodeName, tableName,
-      initialConfig, send, store, monitor)
-    val ops = new ServerTableOps(context.system)
-    val mr = new ServerTableMapReduce
-    val sync = new ServerTableSync
-    val bal = new ServerTableBalance(context.system)
-    val back = new ServerTableBackground
+    val info = check(new ServerTableInfo(databaseName, ringName, nodeName, tableName,
+      initialConfig, send, store, monitor))
+    val ops = check(new ServerTableOps(context.system))
+    val mr = check(new ServerTableMapReduce)
+    val sync = check(new ServerTableSync)
+    val bal = check(new ServerTableBalance(context.system))
+    val back = check(new ServerTableBackground)
   }
 
   val info = all.info

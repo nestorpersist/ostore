@@ -21,6 +21,12 @@ import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import com.persist.JsonOps._
 
+/**
+ * The Check object contains code for checking the consistency of 
+ * an OStore database and fixing any problems it finds.
+ * 
+ * It is not yet available.
+ */
 object Check {
   // TODO this code is slow, lots of optimizations possible
   // TODO be able to run continuously as background operation
@@ -109,6 +115,12 @@ object Check {
     }
   }
 
+  /**
+   * This method allow the check program to be run from the command line.
+   * In SBT type 
+   * 
+   * run-main com.persist.Check
+   */
   def main(args: Array[String]) {
     // TODO support a configuration
     // TODO other command line options
