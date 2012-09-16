@@ -740,12 +740,12 @@ class Server(config: Json, create: Boolean) {
   private val host = jgetString(config, "host")
   private val port = jgetInt(config, "port")
   if (host != "") {
-    akkaConfig = akkaConfig.withValue("akka.remote.netty.host", ConfigValueFactory.fromAnyRef(host))
+    akkaConfig = akkaConfig.withValue("akka.remote.netty.hostname", ConfigValueFactory.fromAnyRef(host))
   }
   if (port != 0) {
     akkaConfig = akkaConfig.withValue("akka.remote.netty.port", ConfigValueFactory.fromAnyRef(port))
   }
- // println("Config:" + akkaConfig)
+  //println("Config:" + akkaConfig)
   system = ActorSystem("ostore", akkaConfig)
   serverActor = system.actorOf(Props(new ServerActor(config, create)), name = "@server")
   private val f = serverActor ? ("start")
