@@ -1,0 +1,673 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html>
+        <head>
+          <title>com.persist.JsonOps</title>
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+          
+      <link type="text/css" media="screen" rel="stylesheet" href="../../lib/template.css" />
+      <script type="text/javascript" src="../../lib/jquery.js"></script>
+      <script type="text/javascript" src="../../lib/jquery-ui.js"></script>
+      <script type="text/javascript" src="../../lib/template.js"></script>
+      <script type="text/javascript" src="../../lib/tools.tooltip.js"></script>
+    
+        </head>
+        <body class="value">
+      <div id="definition">
+        <img src="../../lib/object_big.png" />
+        <p id="owner"><a name="com" class="extype" href="../package.html">com</a>.<a name="com.persist" class="extype" href="package.html">persist</a></p>
+        <h1>JsonOps</h1>
+      </div>
+
+      <h4 class="signature" id="signature">
+      <span class="kind">object</span>
+      <span class="symbol"> 
+        <span class="name">JsonOps</span>
+        
+        <span class="result"> extends AnyRef</span>
+      </span>
+      </h4>
+      
+          <div class="fullcommenttop" id="comment"><div class="comment cmt"><p>Provides types and functions for working with the OStore Json types.</p><p>In OStore, Json is represented by immutable Scala types.
+Instead of having separate Json types, type aliases are
+defined for Json forms.</p><p>Scala types used for Json are</p><ul><li>Json Object. Immutable Map[String,Json]</li><li>Json Array. Immutable Seq[Json]</li><li>Json String. String</li><li>Json Boolean. Boolean</li><li>Json Number. Int, Long, BigDecimal</li><li>Json Null. Null</li></ul></div><div class="toggleContainer block">
+          <span class="toggle">Linear Supertypes</span>
+          <div class="superTypes hiddenContent">AnyRef, <span name="scala.Any" class="extype">Any</span></div>
+        </div></div>
+        
+
+      <div id="template">
+
+        <div id="mbrsel">
+          <div id="textfilter"><span class="pre"></span><span class="input"><input accesskey="/" type="text" /></span><span class="post"></span></div>
+          <div id="order">
+                <span class="filtertype">Ordering</span>
+                <ol><li class="alpha in"><span>Alphabetic</span></li><li class="inherit out"><span>By inheritance</span></li></ol>
+              </div>
+          <div id="ancestors">
+                <span class="filtertype">Inherited</span>
+                <ol><li class="hideall out"><span>Hide All</span></li>
+                <li class="showall in"><span>Show all</span></li></ol>
+                <ol id="linearization"><li name="com.persist.JsonOps" class="in"><span>JsonOps</span></li><li name="scala.AnyRef" class="in"><span>AnyRef</span></li><li name="scala.Any" class="in"><span>Any</span></li></ol>
+              </div>
+          <div id="visbl">
+              <span class="filtertype">Visibility</span>
+              <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+            </div>
+        </div>
+
+        
+
+        <div class="types members" id="types">
+              <h3>Type Members</h3>
+              <ol><li visbl="pub" name="com.persist.JsonOps#Json" data-isabs="false">
+      <a id="Json:Json"></a>
+      <h4 class="signature">
+      <span class="kind">type</span>
+      <span class="symbol"> 
+        <span class="name">Json</span>
+        
+        <span class="result"> = <span name="scala.Any" class="extype">Any</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">A type alias for all Json forms.</p><div class="fullcomment"><div class="comment cmt"><p>A type alias for all Json forms.
+Json values should be restriced by convention
+to only those types used to represent Json.</p></div></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#JsonArray" data-isabs="false">
+      <a id="JsonArray:JsonArray"></a>
+      <h4 class="signature">
+      <span class="kind">type</span>
+      <span class="symbol"> 
+        <span class="name">JsonArray</span>
+        
+        <span class="result"> = <span name="scala.collection.Seq" class="extype">Seq</span>[Json]</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">A type alias for Json Arrays.</p>
+    </li><li visbl="pub" name="com.persist.JsonOps#JsonKey" data-isabs="false">
+      <a id="JsonKey:JsonKey"></a>
+      <h4 class="signature">
+      <span class="kind">type</span>
+      <span class="symbol"> 
+        <span class="name">JsonKey</span>
+        
+        <span class="result"> = <span name="scala.Any" class="extype">Any</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">A type alias for OStore Json keys.</p><div class="fullcomment"><div class="comment cmt"><p>A type alias for OStore Json keys.
+JsonKey values should be restricted to
+permitted OStore key forms.</p><ul><li>String.</li><li>Number (restricted to integers that can fit in a Long).</li><li>Array of JsonKeys.
+</li></ul></div></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#JsonObject" data-isabs="false">
+      <a id="JsonObject:JsonObject"></a>
+      <h4 class="signature">
+      <span class="kind">type</span>
+      <span class="symbol"> 
+        <span class="name">JsonObject</span>
+        
+        <span class="result"> = <span name="scala.collection.immutable.Map" class="extype">Map</span>[String, Json]</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">A type alias for of Json Objects.</p>
+    </li><li visbl="pub" name="com.persist.JsonOps.jfield" data-isabs="false">
+      <a id="jfield:jfield"></a>
+      <h4 class="signature">
+      <span class="kind">case class</span>
+      <span class="symbol"> 
+        <a href="JsonOps$$jfield.html"><span class="name">jfield</span></a>
+        
+        <span class="params">(<span name="ilist">ilist: Any*</span>)</span><span class="result"> extends Product with Serializable</span>
+      </span>
+      </h4>
+      <p class="comment cmt">An extractor for nested Json values.</p>
+    </li></ol>
+            </div>
+        
+        
+
+        <div class="values members" id="values">
+              <h3>Value Members</h3>
+              <ol><li visbl="pub" name="scala.AnyRef#!=" data-isabs="false">
+      <a id="!=(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">!=</span>
+        
+        <span class="params">(<span name="arg0">arg0: AnyRef</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="scala.Any#!=" data-isabs="false">
+      <a id="!=(Any):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">!=</span>
+        
+        <span class="params">(<span name="arg0">arg0: <span name="scala.Any" class="extype">Any</span></span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef###" data-isabs="false">
+      <a id="##():Int"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">##</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Int" class="extype">Int</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps.&amp;" data-isabs="false">
+      <a id="&amp;:&amp;"></a>
+      <h4 class="signature">
+      <span class="kind">object</span>
+      <span class="symbol"> 
+        <a href="JsonOps$$$amp$.html"><span class="name">&amp;</span></a>
+        
+        <span class="result"> extends AnyRef</span>
+      </span>
+      </h4>
+      <p class="comment cmt">An extractor composition operator.</p>
+    </li><li visbl="pub" name="scala.AnyRef#==" data-isabs="false">
+      <a id="==(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">==</span>
+        
+        <span class="params">(<span name="arg0">arg0: AnyRef</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="scala.Any#==" data-isabs="false">
+      <a id="==(Any):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">==</span>
+        
+        <span class="params">(<span name="arg0">arg0: <span name="scala.Any" class="extype">Any</span></span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#Compact" data-isabs="false">
+      <a id="Compact(Json):String"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">Compact</span>
+        
+        <span class="params">(<span name="j">j: Json</span>)</span><span class="result">: String</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">A Json unparser.</p><div class="fullcomment"><div class="comment cmt"><p>A Json unparser. It produces the most compact single line string form.</p></div></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#Json" data-isabs="false">
+      <a id="Json(String):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">Json</span>
+        
+        <span class="params">(<span name="s">s: String</span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">A Json parser.</p>
+    </li><li visbl="pub" name="com.persist.JsonOps#JsonArray" data-isabs="false">
+      <a id="JsonArray(Json*):JsonArray"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">JsonArray</span>
+        
+        <span class="params">(<span name="elements">elements: Json*</span>)</span><span class="result">: JsonArray</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">A constructor for JsonArray.</p><div class="fullcomment"><div class="comment cmt"><p>A constructor for JsonArray.
+</p></div><dl class="paramcmts block"><dt class="param">elements</dt><dd class="cmt"><p>a sequence of array element values.
+</p></dd><dt>returns</dt><dd class="cmt"><p>the constructed Json Array.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#JsonObject" data-isabs="false">
+      <a id="JsonObject((String, Json)*):JsonObject"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">JsonObject</span>
+        
+        <span class="params">(<span name="pairs">pairs: (String, Json)*</span>)</span><span class="result">: JsonObject</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">A constructor for JsonObject.</p><div class="fullcomment"><div class="comment cmt"><p>A constructor for JsonObject.
+</p></div><dl class="paramcmts block"><dt>returns</dt><dd class="cmt"><p>the constructed Json Object.
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#Pretty" data-isabs="false">
+      <a id="Pretty(Json):String"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">Pretty</span>
+        
+        <span class="params">(<span name="j">j: Json</span>)</span><span class="result">: String</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">A Json unparser.</p><div class="fullcomment"><div class="comment cmt"><p>A Json unparser. It produces a multiple line form
+designed for human readability.</p></div></div>
+    </li><li visbl="pub" name="scala.Any#asInstanceOf" data-isabs="false">
+      <a id="asInstanceOf[T0]:T0"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">asInstanceOf</span>
+        <span class="tparams">[<span name="T0">T0</span>]</span>
+        <span class="result">: T0</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li visbl="prt" name="scala.AnyRef#clone" data-isabs="false">
+      <a id="clone():AnyRef"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">clone</span>
+        
+        <span class="params">()</span><span class="result">: AnyRef</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>protected[<a name="java.lang" class="extype" href="../../java/lang/package.html">lang</a>] </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">()</span>
+              
+        </dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#emptyJsonArray" data-isabs="false">
+      <a id="emptyJsonArray:Seq[Any]"></a>
+      <h4 class="signature">
+      <span class="kind">val</span>
+      <span class="symbol"> 
+        <span class="name">emptyJsonArray</span>
+        
+        <span class="result">: <span name="scala.collection.Seq" class="extype">Seq</span>[<span name="scala.Any" class="extype">Any</span>]</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">An empty JsonArray.</p>
+    </li><li visbl="pub" name="com.persist.JsonOps#emptyJsonObject" data-isabs="false">
+      <a id="emptyJsonObject:Map[String, Any]"></a>
+      <h4 class="signature">
+      <span class="kind">val</span>
+      <span class="symbol"> 
+        <span class="name">emptyJsonObject</span>
+        
+        <span class="result">: <span name="scala.collection.immutable.Map" class="extype">Map</span>[<span name="java.lang.String" class="extype">String</span>, <span name="scala.Any" class="extype">Any</span>]</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">An empty JsonObject.</p>
+    </li><li visbl="pub" name="scala.AnyRef#eq" data-isabs="false">
+      <a id="eq(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">eq</span>
+        
+        <span class="params">(<span name="arg0">arg0: AnyRef</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#equals" data-isabs="false">
+      <a id="equals(Any):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">equals</span>
+        
+        <span class="params">(<span name="arg0">arg0: <span name="scala.Any" class="extype">Any</span></span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li visbl="prt" name="scala.AnyRef#finalize" data-isabs="false">
+      <a id="finalize():Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">finalize</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>protected[<a name="java.lang" class="extype" href="../../java/lang/package.html">lang</a>] </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">()</span>
+              
+        </dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#getClass" data-isabs="false">
+      <a id="getClass():java.lang.Class[_]"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">getClass</span>
+        
+        <span class="params">()</span><span class="result">: java.lang.Class[_]</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#hashCode" data-isabs="false">
+      <a id="hashCode():Int"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">hashCode</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Int" class="extype">Int</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li visbl="pub" name="scala.Any#isInstanceOf" data-isabs="false">
+      <a id="isInstanceOf[T0]:Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">isInstanceOf</span>
+        <span class="tparams">[<span name="T0">T0</span>]</span>
+        <span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jget" data-isabs="false">
+      <a id="jget(Json,Any*):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jget</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Get a value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get a value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
+</li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected value or null if not present.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jgetArray" data-isabs="false">
+      <a id="jgetArray(Json,Any*):JsonArray"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jgetArray</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="result">: JsonArray</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Get a JsonArray value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get a JsonArray value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
+</li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected JsonArray value or an empty JsonArray if not present.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jgetBoolean" data-isabs="false">
+      <a id="jgetBoolean(Json,Any*):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jgetBoolean</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Get a boolean value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get a boolean value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
+</li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected boolean value or false if not present.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jgetInt" data-isabs="false">
+      <a id="jgetInt(Json,Any*):Int"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jgetInt</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="result">: <span name="scala.Int" class="extype">Int</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Get an integer value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get an integer value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
+</li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected integer value or 0 if not present.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jgetLong" data-isabs="false">
+      <a id="jgetLong(Json,Any*):Long"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jgetLong</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="result">: <span name="scala.Long" class="extype">Long</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Get a long value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get a long value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
+</li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected long value or 0 if not present.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jgetObject" data-isabs="false">
+      <a id="jgetObject(Json,Any*):JsonObject"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jgetObject</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="result">: JsonObject</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Get a JsonObject value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get a JsonObject value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
+</li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected JsonObject value or an empty JsonObject if not present.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jgetString" data-isabs="false">
+      <a id="jgetString(Json,Any*):String"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jgetString</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="result">: String</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Get a string value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get a string value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
+</li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected string value or &quot;&quot; if not present.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jsize" data-isabs="false">
+      <a id="jsize(Json):Int"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jsize</span>
+        
+        <span class="params">(<span name="j">j: Json</span>)</span><span class="result">: <span name="scala.Int" class="extype">Int</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Get the size of a Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get the size of a Json value.</p><ul><li>For a Json Object the number of name-value pairs.</li><li>For a Json Array the number of elements.</li><li>For anything else, 0.
+</li></ul></div></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#keyCompare" data-isabs="false">
+      <a id="keyCompare(Json,Json):Int"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyCompare</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="b">b: Json</span>)</span><span class="result">: <span name="scala.Int" class="extype">Int</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Compares two JsonKeys.</p><div class="fullcomment"><div class="comment cmt"><p>Compares two JsonKeys.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key.</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key.</p><p>@return</p><ul><li>0 if the two keys are equal.</li><li>&lt;0 if a is less than b in key order.</li><li>&gt;0 if a is greater than b in key order.</li></ul></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#keyEq" data-isabs="false">
+      <a id="keyEq(Json,Json):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyEq</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="b">b: Json</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Compares two JsonKeys for equality.</p><div class="fullcomment"><div class="comment cmt"><p>Compares two JsonKeys for equality.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key.</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key.
+</p></dd><dt>returns</dt><dd class="cmt"><p>true if the two keys are equal.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#keyLs" data-isabs="false">
+      <a id="keyLs(Json,Json):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyLs</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="b">b: Json</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Compares two JsonKeys.</p><div class="fullcomment"><div class="comment cmt"><p>Compares two JsonKeys.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key.</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key.
+</p></dd><dt>returns</dt><dd class="cmt"><p>true if a is less than b in key ordering.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#keyPrefix" data-isabs="false">
+      <a id="keyPrefix(JsonKey,JsonKey):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyPrefix</span>
+        
+        <span class="params">(<span name="a">a: JsonKey</span>, <span name="b">b: JsonKey</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Determines if one JsonKey is a prefix of another JsonKey.</p><div class="fullcomment"><div class="comment cmt"><p>Determines if one JsonKey is a prefix of another JsonKey.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key
+</p></dd><dt>returns</dt><dd class="cmt"><p>true if a is a prefix of b.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#keyUriDecode" data-isabs="false">
+      <a id="keyUriDecode(String):JsonKey"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyUriDecode</span>
+        
+        <span class="params">(<span name="s">s: String</span>)</span><span class="result">: JsonKey</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">An decoder for REST key forms.</p><div class="fullcomment"><div class="comment cmt"><p>An decoder for REST key forms.
+Converts a key within the query part of
+a url for the OStore REST api to a JsonKey.</p></div></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#keyUriEncode" data-isabs="false">
+      <a id="keyUriEncode(JsonKey):String"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyUriEncode</span>
+        
+        <span class="params">(<span name="j">j: JsonKey</span>)</span><span class="result">: String</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">An encoder for REST key forms.</p><div class="fullcomment"><div class="comment cmt"><p>An encoder for REST key forms.
+Converts an OStore key to a string form that
+can be used as a key within the query part of
+a url for the OStore REST api.</p></div></div>
+    </li><li visbl="pub" name="scala.AnyRef#ne" data-isabs="false">
+      <a id="ne(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">ne</span>
+        
+        <span class="params">(<span name="arg0">arg0: AnyRef</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#notify" data-isabs="false">
+      <a id="notify():Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">notify</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#notifyAll" data-isabs="false">
+      <a id="notifyAll():Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">notifyAll</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#synchronized" data-isabs="false">
+      <a id="synchronized[T0](⇒ T0):T0"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">synchronized</span>
+        <span class="tparams">[<span name="T0">T0</span>]</span>
+        <span class="params">(<span name="arg0">arg0: ⇒ T0</span>)</span><span class="result">: T0</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#toString" data-isabs="false">
+      <a id="toString():String"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">toString</span>
+        
+        <span class="params">()</span><span class="result">: <span name="java.lang.String" class="extype">String</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#wait" data-isabs="false">
+      <a id="wait():Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">wait</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">()</span>
+              
+        </dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#wait" data-isabs="false">
+      <a id="wait(Long,Int):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">wait</span>
+        
+        <span class="params">(<span name="arg0">arg0: <span name="scala.Long" class="extype">Long</span></span>, <span name="arg1">arg1: <span name="scala.Int" class="extype">Int</span></span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">()</span>
+              
+        </dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#wait" data-isabs="false">
+      <a id="wait(Long):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">wait</span>
+        
+        <span class="params">(<span name="arg0">arg0: <span name="scala.Long" class="extype">Long</span></span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">()</span>
+              
+        </dd></dl></div>
+    </li></ol>
+            </div>
+
+        
+
+        <div name="scala.AnyRef" class="parent">
+              <h3>Inherited from AnyRef</h3>
+            </div><div name="scala.Any" class="parent">
+              <h3>Inherited from <span name="scala.Any" class="extype">Any</span></h3>
+            </div>
+
+      </div>
+      
+      <div id="tooltip"></div>
+      
+    </body>
+      </html>

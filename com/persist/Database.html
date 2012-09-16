@@ -1,0 +1,635 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html>
+        <head>
+          <title>com.persist.Database</title>
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+          
+      <link type="text/css" media="screen" rel="stylesheet" href="../../lib/template.css" />
+      <script type="text/javascript" src="../../lib/jquery.js"></script>
+      <script type="text/javascript" src="../../lib/jquery-ui.js"></script>
+      <script type="text/javascript" src="../../lib/template.js"></script>
+      <script type="text/javascript" src="../../lib/tools.tooltip.js"></script>
+    
+        </head>
+        <body class="type">
+      <div id="definition">
+        <img src="../../lib/class_big.png" />
+        <p id="owner"><a name="com" class="extype" href="../package.html">com</a>.<a name="com.persist" class="extype" href="package.html">persist</a></p>
+        <h1>Database</h1>
+      </div>
+
+      <h4 class="signature" id="signature">
+      <span class="kind">class</span>
+      <span class="symbol"> 
+        <span class="name">Database</span>
+        
+        <span class="result"> extends AnyRef</span>
+      </span>
+      </h4>
+      
+          <div class="fullcommenttop" id="comment"><div class="comment cmt"><p>This is the API for accessing a specific OStore database.
+Instances of this class are created by the <a name="com.persist.Client" class="extype" href="Client.html">Client</a> database method.
+</p></div><div class="toggleContainer block">
+          <span class="toggle">Linear Supertypes</span>
+          <div class="superTypes hiddenContent">AnyRef, <span name="scala.Any" class="extype">Any</span></div>
+        </div></div>
+        
+
+      <div id="template">
+
+        <div id="mbrsel">
+          <div id="textfilter"><span class="pre"></span><span class="input"><input accesskey="/" type="text" /></span><span class="post"></span></div>
+          <div id="order">
+                <span class="filtertype">Ordering</span>
+                <ol><li class="alpha in"><span>Alphabetic</span></li><li class="inherit out"><span>By inheritance</span></li></ol>
+              </div>
+          <div id="ancestors">
+                <span class="filtertype">Inherited</span>
+                <ol><li class="hideall out"><span>Hide All</span></li>
+                <li class="showall in"><span>Show all</span></li></ol>
+                <ol id="linearization"><li name="com.persist.Database" class="in"><span>Database</span></li><li name="scala.AnyRef" class="in"><span>AnyRef</span></li><li name="scala.Any" class="in"><span>Any</span></li></ol>
+              </div>
+          <div id="visbl">
+              <span class="filtertype">Visibility</span>
+              <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+            </div>
+        </div>
+
+        
+
+        
+        
+        
+
+        <div class="values members" id="values">
+              <h3>Value Members</h3>
+              <ol><li visbl="pub" name="scala.AnyRef#!=" data-isabs="false">
+      <a id="!=(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">!=</span>
+        
+        <span class="params">(<span name="arg0">arg0: AnyRef</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="scala.Any#!=" data-isabs="false">
+      <a id="!=(Any):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">!=</span>
+        
+        <span class="params">(<span name="arg0">arg0: <span name="scala.Any" class="extype">Any</span></span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef###" data-isabs="false">
+      <a id="##():Int"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">##</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Int" class="extype">Int</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#==" data-isabs="false">
+      <a id="==(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">==</span>
+        
+        <span class="params">(<span name="arg0">arg0: AnyRef</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="scala.Any#==" data-isabs="false">
+      <a id="==(Any):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">==</span>
+        
+        <span class="params">(<span name="arg0">arg0: <span name="scala.Any" class="extype">Any</span></span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#addNodes" data-isabs="false">
+      <a id="addNodes(Json):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">addNodes</span>
+        
+        <span class="params">(<span name="config">config: Json</span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Adds one or more nodes to the database.</p><div class="fullcomment"><div class="comment cmt"><p>Adds one or more nodes to the database.
+The Json configuration specifies the rings
+to which nodes are to be added. Each node
+specifies a host and a port. The database must have
+rings with the specified ring names.
+The database must
+not already have nodes with the specified node names
+in the specified rings.
+</p></div><dl class="paramcmts block"><dt class="param">config</dt><dd class="cmt"><p>The configuration (see the Wiki).
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#addRings" data-isabs="false">
+      <a id="addRings(Json):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">addRings</span>
+        
+        <span class="params">(<span name="config">config: Json</span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Adds one or more rings to the database.</p><div class="fullcomment"><div class="comment cmt"><p>Adds one or more rings to the database.
+The Json configuration specifies the new rings
+and for each ring its nodes. Each node
+specifies a host and a port. The database must
+not already have rings with the specified new ring names.
+</p></div><dl class="paramcmts block"><dt class="param">config</dt><dd class="cmt"><p>The configuration (see the Wiki).
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#addTables" data-isabs="false">
+      <a id="addTables(Json):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">addTables</span>
+        
+        <span class="params">(<span name="config">config: Json</span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Adds one or more tables to the database.</p><div class="fullcomment"><div class="comment cmt"><p>Adds one or more tables to the database.
+The Json configuration specifies the new tables.
+The database must
+not already have tables with the specified new table names.
+</p></div><dl class="paramcmts block"><dt class="param">config</dt><dd class="cmt"><p>The configuration (see the Wiki).
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#allNodes" data-isabs="false">
+      <a id="allNodes(String):Iterable[String]"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">allNodes</span>
+        
+        <span class="params">(<span name="ringName">ringName: String</span>)</span><span class="result">: Iterable[String]</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Returns the names of all the names of database ring.</p><div class="fullcomment"><div class="comment cmt"><p>Returns the names of all the names of database ring.
+</p></div><dl class="paramcmts block"><dt class="param">ringName</dt><dd class="cmt"><p>the name of the ring.</p></dd><dt>returns</dt><dd class="cmt"><p>the node names.
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#allRings" data-isabs="false">
+      <a id="allRings():Iterable[String]"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">allRings</span>
+        
+        <span class="params">()</span><span class="result">: Iterable[String]</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Returns the names of the rings of the database.</p><div class="fullcomment"><div class="comment cmt"><p>Returns the names of the rings of the database.
+</p></div><dl class="paramcmts block"><dt>returns</dt><dd class="cmt"><p>the ring names.
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#allServers" data-isabs="false">
+      <a id="allServers():Iterable[String]"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">allServers</span>
+        
+        <span class="params">()</span><span class="result">: Iterable[String]</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Returns the names of all the servers of a database.</p><div class="fullcomment"><div class="comment cmt"><p>Returns the names of all the servers of a database.
+</p></div><dl class="paramcmts block"><dt>returns</dt><dd class="cmt"><p>the server names.
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#allTables" data-isabs="false">
+      <a id="allTables():Iterable[String]"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">allTables</span>
+        
+        <span class="params">()</span><span class="result">: Iterable[String]</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Returns the names of all the tables of the database.</p><div class="fullcomment"><div class="comment cmt"><p>Returns the names of all the tables of the database.
+</p></div><dl class="paramcmts block"><dt>returns</dt><dd class="cmt"><p>the table names.
+</p></dd></dl></div>
+    </li><li visbl="pub" name="scala.Any#asInstanceOf" data-isabs="false">
+      <a id="asInstanceOf[T0]:T0"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">asInstanceOf</span>
+        <span class="tparams">[<span name="T0">T0</span>]</span>
+        <span class="result">: T0</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#asyncTable" data-isabs="false">
+      <a id="asyncTable(String):AsyncTable"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">asyncTable</span>
+        
+        <span class="params">(<span name="tableName">tableName: String</span>)</span><span class="result">: <a name="com.persist.AsyncTable" class="extype" href="AsyncTable.html">AsyncTable</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Returns an asynchronous API for accessing a
+database table.</p><div class="fullcomment"><div class="comment cmt"><p>Returns an asynchronous API for accessing a
+database table.
+</p></div><dl class="paramcmts block"><dt class="param">tableName</dt><dd class="cmt"><p>The name of the table.</p></dd><dt>returns</dt><dd class="cmt"><p>The asynchronous API for the named table.
+</p></dd></dl></div>
+    </li><li visbl="prt" name="scala.AnyRef#clone" data-isabs="false">
+      <a id="clone():AnyRef"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">clone</span>
+        
+        <span class="params">()</span><span class="result">: AnyRef</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>protected[<a name="java.lang" class="extype" href="../../java/lang/package.html">lang</a>] </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">()</span>
+              
+        </dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#databaseInfo" data-isabs="false">
+      <a id="databaseInfo(JsonObject):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">databaseInfo</span>
+        
+        <span class="params">(<span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Returns information about a database.</p><div class="fullcomment"><div class="comment cmt"><p>Returns information about a database.
+</p></div><dl class="paramcmts block"><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;get=&quot;sc&quot;</b> if specified this method returns an object with requested fields
+     (State, Configuration).
+</li></ul></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#databaseName" data-isabs="false">
+      <a id="databaseName:String"></a>
+      <h4 class="signature">
+      <span class="kind">val</span>
+      <span class="symbol"> 
+        <span class="name">databaseName</span>
+        
+        <span class="result">: String</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">the name of the database.</p>
+    </li><li visbl="pub" name="com.persist.Database#deleteNodes" data-isabs="false">
+      <a id="deleteNodes(Json):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">deleteNodes</span>
+        
+        <span class="params">(<span name="config">config: Json</span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Deletes one or more nodes from the database.</p><div class="fullcomment"><div class="comment cmt"><p>Deletes one or more nodes from the database.
+The Json configuration specifies the names of the rings
+from which nodes are to be removed and for each ring the name
+of the nodes to be removed. Each ring must be
+left with at least one node.
+Once a node has been deleted, that node name may
+not be used for a new node in the same ring.
+</p></div><dl class="paramcmts block"><dt class="param">config</dt><dd class="cmt"><p>The configuration (see the Wiki).
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#deleteRings" data-isabs="false">
+      <a id="deleteRings(Json):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">deleteRings</span>
+        
+        <span class="params">(<span name="config">config: Json</span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Deletes one or more rings from the database.</p><div class="fullcomment"><div class="comment cmt"><p>Deletes one or more rings from the database.
+The Json configuration specifies the names of the rings
+to be removed. Every node of a specified ring is removed.
+There must be at least one ring left.
+Once a ring has been deleted, that ring name may
+not be used for a new ring in the same database.
+</p></div><dl class="paramcmts block"><dt class="param">config</dt><dd class="cmt"><p>The configuration (see the Wiki).
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#deleteTables" data-isabs="false">
+      <a id="deleteTables(Json):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">deleteTables</span>
+        
+        <span class="params">(<span name="config">config: Json</span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Deletes one or more tables from the database.</p><div class="fullcomment"><div class="comment cmt"><p>Deletes one or more tables from the database.
+The Json configuration specifies the names of the tables
+to be removed.
+Once a table has been deleted, that table name may
+not be used for a new table in the same database.
+</p></div><dl class="paramcmts block"><dt class="param">config</dt><dd class="cmt"><p>The configuration (see the Wiki).
+</p></dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#eq" data-isabs="false">
+      <a id="eq(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">eq</span>
+        
+        <span class="params">(<span name="arg0">arg0: AnyRef</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#equals" data-isabs="false">
+      <a id="equals(Any):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">equals</span>
+        
+        <span class="params">(<span name="arg0">arg0: <span name="scala.Any" class="extype">Any</span></span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li visbl="prt" name="scala.AnyRef#finalize" data-isabs="false">
+      <a id="finalize():Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">finalize</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>protected[<a name="java.lang" class="extype" href="../../java/lang/package.html">lang</a>] </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">()</span>
+              
+        </dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#getClass" data-isabs="false">
+      <a id="getClass():java.lang.Class[_]"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">getClass</span>
+        
+        <span class="params">()</span><span class="result">: java.lang.Class[_]</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#hashCode" data-isabs="false">
+      <a id="hashCode():Int"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">hashCode</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Int" class="extype">Int</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li visbl="pub" name="scala.Any#isInstanceOf" data-isabs="false">
+      <a id="isInstanceOf[T0]:Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">isInstanceOf</span>
+        <span class="tparams">[<span name="T0">T0</span>]</span>
+        <span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#monitor" data-isabs="false">
+      <a id="monitor(String):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">monitor</span>
+        
+        <span class="params">(<span name="tableName">tableName: String</span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Temporary debugging method
+</p>
+    </li><li visbl="pub" name="scala.AnyRef#ne" data-isabs="false">
+      <a id="ne(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">ne</span>
+        
+        <span class="params">(<span name="arg0">arg0: AnyRef</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#nodeInfo" data-isabs="false">
+      <a id="nodeInfo(String,String,JsonObject):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">nodeInfo</span>
+        
+        <span class="params">(<span name="ringName">ringName: String</span>, <span name="nodeName">nodeName: String</span>, <span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Returns information about a node.</p><div class="fullcomment"><div class="comment cmt"><p>Returns information about a node.
+</p></div><dl class="paramcmts block"><dt class="param">ringName</dt><dd class="cmt"><p>the name of the ring than contains the node.</p></dd><dt class="param">nodeName</dt><dd class="cmt"><p>the name of the node.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;get=&quot;hpfb&quot;</b> if specified this method returns an object with requested fields
+     (Host, Port, Forward: next node name, Back: prev node name).
+</li></ul></dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#notify" data-isabs="false">
+      <a id="notify():Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">notify</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#notifyAll" data-isabs="false">
+      <a id="notifyAll():Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">notifyAll</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#replaceNode" data-isabs="false">
+      <a id="replaceNode(String,String,Json):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">replaceNode</span>
+        
+        <span class="params">(<span name="ringName">ringName: String</span>, <span name="nodeName">nodeName: String</span>, <span name="config">config: Json</span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Replaces a (damaged or failing) node.</p><div class="fullcomment"><div class="comment cmt"><p>Replaces a (damaged or failing) node. Not currently implemented.
+</p></div><dl class="paramcmts block"><dt class="param">ringName</dt><dd class="cmt"><p>the name the ring.</p></dd><dt class="param">config</dt><dd class="cmt"><p>configuration for the new replacement node.
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#report" data-isabs="false">
+      <a id="report(String):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">report</span>
+        
+        <span class="params">(<span name="tableName">tableName: String</span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Temporary debugging method.</p>
+    </li><li visbl="pub" name="com.persist.Database#ringInfo" data-isabs="false">
+      <a id="ringInfo(String,JsonObject):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">ringInfo</span>
+        
+        <span class="params">(<span name="ringName">ringName: String</span>, <span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Returns information about a ring.</p><div class="fullcomment"><div class="comment cmt"><p>Returns information about a ring.
+</p></div><dl class="paramcmts block"><dt class="param">ringName</dt><dd class="cmt"><p>the name of the ring.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;get=&quot;s&quot;</b> if specified this method returns an object with requested fields
+     (Status).
+</li></ul></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#serverInfo" data-isabs="false">
+      <a id="serverInfo(String,JsonObject):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">serverInfo</span>
+        
+        <span class="params">(<span name="serverName">serverName: String</span>, <span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Returns information about a server.</p><div class="fullcomment"><div class="comment cmt"><p>Returns information about a server.
+</p></div><dl class="paramcmts block"><dt class="param">serverName</dt><dd class="cmt"><p>the name of the server.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;get=&quot;hp&quot;</b> if specified this method returns an object with requested fields
+     (Host, Port).
+</li></ul></dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#synchronized" data-isabs="false">
+      <a id="synchronized[T0](⇒ T0):T0"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">synchronized</span>
+        <span class="tparams">[<span name="T0">T0</span>]</span>
+        <span class="params">(<span name="arg0">arg0: ⇒ T0</span>)</span><span class="result">: T0</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#table" data-isabs="false">
+      <a id="table(String):Table"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">table</span>
+        
+        <span class="params">(<span name="tableName">tableName: String</span>)</span><span class="result">: <a name="com.persist.Table" class="extype" href="Table.html">Table</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Returns a synchronous API for accessing a
+database table.</p><div class="fullcomment"><div class="comment cmt"><p>Returns a synchronous API for accessing a
+database table.
+</p></div><dl class="paramcmts block"><dt class="param">tableName</dt><dd class="cmt"><p>The name of the table.</p></dd><dt>returns</dt><dd class="cmt"><p>The synchronous API for the named table.
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Database#tableInfo" data-isabs="false">
+      <a id="tableInfo(String,JsonObject):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">tableInfo</span>
+        
+        <span class="params">(<span name="tableName">tableName: String</span>, <span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Returns information about a table.</p><div class="fullcomment"><div class="comment cmt"><p>Returns information about a table.
+</p></div><dl class="paramcmts block"><dt class="param">tableName</dt><dd class="cmt"><p>the name of the table.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;get=&quot;rft&quot;</b> if specified this method returns an object with requested fields
+     (Readonly, From map-reduce, To map-reduce).
+</li></ul></dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#toString" data-isabs="false">
+      <a id="toString():String"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">toString</span>
+        
+        <span class="params">()</span><span class="result">: <span name="java.lang.String" class="extype">String</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#wait" data-isabs="false">
+      <a id="wait():Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">wait</span>
+        
+        <span class="params">()</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">()</span>
+              
+        </dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#wait" data-isabs="false">
+      <a id="wait(Long,Int):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">wait</span>
+        
+        <span class="params">(<span name="arg0">arg0: <span name="scala.Long" class="extype">Long</span></span>, <span name="arg1">arg1: <span name="scala.Int" class="extype">Int</span></span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">()</span>
+              
+        </dd></dl></div>
+    </li><li visbl="pub" name="scala.AnyRef#wait" data-isabs="false">
+      <a id="wait(Long):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">wait</span>
+        
+        <span class="params">(<span name="arg0">arg0: <span name="scala.Long" class="extype">Long</span></span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">()</span>
+              
+        </dd></dl></div>
+    </li></ol>
+            </div>
+
+        
+
+        <div name="scala.AnyRef" class="parent">
+              <h3>Inherited from AnyRef</h3>
+            </div><div name="scala.Any" class="parent">
+              <h3>Inherited from <span name="scala.Any" class="extype">Any</span></h3>
+            </div>
+
+      </div>
+      
+      <div id="tooltip"></div>
+      
+    </body>
+      </html>
