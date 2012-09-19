@@ -435,6 +435,8 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         if (get.contains("r")) {
           if (table.toMap.size > 0 || table.toReduce.size > 0) {
             result += ("r" -> true) // readOnly
+          } else {
+            result += ("r" -> false) 
           }
         }
         if (get.contains("f")) {
@@ -442,16 +444,16 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
             var f = emptyJsonObject
             if (table.fromMap.size > 0) {
               var a = emptyJsonArray
-              for ((from, map) <- table.fromMap) {
-                val map1 = jgetObject(map) + ("from" -> from)
+              for ((to, map) <- table.fromMap) {
+                val map1 = jgetObject(map) + ("to" -> to)
                 a = map1 +: a
               }
               f += ("map" -> a.reverse)
             }
             if (table.fromReduce.size > 0) {
               var a = emptyJsonArray
-              for ((from, red) <- table.fromReduce) {
-                val red1 = jgetObject(red) + ("from" -> from)
+              for ((to, red) <- table.fromReduce) {
+                val red1 = jgetObject(red) + ("to" -> to)
                 a = red1 +: a
               }
               f += ("reduce" -> a)
@@ -464,16 +466,16 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
             var t = emptyJsonObject
             if (table.toMap.size > 0) {
               var a = emptyJsonArray
-              for ((to, map) <- table.toMap) {
-                val map1 = jgetObject(map) + ("to" -> to)
+              for ((from, map) <- table.toMap) {
+                val map1 = jgetObject(map) + ("from" -> from)
                 a = map1 +: a
               }
               t += ("map" -> a.reverse)
             }
             if (table.toReduce.size > 0) {
               var a = emptyJsonArray
-              for ((to, red) <- table.toReduce) {
-                val red1 = jgetObject(red) + ("to" -> to)
+              for ((from, red) <- table.toReduce) {
+                val red1 = jgetObject(red) + ("from" -> from)
                 a = red1 +: a
               }
               t += ("reduce" -> a)

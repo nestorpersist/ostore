@@ -22,6 +22,7 @@ import com.vaadin.ui.Button.ClickListener
 import com.vaadin.terminal.Sizeable
 import com.vaadin.ui.themes._
 import com.vaadin.data.Property
+import JsonOps._
 
 private[persist] trait LayoutComponent { this: UIAssembly =>
   val top: Top
@@ -85,15 +86,14 @@ private[persist] trait LayoutComponent { this: UIAssembly =>
 
     def add(s: String) { list.addItem(s) }
 
-    def setName(name: String) {
+    def setName(name: String, hasAdd:Boolean) {
       if (name.contains(":")) {
         all.setCaption(name)
-        add.setVisible(false)
       } else {
         all.setCaption(name + "s")
-        add.setCaption("Add " + name)
-        add.setVisible(true)
+        add.setCaption("Add " + name ++ (if(name == "Node" || name == "Ring") "s" else ""))
       }
+      add.setVisible(hasAdd)
       up.setVisible(name == "Item" || name.startsWith("Tree:"))
       down.setVisible(name == "Item" || name.startsWith("Tree:"))
     }
@@ -117,7 +117,6 @@ private[persist] trait LayoutComponent { this: UIAssembly =>
     all.setSizeFull()
     all.getContent().setSizeFull()
     private val r1 = new VerticalLayout()
-    r1.setSizeFull()
     all.addComponent(r1)
     val databaseButtons = new CssLayout()
     r1.addComponent(databaseButtons)
@@ -133,23 +132,51 @@ private[persist] trait LayoutComponent { this: UIAssembly =>
     val status = new Label("")
     r1.addComponent(status)
 
+    val ro = new Label("")
+    r1.addComponent(ro)
+
+    val map = new TextArea("Map")
+    map.setSizeFull()
+    r1.addComponent(map)
+    map.setVisible(false)
+    
+    val reduce = new TextArea("Reduce")
+    reduce.setSizeFull()
+    r1.addComponent(reduce)
+    reduce.setVisible(false)
+
     val ta = new TextArea("Value")
     ta.setSizeFull()
     r1.addComponent(ta)
-    r1.setExpandRatio(ta, 1.0F)
     ta.setVisible(false)
 
     val vta = new TextArea("Vector Clock")
     vta.setSizeFull()
     r1.addComponent(vta)
-    r1.setExpandRatio(vta, 0.3f)
     vta.setVisible(false)
-
+    
     def setName(name: String) {
       all.setCaption(name)
     }
     def setStatus(stat: String) {
       status.setValue("Status: " + stat)
+    }
+    def setReadOnly(readOnly :Boolean, toinfo :Json) {
+      ro.setValue("ReadOnly: " + readOnly)
+      val info = jgetObject(toinfo)
+      if (readOnly) {
+        if (info.get("map") != None) {
+          map.setVisible(true)
+          map.setReadOnly(false)
+          map.setValue(Pretty(jget(info,"map")))
+          map.setReadOnly(true)
+        }
+        if (info.get("reduce") != None)
+          reduce.setVisible(true)
+          reduce.setReadOnly(false)
+          reduce.setValue(Pretty(jget(info,"reduce")))
+          reduce.setReadOnly(true)
+      }
     }
     def setMode(mode: String) {
       databaseButtons.setVisible(mode == "database")
@@ -158,6 +185,9 @@ private[persist] trait LayoutComponent { this: UIAssembly =>
       itemButtons.setVisible(mode == "item")
       ringButtons.setVisible(mode == "ring")
       nodeButtons.setVisible(mode == "node")
+      ro.setVisible(mode == "table")
+      map.setVisible(false)
+      reduce.setVisible(false)
       ta.setVisible(mode == "item")
       vta.setVisible(mode == "item")
     }

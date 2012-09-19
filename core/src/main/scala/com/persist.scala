@@ -24,8 +24,8 @@ package com
  * In addition to this ScalaDoc you should also check out the following 
  * documentation.
  * <ul>
- * <li><a href="https://github.com/nestorpersist/ostore">Source Code</a></li>
- * <li><a href="https://github.com/nestorpersist/ostore/wiki">Documentation: Wiki</a></li>
+ * <li><a href="https://github.com/nestorpersist/ostore" target="_top">Source Code</a></li>
+ * <li><a href="https://github.com/nestorpersist/ostore/wiki" target="_top">Documentation: Wiki</a></li>
  * </ul>
  */
 package object persist {

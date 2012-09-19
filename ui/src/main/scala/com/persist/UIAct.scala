@@ -29,6 +29,7 @@ private[persist] trait ActComponent { this: UIAssembly =>
 
     // At least one of lowKey highKey should always be null
     var tableName = ""
+    var tableReadOnly = false
     private var hasBefore = false
     //private var lowKey: Json = null
     private var firstKey: Option[JsonKey] = None
@@ -89,7 +90,7 @@ private[persist] trait ActComponent { this: UIAssembly =>
     def toDatabases() {
       val databases = client.getDatabases()
       setHome()
-      left.setName("Database")
+      left.setName("Database", true)
       left.setAct((databaseName: String) => {
         if (databaseName != null) {
           toDatabase(databaseName)
@@ -107,7 +108,7 @@ private[persist] trait ActComponent { this: UIAssembly =>
     def toTables(databaseName: String) {
       val tables = client.getTables(databaseName)
       setDatabase(databaseName)
-      left.setName("Table")
+      left.setName("Table", true)
       left.setAct((tableName: String) => {
         if (tableName != null) {
           toTable(databaseName, tableName)
@@ -125,13 +126,15 @@ private[persist] trait ActComponent { this: UIAssembly =>
     def toRings(databaseName: String) {
       val rings = client.getRings(databaseName)
       setDatabase(databaseName)
-      left.setName("Ring")
+      left.setName("Ring", true)
       left.setAct((ringName: String) => {
         if (ringName != null) {
           toRing(databaseName, ringName)
         }
       },
-        _ => {})
+        _ => {
+          FileWindows.change(true, databaseName, "Ring", all.all, client, () => toRings(databaseName))
+        })
       left.clear()
       for (ring <- jgetArray(rings)) {
         left.add(jgetString(ring))
@@ -141,7 +144,7 @@ private[persist] trait ActComponent { this: UIAssembly =>
     def toServers(databaseName: String) {
       val servers = client.getServers(databaseName)
       setDatabase(databaseName)
-      left.setName("Server")
+      left.setName("Server", false)
       left.setAct((serverName: String) => {
         if (serverName != null) {
           toServer(databaseName, serverName)
@@ -164,7 +167,7 @@ private[persist] trait ActComponent { this: UIAssembly =>
       firstKey = keys.headOption
       lastKey = keys.lastOption
       setTable(databaseName, tableName)
-      left.setName("Item")
+      left.setName("Item", ! tableReadOnly)
       left.setUpDown(
         if (hasUp) { _ => { toKeys(databaseName, tableName, "up") } } else { null },
         if (hasDown) { _ => { toKeys(databaseName, tableName, "down") } } else { null })
@@ -194,7 +197,7 @@ private[persist] trait ActComponent { this: UIAssembly =>
       firstKey = keys.headOption
       lastKey = keys.lastOption
       setTable(databaseName, tableName)
-      left.setName("Tree:" + prefixs)
+      left.setName("Tree:" + prefixs, false)
       left.setUpDown(
         if (hasUp) { _ => { toTree(databaseName, tableName, prefix, "up") } } else { null },
         if (hasDown) { _ => { toTree(databaseName, tableName, prefix, "down") } } else { null })
@@ -238,13 +241,15 @@ private[persist] trait ActComponent { this: UIAssembly =>
     def toNodes(databaseName: String, ringName: String) {
       val nodes = client.getNodes(databaseName, ringName)
       setRing(databaseName, ringName)
-      left.setName("Node")
+      left.setName("Node", true)
       left.setAct((nodeName: String) => {
         if (nodeName != null) {
           toNode(databaseName, ringName, nodeName)
         }
       },
-        _ => {})
+        _ => {
+          FileWindows.change(true, databaseName, "Node", all.all, client, () => toNodes(databaseName,ringName))
+        })
       left.clear()
       for (node <- jgetArray(nodes)) {
         left.add(jgetString(node))
@@ -267,10 +272,16 @@ private[persist] trait ActComponent { this: UIAssembly =>
     }
 
     def toTable(databaseName: String, tableName: String) {
+      val info = client.getTableInfo(databaseName, tableName)
+      val ro = jgetBoolean(info, "r")
+      val t = jgetObject(info, "t")
+      buttons.tableUpload.setVisible(! ro)
       this.databaseName = databaseName
       this.tableName = tableName
-      right.setName("Table: " + tableName)
+      this.tableReadOnly = ro
       right.setMode("table")
+      right.setReadOnly(ro, t)
+      right.setName("Table: " + tableName)
     }
 
     def toRing(databaseName: String, ringName: String) {
@@ -311,9 +322,11 @@ private[persist] trait ActComponent { this: UIAssembly =>
       right.ta.setReadOnly(true)
 
       right.vta.setReadOnly(false)
-      //right.vta.setValue(Pretty(cv))
       right.vta.setValue(vcToString(cv))
       right.vta.setReadOnly(true)
+      
+      buttons.editItem.setVisible(! tableReadOnly)
+      buttons.deleteItem.setVisible(! tableReadOnly)
     }
 
     def toNode(databaseName: String, ringName: String, nodeName: String) {

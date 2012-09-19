@@ -32,16 +32,17 @@ private[persist] trait EditComponent { this: UIAssembly =>
 
   class EditWindow {
     private def checkJson(err: Label, s: String, isKey: Boolean): Option[Json] = {
+      val where = if (isKey) "Key" else "Value"
       err.setValue("")
       try {
         Some(Json(s))
       } catch {
         case ex: JsonParseException => {
-          err.setValue(ex.getMessage())
+          err.setValue(where + " " + ex.shortString())
           None
         }
         case ex1: Exception => {
-          err.setValue(ex1.toString())
+          err.setValue(where + " " + ex1.toString())
           None
         }
       }
@@ -300,12 +301,11 @@ private[persist] trait EditComponent { this: UIAssembly =>
             client.addTable(databaseName, n)
             act.toTables(databaseName)
           }
-          case None =>
+          case None => println("NONE")
         }
 
       }
       getName(add, w, "Add a New Table", "Table Name")
     }
-
   }
 }

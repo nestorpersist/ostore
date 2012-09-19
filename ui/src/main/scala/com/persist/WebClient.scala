@@ -78,7 +78,6 @@ class WebClient(host:String, port:Int) {
     val e = new StringEntity("""{"cmd":"start"}""")
     post.setEntity(e)
     val response = client.execute(post)
-    //println("response:"+response)
     val e1 = response.getEntity()
     e1.consumeContent()
   }
@@ -88,18 +87,16 @@ class WebClient(host:String, port:Int) {
     val e = new StringEntity("""{"cmd":"stop"}""")
     post.setEntity(e)
     val response = client.execute(post)
-    //println("response:"+response)
     val e1 = response.getEntity()
     e1.consumeContent()
   }
 
-  def createDatabase(databaseName: String, config: Json) {
+  def configAct(cmd:String, databaseName: String, config: Json) {
     val post = new HttpPost("http://" + server + "/" + databaseName)
-    val request = JsonObject("cmd" -> "create", "config" -> config)
+    val request = JsonObject("cmd" -> cmd, "config" -> config)
     val e = new StringEntity(Compact(request))
     post.setEntity(e)
     val response = client.execute(post)
-    //println("response:"+response)
     val e1 = response.getEntity()
     e1.consumeContent()
   }
@@ -109,7 +106,6 @@ class WebClient(host:String, port:Int) {
     val e = new StringEntity("""{"cmd":"delete"}""")
     post.setEntity(e)
     val response = client.execute(post)
-    //println("response:"+response)
     val e1 = response.getEntity()
     e1.consumeContent()
   }
@@ -131,6 +127,14 @@ class WebClient(host:String, port:Int) {
 
   def getTables(databaseName: String): Json = {
     val get = new HttpGet("http://" + server + "/" + databaseName)
+    val response = client.execute(get)
+    val e1 = response.getEntity()
+    val info = getContent(e1)
+    Json(info)
+  }
+  
+  def getTableInfo(databaseName: String, tableName:String):Json = {
+    val get = new HttpGet("http://" + server + "/" + databaseName +"/" + tableName + "?get=rtf")
     val response = client.execute(get)
     val e1 = response.getEntity()
     val info = getContent(e1)
@@ -236,7 +240,7 @@ class WebClient(host:String, port:Int) {
   def addTable(databaseName: String, tableName: String) {
     val del = new HttpPost("http://" + server + "/" + databaseName)
     val tableConfig = JsonObject("name" -> tableName)
-    val config = JsonObject("tables" -> tableConfig)
+    val config = JsonObject("tables" -> JsonArray(tableConfig))
     val request = JsonObject("cmd" -> "addTables", "config" -> config)
     val e = new StringEntity(Compact(request))
     del.setEntity(e)
@@ -249,7 +253,7 @@ class WebClient(host:String, port:Int) {
   def deleteTable(databaseName: String, tableName: String) {
     val del = new HttpPost("http://" + server + "/" + databaseName)
     val tableConfig = JsonObject("name" -> tableName)
-    val config = JsonObject("tables" -> tableConfig)
+    val config = JsonObject("tables" -> JsonArray(tableConfig))
     val request = JsonObject("cmd" -> "deleteTables", "config" -> config)
     val e = new StringEntity(Compact(request))
     del.setEntity(e)

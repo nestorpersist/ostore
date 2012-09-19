@@ -141,8 +141,8 @@ private[persist] trait ButtonsComponent { this: UIAssembly =>
         act.toTables(act.databaseName)
       }
     })
-    val t4 = new Button("Upload")
-    t4.addListener(new ClickListener {
+    val tableUpload = new Button("Upload")
+    tableUpload.addListener(new ClickListener {
       def buttonClick(e: Button#ClickEvent) = {
         FileWindows.load(all.all, act.databaseName, act.tableName, client)
       }
@@ -164,12 +164,12 @@ private[persist] trait ButtonsComponent { this: UIAssembly =>
     right.tableButtons.addComponent(t1)
     right.tableButtons.addComponent(t2)
     right.tableButtons.addComponent(t3)
-    right.tableButtons.addComponent(t4)
+    right.tableButtons.addComponent(tableUpload)
     right.tableButtons.addComponent(t5)
 
     // Right Item Buttons
-    val i1 = new Button("Delete Item")
-    i1.addListener(new ClickListener {
+    val deleteItem = new Button("Delete Item")
+    deleteItem.addListener(new ClickListener {
       def buttonClick(e: Button#ClickEvent) = {
         def finish(delete: Boolean) = {
           if (delete) {
@@ -185,14 +185,14 @@ private[persist] trait ButtonsComponent { this: UIAssembly =>
         }
       }
     })
-    val i2 = new Button("Edit Item")
-    i2.addListener(new ClickListener {
+    val editItem = new Button("Edit Item")
+    editItem.addListener(new ClickListener {
       def buttonClick(e: Button#ClickEvent) = {
         editWindow.edit(all.all, act.databaseName, act.tableName, act.key, act.cv, act.itemVal, client)
       }
     })
-    right.itemButtons.addComponent(i1)
-    right.itemButtons.addComponent(i2)
+    right.itemButtons.addComponent(deleteItem)
+    right.itemButtons.addComponent(editItem)
 
     // Right Ring Buttons
     val r1 = new Button("Show Nodes")
@@ -201,18 +201,20 @@ private[persist] trait ButtonsComponent { this: UIAssembly =>
         act.toNodes(act.databaseName, act.ringName)
       }
     })
-    val r2 = new Button("Delete Ring")
+    val r2 = new Button("Delete Rings")
     r2.addListener(new ClickListener {
       def buttonClick(e: Button#ClickEvent) = {
+          FileWindows.change(false, act.databaseName, "Ring", all.all, client, () => act.toRings(act.databaseName))
       }
     })
     right.ringButtons.addComponent(r1)
     right.ringButtons.addComponent(r2)
 
     // Right Node Buttons
-    val n1 = new Button("Delete Node")
+    val n1 = new Button("Delete Nodes")
     n1.addListener(new ClickListener {
       def buttonClick(e: Button#ClickEvent) = {
+          FileWindows.change(false, act.databaseName, "Node", all.all, client, () => act.toNodes(act.databaseName,act.ringName))
       }
     })
     right.nodeButtons.addComponent(n1)

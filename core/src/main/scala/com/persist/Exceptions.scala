@@ -61,8 +61,12 @@ object Exceptions {
     /** 
      * There is a special version of toString for JSON parse errors.
      */
+    def shortString() = {
+      "[" + jgetInt(info, "line") + "," + jgetInt(info, "char") + "] " + jgetString(info, "msg")
+      
+    }
     override def toString() = {
-      "[" + jgetInt(info, "line") + "," + jgetInt(info, "char") + "] " + jgetString(info, "msg") + " (" + jgetString(info, "input") + ")"
+      shortString + " (" + jgetString(info, "input") + ")"
     }
   }
 

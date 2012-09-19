@@ -241,8 +241,8 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
                 val server = info.config.rings(ringName).nodes(bal.nextNodeName).server
                 val host = server.host
                 val port = server.port
-                val response = JsonObject("low" -> info.low, "high" -> info.high, "next" -> bal.nextNodeName,
-                  "host" -> host, "port" -> port)
+                val response = JsonObject("low" -> info.low, "high" -> info.high, "next" -> bal.nextNodeName)
+                //  "host" -> host, "port" -> port)
                 (Codes.Handoff, Compact(response))
               }
             }

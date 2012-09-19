@@ -1,0 +1,10 @@
+LOG OF CHANGES
+
+9/19/2012 UI better error handling for json
+9/18/2012 UI fixed Add Table and Delete Table bugs
+9/18/2012 UI (add and delete)(node and ring)
+9/17/2012 Database configuration: default host and port spec removed.
+9/17/2012 Internal protocol: handoff no longer includes host and port
+9/17/2012 UI tables now display Readonly, Map, and Reduce info
+9/17/2012 UI readonly(map & reduce) tables can no longer be modified
+9/17/2012 Fixed bug in Database.tableInfo method

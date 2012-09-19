@@ -140,7 +140,7 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       if (add) {
         newRing(ringName)
       }
-      println("ADDRING:"+ringName+":"+Compact(nodes))
+      //println("ADDRING:"+ringName+":"+Compact(nodes))
       val f0 = send ? (0, "addRing", ringName, nodes)
       Await.result(f0, 5 seconds)
       for ((ringName1, ringInfo) <- rings) {

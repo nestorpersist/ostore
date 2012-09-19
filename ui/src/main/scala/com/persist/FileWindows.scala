@@ -43,7 +43,6 @@ object FileWindows {
     var ireader: InputStreamReader = null
 
     def uploadStarted(event: Upload.StartedEvent) {
-      //println("*1")
     }
 
     def receiveUpload(filename: String, MIMEType: String): OutputStream = {
@@ -52,15 +51,12 @@ object FileWindows {
       val outStream = new PipedOutputStream(inStream)
       ireader = new InputStreamReader(inStream)
       reader = new BufferedReader(new InputStreamReader(inStream))
-      //println("*2")
       outStream
     }
 
     def uploadSucceeded(event: Upload.SucceededEvent) {
       // TODO read should run in a separate thread with pipe of bounded size
-      //println("*3")
       act.read(reader)
-      //println("*4")
     }
 
     def uploadFailed(event: Upload.FailedEvent) {
@@ -150,7 +146,6 @@ object FileWindows {
         }
       }
       var config = b.toString()
-      //println(config)
       val jconfig = try {
         Json(config)
       } catch {
@@ -160,7 +155,36 @@ object FileWindows {
           return
         }
       }
-      client.createDatabase(database, jconfig)
+      client.configAct("create", database, jconfig)
+      reader.close()
+      exit()
+    }
+  }
+  
+  class Change(add:Boolean, database:String, kind: String, error: Label, client: WebClient, exit: () => Unit) extends Act {
+    def read(reader: BufferedReader): Unit = {
+      var done = false
+      var b = new StringBuilder()
+      while (!done) {
+        val s = reader.readLine()
+        if (s == null) {
+          done = true
+        } else {
+          b.append(s + "\n")
+        }
+      }
+      var config = b.toString()
+      val jconfig = try {
+        Json(config)
+      } catch {
+        case ex: Exception => {
+          val msg = ex.getMessage()
+          error.setValue(msg)
+          return
+        }
+      }
+      val cmd = (if (add) "add" else "delete")++(kind ++ "s")
+      client.configAct(cmd, database, jconfig)
       reader.close()
       exit()
     }
@@ -241,6 +265,58 @@ object FileWindows {
 
     val upload = new Upload("Database Configuration", r)
     upload.setButtonCaption("Create Database")
+    upload.addListener(r.asInstanceOf[Upload.SucceededListener])
+    upload.addListener(r.asInstanceOf[Upload.FailedListener])
+    upload.addListener(r.asInstanceOf[Upload.StartedListener])
+    buttons.addComponent(upload)
+
+    val x = new Label("")
+    buttons.addComponent(x)
+    buttons.setExpandRatio(x, 1.0f)
+
+    val cancel = new Button("Cancel")
+    buttons.addComponent(cancel)
+    c.addComponent(buttons)
+
+    w.addWindow(fileWin)
+
+    cancel.addListener(new ClickListener {
+      def buttonClick(e: Button#ClickEvent) = {
+        w.removeWindow(fileWin)
+      }
+    })
+  }
+  
+  
+  def change(add:Boolean, database:String, kind:String, w: Window, client: WebClient, act: () => Unit) {
+    val fileWin = new Window("Create Database")
+    fileWin.getContent().setSizeFull()
+    fileWin.setReadOnly(true)
+    val c = new VerticalLayout()
+    fileWin.addComponent(c)
+    val h1 = w.getHeight()
+    val h1u = w.getHeightUnits()
+    val w1 = w.getWidth()
+    val w1u = w.getWidthUnits()
+    fileWin.setPositionX(100)
+    fileWin.setPositionY(100)
+    fileWin.setHeight(h1 * 0.6f, h1u)
+    fileWin.setWidth(w1 * 0.6f, w1u)
+
+    val buttons = new HorizontalLayout()
+    buttons.setSizeFull()
+
+    //val ta = new TextField("Database Name")
+    //c.addComponent(ta)
+
+    val error = new Label("")
+    c.addComponent(error)
+
+    val r = new Receiver(new Change(add, database, kind, error, client, () => { w.removeWindow(fileWin); act() }))
+
+    val upload = new Upload(kind + "s Configuration", r)
+    val label = if (add) "Add" else "Delete"
+    upload.setButtonCaption(label + " " + kind + "s")
     upload.addListener(r.asInstanceOf[Upload.SucceededListener])
     upload.addListener(r.asInstanceOf[Upload.FailedListener])
     upload.addListener(r.asInstanceOf[Upload.StartedListener])

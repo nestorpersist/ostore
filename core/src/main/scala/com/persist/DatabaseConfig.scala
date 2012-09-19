@@ -128,23 +128,19 @@ private[persist] object DatabaseConfig {
     var servers = Map[String, ServerConfig]()
     // ringName -> RingConfig
     var rings = Map[String, RingConfig]()
-    val defaults = jget(config, "defaults")
-    val defaultHost = jgetString(defaults, "host")
-    val defaultPort = jgetInt(defaults, "port")
     for (ring <- jgetArray(config, "rings")) {
       val ringName = jgetString(ring, "name")
       var ringMap = Map[String, NodeConfig]()
       var ringSeq = List[String]()
-      //var pos: Int = 0
       val nodes = jgetArray(ring, "nodes")
       for ((node, pos) <- nodes.zipWithIndex) {
         val name = jgetString(node, "name")
         val host = jget(node, "host") match {
-          case null => defaultHost
+          case null => "127.0.0.1"
           case n: Json => jgetString(n)
         }
         val port = jget(node, "port") match {
-          case null => defaultPort
+          case null => 8011
           case n: Int => n
         }
         val serverConfig = servers.get(host + ":" + port) match {
@@ -155,7 +151,6 @@ private[persist] object DatabaseConfig {
             sconf
           }
         }
-        //val serverConfig = new ServerConfig(host,port)
         val nodeConfig = new NodeConfig(ringName, name, serverConfig, pos)
 
         val nodeName = nodeConfig.name
