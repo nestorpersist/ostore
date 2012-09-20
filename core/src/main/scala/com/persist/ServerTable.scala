@@ -25,7 +25,7 @@ import akka.util.duration._
 import Exceptions._
 import Codes.emptyResponse
 
-private[persist] trait ServerTableAssembly extends ServerTableMapReduceComponent with ServerTableSyncComponent
+private[persist] trait ServerTableAssembly extends ServerTableMapComponent with ServerTableReduceComponent with ServerTableSyncComponent
   with ServerTableBalanceComponent with ServerTableOpsComponent with ServerTableInfoComponent with ServerTableBackgroundComponent
 
 private[persist] class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
@@ -35,7 +35,8 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
     val info = check(new ServerTableInfo(databaseName, ringName, nodeName, tableName,
       initialConfig, send, store, monitor))
     val ops = check(new ServerTableOps(context.system))
-    val mr = check(new ServerTableMapReduce)
+    val map = check(new ServerTableMap)
+    val reduce = check(new ServerTableReduce)
     val sync = check(new ServerTableSync)
     val bal = check(new ServerTableBalance(context.system))
     val back = check(new ServerTableBackground)
@@ -43,7 +44,8 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
 
   val info = all.info
   val ops = all.ops
-  val mr = all.mr
+  val map = all.map
+  val reduce = all.reduce
   val bal = all.bal
   val sync = all.sync
   val back = all.back
@@ -70,17 +72,17 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
     false
   }
 
-  def makeArray(low: String, high: String): Json = {
+  def makeArray(store:StoreTable, low: String, high: String, options:JsonObject): Json = {
     var v = JsonArray()
-    for (s <- info.range(low, high, bal.singleNode)) {
+    for (s <- info.range(store, low, high, bal.singleNode, options)) {
       var v1 = JsonArray()
       v1 = keyDecode(s) +: v1
-      val meta = info.storeTable.getMeta(s) match {
+      val meta = store.getMeta(s) match {
         case Some(m: String) => Json(m)
         case None => JsonObject()
       }
       v1 = meta +: v1
-      val v2 = info.storeTable.get(s) match {
+      val v2 = store.get(s) match {
         case Some(v1: String) => Json(v1)
         case None => null
       }
@@ -91,10 +93,18 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
   }
 
   def report(): (String, Any) = {
-    var r = JsonObject("low" -> keyDecode(info.low), "high" -> keyDecode(info.high), "vals" -> makeArray(info.low, info.high))
+    var r = JsonObject("low" -> keyDecode(info.low), 
+        "high" -> keyDecode(info.high), "vals" -> makeArray(info.storeTable,info.low, info.high, emptyJsonObject))
     if (info.high != bal.nextLow) {
       r = r + ("nextLow" -> keyDecode(bal.nextLow))
-      r = r + ("transit:" -> makeArray(info.high, bal.nextLow))
+      r = r + ("transit:" -> makeArray(info.storeTable, info.high, bal.nextLow, emptyJsonObject))
+    }
+    if (map.prefixes.size > 0) {
+      var prefixes = JsonObject()
+      for ((name,pinfo)<-map.prefixes) {
+        prefixes += (name -> makeArray(pinfo.store, info.low,info.high,JsonObject("prefixtab"->name)))
+      }
+      r += ("prefixes" -> prefixes)
     }
     (Codes.Ok, Compact(r))
   }
@@ -102,11 +112,11 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
   def doBasicCommand(kind: String, key: String, value: Any): (String, Any) = {
     (kind, value) match {
       case ("map", (prefix: String, meta: String, v: String)) => {
-        val (code, result) = mr.map(key, prefix, meta, v)
+        val (code, result) = map.map(key, prefix, meta, v)
         (code, result)
       }
       case ("reduce", (node: String, item: String, t: Long)) => {
-        val (code, result) = mr.reduce(key, node, item, t)
+        val (code, result) = reduce.reduce(key, node, item, t)
         (code, result)
       }
       case ("sync", (oldcv: String, oldv: String, cv: String, v: String)) => {
@@ -174,13 +184,15 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
         sender ! Codes.Ok
       }
       case ("stop2") => {
-        mr.close
+        map.close
+        reduce.close
         info.storeTable.put("!clean", "true")
         info.storeTable.close()
         sender ! Codes.Ok
       }
       case ("delete2") => {
-        mr.delete
+        map.delete
+        reduce.delete
         info.storeTable.delete()
         sender ! Codes.Ok
 

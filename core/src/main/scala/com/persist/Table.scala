@@ -37,7 +37,7 @@ private object SyncAllItems {
 }
 
 private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: JsonObject) extends Iterable[Json] {
-  
+
   // TODO fix so only 1 wait for entire loop
   // This has fewer waits that using the Iterator
   override def foreach[T](body: Json => T) = {
@@ -58,7 +58,7 @@ private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: J
     var f = asyncClient.all(options)
     var r = Await.result(f, 20 seconds)
     def hasNext = r != None
-    def next():Json = {
+    def next(): Json = {
       r match {
         case Some(item) => {
           val result = item.value
@@ -68,7 +68,7 @@ private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: J
         }
         case None => throw RequestException("No next item")
       }
-      
+
     }
   }
   def iterator = I()
@@ -77,11 +77,11 @@ private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: J
 /**
  * This is the synchronous interface to OStore tables.
  * Instances of this class are created by the [[com.persist.Database]] table method.
- * 
+ *
  * @param databaseName the name of the database.
- * @param tableName the name of the table. 
+ * @param tableName the name of the table.
  */
-class Table private[persist] (val databaseName:String, val tableName: String, asyncClient:AsyncTable) {
+class Table private[persist] (val databaseName: String, val tableName: String, asyncClient: AsyncTable) {
   // TODO pass in config rather than default to first ring
   // TODO option to get config from remote server
 
@@ -159,9 +159,9 @@ class Table private[persist] (val databaseName:String, val tableName: String, as
     val f1 = asyncClient.delete(key, options)
     Await.result(f1, 5 seconds)
   }
-      
+
   /**
-   * 
+   *
    * Provides optimistic concurrency control.
    * Deletes the item only if its vector clock on the server matches
    * the vector clock passed in.
@@ -179,7 +179,7 @@ class Table private[persist] (val databaseName:String, val tableName: String, as
    *  clock did not match).
    *
    */
-  def conditionalDelete(key: JsonKey, vectorClock:Json, options: JsonObject = emptyJsonObject): Boolean = {
+  def conditionalDelete(key: JsonKey, vectorClock: Json, options: JsonObject = emptyJsonObject): Boolean = {
     val f1 = asyncClient.conditionalDelete(key, vectorClock, options)
     Await.result(f1, 5 seconds)
   }
@@ -193,6 +193,7 @@ class Table private[persist] (val databaseName:String, val tableName: String, as
    *      (Key, Value, vector Clock, Deleted, Expires time).
    *  - '''"r"=n''' read from at least n rings before returning. Default is 1.
    *  - '''"ring"="ringName"''' get from this ring.
+   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table
    *
    * @return None if there is no item with that key, or Some(X) if the item exists.
    * X will be the value of the item if the get option is not specified;
@@ -229,8 +230,9 @@ class Table private[persist] (val databaseName:String, val tableName: String, as
    *  This option permits trees (where keys are arrays that represents paths) to be traversed.
    *  - '''"includeparent"=true''' if true, any key equal to the parent is also included.
    *  If false, any key equal to the parent is not included. Default is false.
-      *  - '''"ring"="ringName"''' get items from this ring.
-*
+   *  - '''"ring"="ringName"''' get items from this ring.
+   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table
+   *
    *  @return an iterable object.
    *
    */

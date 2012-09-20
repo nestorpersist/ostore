@@ -325,7 +325,6 @@ private[persist] class RestClient(config:Json) extends HttpAction {
       val c = jgetInt(options, "count")
       if (c == 0) { 30 } else { c }
     }
-
     val all = database.asyncTable(tableName).all(options - "count")
     if (count == 0) {
       Promise.successful(Some(emptyJsonArray))
@@ -366,7 +365,7 @@ private[persist] class RestClient(config:Json) extends HttpAction {
     if (method == "post") {
       databaseAct(databaseName, input)
     } else {
-      val get = jgetString(options, "get")
+      val info = jgetBoolean(options,"info")
       val rings = jgetBoolean(options, "rings")
       val servers = jgetBoolean(options, "servers")
       val check = JsonObject("skipCheck" -> true)
@@ -376,8 +375,8 @@ private[persist] class RestClient(config:Json) extends HttpAction {
       } else if (servers) {
         val database = client.database(databaseName, check)
         listServers(database)
-      } else if (get != "") {
-        getDatabaseInfo(databaseName, options)
+      } else if (info) {
+        getDatabaseInfo(databaseName, options - "info")
       } else {
         // list tables
         val database = client.database(databaseName, check)
@@ -391,16 +390,16 @@ private[persist] class RestClient(config:Json) extends HttpAction {
     val numParts = parts.size
     if (parts(0) == "server") {
       val sname = name.substring(parts(0).size + 1)
-      val get = jgetString(options, "get")
-      if (get != "") {
-        getServerInfo(database, sname, options)
+      val info = jgetBoolean(options, "info")
+      if (info) {
+        getServerInfo(database, sname, options - "info")
       } else {
         Promise.failed(RequestException("bad cmd"))
       }
     } else if (parts(0) == "ring" && numParts == 2) {
-      val get = jgetString(options, "get")
-      if (get != "") {
-        getRingInfo(database, parts(1), options)
+      val info = jgetBoolean("info")
+      if (info) {
+        getRingInfo(database, parts(1), options - "info")
       } else {
         val ringName = parts(1)
         listNodes(database, ringName)
@@ -410,13 +409,13 @@ private[persist] class RestClient(config:Json) extends HttpAction {
       val isMonitor = jgetBoolean(options, "monitor")
       val isReport = jgetBoolean(options, "report")
       val searchString = jgetString(options, "search")
-      val get = jgetString(options, "get")
+      val info = jgetBoolean(options, "info")
       if (isMonitor) {
         monitor(database, tableName)
       } else if (isReport) {
         report(database, tableName)
-      } else if (get != "") {
-        getTableInfo(database, tableName, options)
+      } else if (info) {
+        getTableInfo(database, tableName, options - "info")
       } else if (searchString != "") {
         // Full text search test code
         search(database, tableName, searchString)

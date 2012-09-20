@@ -211,6 +211,7 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
    *      (Key, Value, vector Clock, Deleted, Expires time).
    *  - '''"r"=n''' read from at least n rings before returning. Default is 1.
    *  - '''"ring"="ringName"''' get from this ring.
+   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table
    *
    * @return A future that upon completion will have value
    * None if there is no item with that key, or Some(X) if the item exists.
@@ -261,6 +262,7 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
    *  This option permits trees (where keys are arrays that represents paths) to be traversed.
    *  - '''"includeparent"=true''' if true, any key equal to the parent is also included.
    *  If false, any key equal to the parent is not included. Default is false.
+   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table
    *
    *  @return a future for the first item (if any).
    *  The value of that future upon completion will be either
@@ -347,7 +349,12 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
 
     jgetString(options, "get") match {
       case "" =>
-      case s => options1 = options1 + ("get" -> s)
+      case s => options1 += ("get" -> s)
+    }
+
+    jgetString(options, "prefixtab") match {
+      case "" =>
+      case s => options1 += ("prefixtab" -> s)
     }
 
     val ni = if (isReverse) {

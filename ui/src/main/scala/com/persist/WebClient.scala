@@ -68,7 +68,7 @@ class WebClient(host:String, port:Int) {
   }
 
   def getDatabaseStatus(databaseName: String): String = {
-    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "?get=s")).mkString
+    val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "?info&get=s")).mkString
     val jinfo = Json(info)
     jgetString(jinfo, "s")
   }
@@ -134,7 +134,7 @@ class WebClient(host:String, port:Int) {
   }
   
   def getTableInfo(databaseName: String, tableName:String):Json = {
-    val get = new HttpGet("http://" + server + "/" + databaseName +"/" + tableName + "?get=rtf")
+    val get = new HttpGet("http://" + server + "/" + databaseName +"/" + tableName + "?info&get=rtf")
     val response = client.execute(get)
     val e1 = response.getEntity()
     val info = getContent(e1)

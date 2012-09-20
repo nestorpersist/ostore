@@ -81,7 +81,8 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
             case None => "null"
           }
           info.storeTable.putBoth(key, meta, v)
-          mr.doMR(key, oldMetaS, value2, Compact(cv1), v)
+          map.doMap(key, oldMetaS, value2, Compact(cv1), v)
+          reduce.doReduce(key, oldMetaS, value2, Compact(cv1), v)
         }
         case 'I' => {
           // conflict detected
@@ -91,7 +92,8 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
           val value = reconcile(Json(v), Json(value2))
           info.storeTable.putBoth(key, Compact(cv), Compact(value))
           toRings(key, oldMetaS, value2, Compact(cv), Compact(value))
-          mr.doMR(key, oldMetaS, value2, Compact(cv), Compact(value))
+          map.doMap(key, oldMetaS, value2, Compact(cv), Compact(value))
+          reduce.doReduce(key, oldMetaS, value2, Compact(cv), Compact(value))
         }
       }
       (Codes.Ok, emptyResponse)

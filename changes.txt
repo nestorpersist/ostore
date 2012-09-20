@@ -1,5 +1,10 @@
 LOG OF CHANGES
 
+9/20/2012 report debug method now also dumps prefix table values
+9/20/2012 REST api added info option (to avoid ambiguity)
+9/20/2012 get and all methods now have a prefixtab option
+9/20/2012 Split ServerTableMapReduce into ServerTableMap and ServerTableReduce
+
 9/19/2012 UI better error handling for json
 9/18/2012 UI fixed Add Table and Delete Table bugs
 9/18/2012 UI (add and delete)(node and ring)

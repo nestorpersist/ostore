@@ -87,15 +87,24 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
 
     private def get1(key: String, os: String): (String, Any) = {
       val options = Json(os)
+      val prefixtab = jgetString(options, "prefixtab")
+      val store = if (prefixtab == "") {
+        info.storeTable
+      } else {
+        map.prefixes.get(prefixtab) match {
+          case Some(pinfo) => pinfo.store
+          case None => return (Codes.NoTable, Compact(JsonObject("table"->info.tableName, "prefixtab"->prefixtab)))
+        }
+      }
       val get = jgetString(options, "get")
-      val meta = info.storeTable.getMeta(key)
+      val meta = store.getMeta(key)
       meta match {
         case Some(ms) => {
           val m = Json(ms)
           if (jgetBoolean(m, "d") && ! get.contains("d")) {
             (Codes.NoItem, emptyResponse)
           } else {
-            val value = info.storeTable.get(key)
+            val value = store.get(key)
             value match {
               case Some(vs) => {
                 val result = getItems(key, m, vs, get)
@@ -157,8 +166,8 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       val newMetaS = Compact(newMeta)
       info.storeTable.putBothF1(key, newMetaS, value, fast)
       if (sync.hasSync) sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
-      if (mr.hasMap) mr.mapOut(key, oldMetaS, oldvS, newMetaS, value)
-      if (mr.hasReduce) mr.reduceOut(key, oldMetaS, oldvS, newMetaS, value)
+      if (map.hasMap) map.mapOut(key, oldMetaS, oldvS, newMetaS, value)
+      if (reduce.hasReduce) reduce.reduceOut(key, oldMetaS, oldvS, newMetaS, value)
       (Codes.Ok, emptyResponse)
     }
 
@@ -200,7 +209,8 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       // if fast, commit will run in background
       info.storeTable.putBothF1(key, newMetaS, value, fast)
       sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
-      mr.doMR(key, oldMetaS, oldvS, newMetaS, value)
+      map.doMap(key, oldMetaS, oldvS, newMetaS, value)
+      reduce.doReduce(key, oldMetaS, oldvS, newMetaS, value)
       (Codes.Ok, emptyResponse)
     }
 
@@ -258,10 +268,19 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
     }
 
     def getNext(key: String, equal: Boolean, includeDelete: Boolean, options: Json): Option[(String, String)] = {
-      val key1 = info.storeTable.next(key, equal)
+      val prefixtab = jgetString(options, "prefixtab")
+      val store = if (prefixtab == "") {
+        info.storeTable
+      } else {
+        map.prefixes.get(prefixtab) match {
+          case Some(pinfo) => pinfo.store
+          case None => return Some((Codes.NoTable, Compact(JsonObject("table"->info.tableName, "prefixtab"->prefixtab))))
+        }
+      }
+      val key1 = store.next(key, equal)
       key1 match {
         case Some(key2: String) => {
-          info.storeTable.getMeta(key2) match {
+          store.getMeta(key2) match {
             case Some(metas: String) => {
               val meta = Json(metas)
               if ((!includeDelete) && jgetBoolean(meta, "d")) {
@@ -275,7 +294,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
                   Some((key2, Compact(keyDecode(key2))))
                 } else {
                   val v = if (get.contains("v")) {
-                    info.storeTable.get(key2) match {
+                    store.get(key2) match {
                       case Some(s: String) => s
                       case None => "null"
                     }
@@ -297,10 +316,19 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
     }
 
     def getPrev(key: String, equal: Boolean, includeDelete: Boolean, options: Json): Option[(String, String)] = {
-      val key1 = info.storeTable.prev(key, equal)
+      val prefixtab = jgetString(options, "prefixtab")
+      val store = if (prefixtab == "") {
+        info.storeTable
+      } else {
+        map.prefixes.get(prefixtab) match {
+          case Some(pinfo) => pinfo.store
+          case None => return Some((Codes.NoTable, Compact(JsonObject("table"->info.tableName, "prefixtab"->prefixtab))))
+        }
+      }
+      val key1 = store.prev(key, equal)
       key1 match {
         case (Some(key2: String)) => {
-          info.storeTable.getMeta(key2) match {
+          store.getMeta(key2) match {
             case Some(metas: String) => {
               val meta = Json(metas)
               if ((!includeDelete) && jgetBoolean(meta, "d")) {
@@ -314,7 +342,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
                   Some((key2, Compact(keyDecode(key2))))
                 } else {
                   val v = if (get.contains("v")) {
-                    info.storeTable.get(key2) match {
+                    store.get(key2) match {
                       case Some(s: String) => s
                       case None => "null"
                     }

@@ -23,22 +23,19 @@ import MapReduce._
 import scala.collection.immutable.HashMap
 import Codes.emptyResponse
 
-private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly =>
-  val mr: ServerTableMapReduce
-  class ServerTableMapReduce {
-
+private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
+  val map: ServerTableMap
+  class ServerTableMap {
+    
     case class MapInfo(val to: String, val map: MapAll)
-    case class ReduceInfo(val to: String, val reduce: Reduce, val reduceStore: StoreTable)
     
     case class PrefixInfo(val size:Int,val store:StoreTable,var sentMeta:String = "",var sentKey:String = "")
 
     var maps: List[MapInfo] = Nil
-    var reduces: List[ReduceInfo] = Nil
     var prefixes = new HashMap[String, PrefixInfo]()
 
     val tconfig = info.config.tables(info.tableName)
     val hasMap = tconfig.fromMap.size > 0
-    val hasReduce = tconfig.fromReduce.size > 0
 
     for (p <- tconfig.prefix) {
       val name = jgetString(p, "name")
@@ -54,31 +51,14 @@ private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly
     if (tconfig.toMap.keySet.size > 0) {
       ops.canWrite = false
     }
-    for ((to, reduce) <- tconfig.fromReduce) {
-      val rtname = info.tableName + "@" + to
-      val reduceStore = info.store.getTable(rtname)
-      val ri = ReduceInfo(to, getReduce(reduce), reduceStore)
-      reduces = ri :: reduces
-    }
-    var fromReduce: Reduce = null
-    for ((from,reduce) <- tconfig.toReduce) {
-      ops.canWrite = false
-      fromReduce = getReduce(reduce)
-    }
 
     def close {
-      for (ri <- reduces) {
-        ri.reduceStore.close()
-      }
       for ((name, info) <- prefixes) {
         info.store.close()
       }
     }
         
     def delete {
-      for (ri <- reduces) {
-        ri.reduceStore.delete()
-      }
       for ((name, info) <- prefixes) {
         info.store.delete()
       }
@@ -327,7 +307,8 @@ private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly
         }
         store.putBoth(key, meta, value)
         if (prefix == "") {
-          doMR(key, oldMetaS, oldvS, meta, value)
+          doMap(key, oldMetaS, oldvS, meta, value)
+          reduce.doReduce(key, oldMetaS, oldvS, meta, value)
         } else {
           if (bal.inNext(key)) {
             pinfo.sentKey = key
@@ -364,112 +345,10 @@ private[persist] trait ServerTableMapReduceComponent { this: ServerTableAssembly
       (Codes.Ok, emptyResponse)
     }
 
-    def reduceOut(key: String, oldMeta: String, oldValue: String, meta: String, value: String) {
-      // TODO handle balance
-      val jkey = keyDecode(key)
-      val jkeya = jkey match {
-        case j: JsonArray => j
-        case _ => return // key is not an array
-      }
-      // jkey must be an array
-      val joldValue = Json(oldValue)
-      val jvalue = Json(value)
-      val hasOld = !jgetBoolean(Json(oldMeta), "d")
-      val hasNew = !jgetBoolean(Json(meta), "d")
-      for (ri <- reduces) {
-        if (jkeya.size < ri.reduce.size) return // key is too short
-        var prefix = JsonArray()
-        var i = 0
-        for (elem <- jkeya) {
-          if (i < ri.reduce.size) {
-            prefix = elem +: prefix
-          }
-          i += 1
-        }
-        prefix = prefix.reverse
-        val oldsum = ri.reduceStore.get(keyEncode(prefix)) match {
-          case Some(s: String) => Json(s)
-          case None => ri.reduce.zero
-        }
-        var newsum = oldsum
-
-        val (oldMapKey, oldMapVal) = if (hasOld) {
-          (jkey, joldValue)
-        } else {
-          (null, null)
-        }
-        val (newMapKey, newMapVal) = if (hasNew) {
-          (jkey, jvalue)
-        } else {
-          (null, null)
-        }
-
-        // do local reduction
-        if (oldMapVal == null && newMapVal == null) return
-        if (oldMapVal != null) newsum = ri.reduce.subtract(newsum, ri.reduce.item(jkey, oldMapVal))
-        if (newMapVal != null) newsum = ri.reduce.add(newsum, ri.reduce.item(jkey, newMapVal))
-
-        // save and send to dest
-        if (Compact(oldsum) != Compact(newsum)) {
-          val newsum1 = if (Compact(newsum) == Compact(ri.reduce.zero)) {
-            ri.reduceStore.remove(keyEncode(prefix))
-            ri.reduce.zero
-          } else {
-            ri.reduceStore.put(keyEncode(prefix), Compact(newsum))
-            newsum
-          }
-          val dest = Map("ring" -> info.ringName)
-          val ret = "" // TODO will eventually hook this up
-          //val t = System.currentTimeMillis()
-          val t = info.uidGen.get
-          //info.send ! ("reduce", dest, ret, ri.to, keyEncode(prefix), (info.nodeName, Compact(newsum1), t))
-          info.send ! ("reduce", info.ringName, ri.to, keyEncode(prefix), (info.nodeName, Compact(newsum1), t))
-        }
-      }
+    def doMap(key: String, oldMeta: String, oldValue: String, meta: String, value: String) {
+      if (hasMap) mapOut(key, oldMeta, oldValue, meta, value)
     }
 
-    def reduce(key: String, node: String, item: String, newt: Long): (String, Any) = {
-      // {"c":{"node":t},"r":{"node":"sum"}}
-      var oldMetaS = info.storeTable.getMeta(key) match {
-        case Some(s: String) => s
-        case None => info.absentMetaS
-      }
-      var meta = jgetObject(Json(oldMetaS))
-      val c = jgetObject(meta, "c")
-      val oldt = jgetLong(c, node)
-      if (newt > oldt) {
-        meta = meta + ("c" -> (c + (node -> newt)))
-        var items = jgetObject(meta, "r")
-        if (item == Compact(fromReduce.zero)) {
-          items = items - node
-        } else {
-          items = items + (node -> Json(item))
-        }
-        if (items.keySet.size == 0) {
-          meta = meta + ("d" -> true)
-        } else {
-          meta = meta - "d"
-        }
-        var sum = fromReduce.zero
-        for ((name, itemval) <- items) {
-          sum = fromReduce.add(sum, itemval)
-        }
-        meta = meta + ("r" -> items)
-        val cmeta = Compact(meta)
-        val csum = Compact(sum)
-        val oldSum = info.storeTable.get(key) match {
-          case Some(s) => s
-          case None => "null"
-        }
-        info.storeTable.putBoth(key, cmeta, csum)
-        doMR(key, oldMetaS, oldSum, cmeta, csum)
-      }
-      (Codes.Ok, emptyResponse)
-    }
 
-    def doMR(key: String, oldMeta: String, oldValue: String, meta: String, value: String) {
-      if (hasMap) mr.mapOut(key, oldMeta, oldValue, meta, value)
-      if (hasReduce) mr.reduceOut(key, oldMeta, oldValue, meta, value)
-    }
   }
 }

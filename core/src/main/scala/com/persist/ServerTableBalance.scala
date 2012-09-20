@@ -172,7 +172,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       val value = jgetString(request, "v")
       val low = jgetString(request, "low")
       if (prefix != "") {
-        mr.map(key, prefix, meta, value)
+        map.map(key, prefix, meta, value)
         val response = JsonObject("p" -> JsonObject("p" -> prefix, "k" -> key, "m" -> meta))
         prevNode ! ("fromNext", Compact(response))
         return
@@ -188,7 +188,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
         nextLow = info.high
       }
       info.storeTable.put("!low", info.low)
-      if (mr.hasReduce) mr.reduceOut(key, info.absentMetaS, "null", meta, value)
+      if (reduce.hasReduce) reduce.reduceOut(key, info.absentMetaS, "null", meta, value)
     }
 
     private var prevReportedCount: Long = 0
@@ -205,7 +205,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
     }
 
     private def remove(k: String) {
-      if (mr.hasReduce) {
+      if (reduce.hasReduce) {
         val oldMeta = info.storeTable.getMeta(k) match {
           case Some(s: String) => s
           case None => ""
@@ -214,7 +214,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
           case Some(s: String) => s
           case None => ""
         }
-        mr.reduceOut(k, oldMeta, oldValue, info.absentMetaS, "null")
+        reduce.reduceOut(k, oldMeta, oldValue, info.absentMetaS, "null")
       }
       info.storeTable.remove(k)
     }
@@ -225,7 +225,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       if (prefix != "") {
         val key = jgetString(response, "p", "k")
         val meta = jgetString(response, "p", "m")
-        mr.ackPrefix(prefix, key, meta)
+        map.ackPrefix(prefix, key, meta)
         return
       }
       val ncount = jgetLong(response, "n")
@@ -233,7 +233,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       if (forceEmpty && info.low == info.high) {
         remove(info.low)
       } else if (nextLow != nlow) {
-        for (k <- info.range(nlow, nextLow, singleNode)) {
+        for (k <- info.range(info.storeTable, nlow, nextLow, singleNode, emptyJsonObject)) {
           remove(k)
         }
         nextLow = nlow

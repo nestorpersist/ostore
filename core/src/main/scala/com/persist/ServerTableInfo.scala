@@ -66,12 +66,12 @@ private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>
     var low: String = initLow
     var high: String = initHigh
 
-    class StoreRange(low: String, high: String, singleServer: Boolean) {
+    class StoreRange(store:StoreTable, low: String, high: String, singleServer: Boolean, options:JsonObject) {
 
       private def range(low: String, includeLow: Boolean, high: String, includeHigh: Boolean, body: String => Unit): Unit = {
         var next = low
         var include = includeLow
-        var options = JsonObject()
+        //var options = JsonObject()
         while (true) {
           ops.getNext(next, include, true, options) match {
             case Some((n: String, n1: String)) => {
@@ -93,10 +93,10 @@ private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>
       }
 
       def foreach(body: String => Unit): Unit = {
-        if (info.storeTable.size() == 0) return
+        if (store.size() == 0) return
         if (high < low) {
-          val Some(first) = info.storeTable.first()
-          val Some(last) = info.storeTable.last()
+          val Some(first) = store.first()
+          val Some(last) = store.last()
           range(low, true, last, true, body)
           range(first, true, high, false, body)
         } else {
@@ -105,8 +105,8 @@ private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>
       }
     }
 
-    def range(low: String, high: String, singleServer: Boolean) = {
-      new StoreRange(low, high, singleServer)
+    def range(store:StoreTable, low: String, high: String, singleServer: Boolean, options:JsonObject) = {
+      new StoreRange(store, low, high, singleServer, options)
     }
   }
 }
