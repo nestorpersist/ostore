@@ -54,6 +54,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
   lazy implicit private val ec = ExecutionContext.defaultExecutionContext(system)
   implicit private val timeout = Timeout(5 seconds)
 
+  /*
   private def checkKey(k: String, less: Boolean): Boolean = {
     if (bal.singleNode) return true
     if (info.low > info.high) {
@@ -71,8 +72,9 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
     }
     false
   }
+  */
 
-  def makeArray(store:StoreTable, low: String, high: String, options:JsonObject): Json = {
+  def makeArray(store: StoreTable, low: String, high: String, options: JsonObject): Json = {
     var v = JsonArray()
     for (s <- info.range(store, low, high, bal.singleNode, options)) {
       var v1 = JsonArray()
@@ -93,16 +95,18 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
   }
 
   def report(): (String, Any) = {
-    var r = JsonObject("low" -> keyDecode(info.low), 
-        "high" -> keyDecode(info.high), "vals" -> makeArray(info.storeTable,info.low, info.high, emptyJsonObject))
+    var r = JsonObject("low" -> keyDecode(info.low),
+      "high" -> keyDecode(info.high), "vals" -> makeArray(info.storeTable, info.low, info.high, emptyJsonObject))
     if (info.high != bal.nextLow) {
       r = r + ("nextLow" -> keyDecode(bal.nextLow))
       r = r + ("transit:" -> makeArray(info.storeTable, info.high, bal.nextLow, emptyJsonObject))
     }
     if (map.prefixes.size > 0) {
       var prefixes = JsonObject()
-      for ((name,pinfo)<-map.prefixes) {
-        prefixes += (name -> makeArray(pinfo.store, info.low,info.high,JsonObject("prefixtab"->name)))
+      for ((name, pinfo) <- map.prefixes) {
+        val plow = keyEncode(info.getPrefix(keyDecode(info.low), pinfo.size))
+        val phigh = keyEncode(info.getPrefix(keyDecode(info.high), pinfo.size))
+        prefixes += (name -> makeArray(pinfo.store, plow, phigh, JsonObject("prefixtab" -> name, "includehigh" -> true)))
       }
       r += ("prefixes" -> prefixes)
     }
@@ -132,7 +136,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
               if (ops.canWrite) {
                 ops.put(key, v, os)
               } else {
-                (Codes.ReadOnly, Compact(JsonObject("table"->info.tableName)))
+                (Codes.ReadOnly, Compact(JsonObject("table" -> info.tableName)))
               }
             }
             case ("delete", v: String) => {
@@ -148,7 +152,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
             case ("prev-", v: String) => ops.prev(kind, key, v)
             case (badKind: String, v: String) => {
               log.error("table unrecognized command:" + badKind)
-              (Codes.InternalError, Compact(JsonObject("msg"->"unrecognized kind", "kind"->badKind)))
+              (Codes.InternalError, Compact(JsonObject("msg" -> "unrecognized kind", "kind" -> badKind)))
             }
           }
         } else {
@@ -247,7 +251,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
             case "report" => report()
             case x => {
               val less = kind == "prev-"
-              if (checkKey(key, less)) {
+              if (info.checkKey(key, less, info.low, info.high)) {
                 doBasicCommand(kind, key, value)
               } else {
                 val server = info.config.rings(ringName).nodes(bal.nextNodeName).server

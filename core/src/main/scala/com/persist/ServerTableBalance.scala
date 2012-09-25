@@ -66,25 +66,12 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       }
     }
 
-    /*
-    def resetPrevNextX() {
-      if (setPrevNextName() || nextNode == null) {
-        setPrevNext()
-      }
-      singleNode = info.nodeName == prevNodeName
-      if (singleNode) {
-        nextLow = info.high
-        canSend = false
-        canReport = false
-      }
-    }
-    */
-
     def inNext(key: String) = {
       if (singleNode) {
         false
       } else {
-        nextLow.startsWith(key)
+        //nextLow.startsWith(key)
+        info.high.startsWith(key)
       }
     }
 
@@ -104,6 +91,13 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       }
     }
 
+    private def tabprev(store: StoreTable, next: String): Option[String] = {
+      store.prev(next, false) match {
+        case Some(s) => Some(s)
+        case None => store.last
+      }
+    }
+
     def sendToNext {
       val count = info.storeTable.size()
       if (count == 0) return // nothing to send
@@ -113,16 +107,9 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
         if (count < nextCount + incr + threshold) return // next is not enough smaller
       }
       if (info.high != nextLow) return // send already in progress
-      val key = info.storeTable.prev(nextLow, false) match {
-        case Some(key) => { key }
-        case None => {
-          info.storeTable.last match {
-            case Some(key) => { key }
-            case None => {
-              throw InternalException("sendToNext 1")
-            }
-          }
-        }
+      val key = tabprev(info.storeTable, nextLow) match {
+        case Some(s) => s
+        case None => throw InternalException("sendToNext 1")
       }
       if (!back.canSendBalance(key)) return // waiting on use by background task
       val meta = info.storeTable.getMeta(key) match {
@@ -143,6 +130,34 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       cntToNext += 1
       val uid = info.uidGen.get
       var request = JsonObject("t" -> uid, "k" -> key, "m" -> meta, "v" -> v)
+      if (map.prefixes.size > 0) {
+        val jkey = keyDecode(key)
+        val jnextLow = keyDecode(nextLow)
+        var prefixes = JsonArray()
+        for ((prefix, pinfo) <- map.prefixes) {
+          val jfirstkey = info.getPrefix(jkey, pinfo.size)
+          val firstkey = keyEncode(jfirstkey)
+          for (prefixkey <- info.range(pinfo.store, firstkey, nextLow, singleNode, JsonObject("prefixtab" -> prefix))) {
+            val jprefixkey = keyDecode(prefixkey)
+            val pmeta = pinfo.store.getMeta(prefixkey) match {
+              case Some(value: String) => value
+              case None => {
+                throw InternalException("sendToNext p2")
+              }
+            }
+            val pv = pinfo.store.get(prefixkey) match {
+              case Some(value: String) => value
+              case None => {
+                throw InternalException("sendToNext p3")
+              }
+            }
+            val pre = JsonObject("p" -> prefix, "k" -> prefixkey, "m" -> pmeta, "v" -> pv)
+            prefixes = pre +: prefixes
+          }
+        }
+        if (prefixes.size > 0) request += ("prefixes" -> prefixes.reverse)
+      }
+
       if (forceEmpty && count == 1) {
         request += ("low" -> info.low)
         info.low = key
@@ -150,20 +165,13 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
         nextLow = key
         canReport = false
       }
-      // TODO send prefixes if needed
-      // if has prefixes
-      // if prefixes of item sent not already on next node
-      //info.nextNode ! ("fromPrev", uid, key, meta, v)
       nextNode ! ("fromPrev", Compact(request))
     }
 
-    //def fromPrev(uid:Long, key: String, meta: String, value: String) {
     def fromPrev(r: String) {
-      // TODO if has prefixes
-      // if current prefix not present add the prefix
-      // else if current prefix is older -- run map prefix on items except sent
-      // else if prefix is newer - run map prefix on new item 
-      // ack the prefixes somewhere???
+      // TODO make idempotent (main and pre values independent!)
+      //    prefix update arrives before balance (or update while balance is sending)
+      //    balance sent twice
       val request = Json(r)
       val t = jgetLong(request, "t")
       val prefix = jgetString(request, "p")
@@ -189,6 +197,24 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       }
       info.storeTable.put("!low", info.low)
       if (reduce.hasReduce) reduce.reduceOut(key, info.absentMetaS, "null", meta, value)
+      for (pre <- jgetArray(request, "prefixes")) {
+        val prefix = jgetString(pre, "p")
+        val pkey = jgetString(pre, "k")
+        val pmeta = jgetString(pre, "m")
+        val pv = jgetString(pre, "v")
+        map.prefixes.get(prefix) match {
+          case Some(pinfo) => {
+            // if prefix exists and newer 
+            //     run map2 old=passed, new=existing
+            //     don't update
+            // else 
+
+            // map2 already run on prev
+            pinfo.store.putBoth(pkey, pmeta, pv)
+          }
+          case None =>
+        }
+      }
     }
 
     private var prevReportedCount: Long = 0
@@ -233,8 +259,20 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       if (forceEmpty && info.low == info.high) {
         remove(info.low)
       } else if (nextLow != nlow) {
+        info.high = nlow // so checkKey below will work
         for (k <- info.range(info.storeTable, nlow, nextLow, singleNode, emptyJsonObject)) {
           remove(k)
+        }
+        for ((prefix, pinfo) <- map.prefixes) {
+          val plow = keyEncode(info.getPrefix(keyDecode(info.low), pinfo.size))
+          val phigh = keyEncode(info.getPrefix(keyDecode(nlow), pinfo.size))
+          for (pk <- info.range(pinfo.store, nlow, nextLow, singleNode, JsonObject("prefixtab" -> prefix))) {
+            if (pk == phigh && pk != nlow) {
+              // prefix not yet moved to next node
+            } else if (!info.checkKey(pk, false, plow, phigh)) {
+              pinfo.store.remove(pk)
+            }
+          }
         }
         nextLow = nlow
       }

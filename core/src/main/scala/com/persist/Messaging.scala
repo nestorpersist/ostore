@@ -105,11 +105,11 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
 
     private def timeout(cnt: Int, delay: Boolean): Int = {
       if (cnt < 5) {
-        if (delay) 1 else 2
+        if (delay) 100 else 1000
       } else if (cnt < 20) {
-        10
+        100
       } else {
-        20
+        20000
       }
     }
 
@@ -207,6 +207,7 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
     }
 
     def timerAction {
+      timer = null
       val now: Long = System.currentTimeMillis
       var done = false
       while (!done) {
@@ -271,7 +272,7 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
             if (code == Codes.NoRing) {
               msgs.newUid(msg)
               val rings = map.allRings()
-              change ! ("deleteRing", msg.uid, msg.actualRingName,rings)
+              change ! ("deleteRing", msg.uid, msg.actualRingName, rings)
             } else if (code == Codes.NoNode) {
               msgs.newUid(msg)
               change ! ("deleteNode", msg.uid, msg.actualRingName, msg.nodeName)

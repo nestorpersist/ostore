@@ -193,7 +193,7 @@ class Table private[persist] (val databaseName: String, val tableName: String, a
    *      (Key, Value, vector Clock, Deleted, Expires time).
    *  - '''"r"=n''' read from at least n rings before returning. Default is 1.
    *  - '''"ring"="ringName"''' get from this ring.
-   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table
+   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table.
    *
    * @return None if there is no item with that key, or Some(X) if the item exists.
    * X will be the value of the item if the get option is not specified;
@@ -231,7 +231,7 @@ class Table private[persist] (val databaseName: String, val tableName: String, a
    *  - '''"includeparent"=true''' if true, any key equal to the parent is also included.
    *  If false, any key equal to the parent is not included. Default is false.
    *  - '''"ring"="ringName"''' get items from this ring.
-   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table
+   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table.
    *
    *  @return an iterable object.
    *

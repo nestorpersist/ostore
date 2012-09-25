@@ -1,5 +1,9 @@
 LOG OF CHANGES
 
+9/24/2012 fixed bug in messaging timers for timeout and retry 
+9/23/2012 fixed bug in report method for prefixtabs
+9/22/2012 prefix maps now work on multinode rings
+
 9/20/2012 report debug method now also dumps prefix table values
 9/20/2012 REST api added info option (to avoid ambiguity)
 9/20/2012 get and all methods now have a prefixtab option
@@ -8,7 +12,7 @@ LOG OF CHANGES
 9/19/2012 UI better error handling for json
 9/18/2012 UI fixed Add Table and Delete Table bugs
 9/18/2012 UI (add and delete)(node and ring)
-9/17/2012 Database configuration: default host and port spec removed.
+9/17/2012 Database configuration: default host and port spec removed
 9/17/2012 Internal protocol: handoff no longer includes host and port
 9/17/2012 UI tables now display Readonly, Map, and Reduce info
 9/17/2012 UI readonly(map & reduce) tables can no longer be modified

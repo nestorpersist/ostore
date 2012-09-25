@@ -26,10 +26,10 @@ import Codes.emptyResponse
 private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
   val map: ServerTableMap
   class ServerTableMap {
-    
+
     case class MapInfo(val to: String, val map: MapAll)
-    
-    case class PrefixInfo(val size:Int,val store:StoreTable,var sentMeta:String = "",var sentKey:String = "")
+
+    case class PrefixInfo(val size: Int, val store: StoreTable, var sentMeta: String = "", var sentKey: String = "")
 
     var maps: List[MapInfo] = Nil
     var prefixes = new HashMap[String, PrefixInfo]()
@@ -57,25 +57,24 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
         info.store.close()
       }
     }
-        
+
     def delete {
       for ((name, info) <- prefixes) {
         info.store.delete()
       }
     }
-    
-    def ackPrefix(prefix:String,key:String,meta:String) {
+
+    def ackPrefix(prefix: String, key: String, meta: String) {
       prefixes.get(prefix) match {
-        case Some(pinfo:PrefixInfo) => {
-          val oldC = jget(Json(pinfo.sentMeta),"c")
-          val newC =jget(Json(meta),"c")
-          if (pinfo.sentKey == key && ClockVector.compare(oldC,newC) == '>') {
+        case Some(pinfo: PrefixInfo) => {
+          val oldC = jget(Json(pinfo.sentMeta), "c")
+          val newC = jget(Json(meta), "c")
+          if (pinfo.sentKey == key && ClockVector.compare(oldC, newC) == '>') {
             pinfo.sentMeta = ""
             pinfo.sentKey = ""
           }
-          
         }
-        case None => 
+        case None =>
       }
     }
 
@@ -85,7 +84,6 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
       val dest = Map("ring" -> info.ringName)
       val ret = "" // TODO will eventually hook this up
       val passMeta = Compact(JsonObject("c" -> JsonObject(info.tableName -> t)))
-      //info.send ! ("map", dest, ret, to, key, (prefix, passMeta, value))
       info.send ! ("map", info.ringName, to, key, (prefix, passMeta, value))
     }
 
@@ -95,8 +93,6 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
       val dest = Map("ring" -> info.ringName)
       val ret = "" // TODO will eventually hook this up
       val passMeta = Compact(JsonObject("c" -> JsonObject(info.tableName -> t), "d" -> true))
-      //info.send ! ("mapd", dest, ret, mi.to, oldK, "")
-      //info.send ! ("map", dest, ret, to, key, (prefix, passMeta, "null"))
       info.send ! ("map", info.ringName, to, key, (prefix, passMeta, "null"))
     }
 
@@ -247,6 +243,10 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
 
     private def maps2(prefix: String, key: String, hasOld: Boolean, hasNew: Boolean, value: String, oldvalue: String,
       itemKey: String, itemValue: String) {
+      // process an updated prefix table item and a main table item it prefixes
+      // passed in 1. prefix table item: old and new prefix values
+      //           2. main table item: key and value  
+      // Sends updates to downstream tables with a map2 from this prefix
       val jkey = keyDecode(key)
       val jvalue = Json(value)
       val joldvalue = Json(oldvalue)
@@ -277,12 +277,12 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
     }
 
     def map(key: String, prefix: String, meta: String, value: String): (String, Any) = {
-      val (size, store,pinfo) = if (prefix == "") {
-        (0, info.storeTable,null)
+      val (size, store, pinfo) = if (prefix == "") {
+        (0, info.storeTable, null)
       } else {
         prefixes.get(prefix) match {
-          case Some(pinfo) => (pinfo.size, pinfo.store,pinfo)
-          case None => (0, info.storeTable,null)
+          case Some(pinfo) => (pinfo.size, pinfo.store, pinfo)
+          case None => (0, info.storeTable, null)
         }
       }
       val jmeta = Json(meta)
@@ -300,21 +300,24 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
       val oldMeta = Json(oldMetaS)
       val oldt = jgetLong(oldMeta, "c", fromTab)
       if (newt > oldt) {
-        //val oldvS = info.storeTable.get(key) match {
         val oldvS = store.get(key) match {
           case Some(s: String) => s
           case None => "null"
         }
         store.putBoth(key, meta, value)
         if (prefix == "") {
+          // Main table update 
           doMap(key, oldMetaS, oldvS, meta, value)
           reduce.doReduce(key, oldMetaS, oldvS, meta, value)
         } else {
+          // Prefix table update
           if (bal.inNext(key)) {
+            // Send prefix to next node if needed there
             pinfo.sentKey = key
             pinfo.sentMeta = meta
-            bal.sendPrefix(prefix,key,meta,value)
+            bal.sendPrefix(prefix, key, meta, value)
           }
+          // Iterate over all items that have this prefix
           var eq = true
           var k = key
           var done = false
@@ -348,7 +351,6 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
     def doMap(key: String, oldMeta: String, oldValue: String, meta: String, value: String) {
       if (hasMap) mapOut(key, oldMeta, oldValue, meta, value)
     }
-
 
   }
 }

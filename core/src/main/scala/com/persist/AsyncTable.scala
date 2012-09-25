@@ -34,12 +34,12 @@ import Exceptions._
 /**
  * This is the asynchronous interface to OStore tables.
  * Instances of this class are created by the [[com.persist.Database]] asyncTable method.
- * 
+ *
  * @param databaseName the name of the database.
- * @param tableName the name of the table. 
+ * @param tableName the name of the table.
  */
-class AsyncTable private[persist] (val databaseName:String, val tableName: String, system: ActorSystem, send: ActorRef) {
-  
+class AsyncTable private[persist] (val databaseName: String, val tableName: String, system: ActorSystem, send: ActorRef) {
+
   private implicit val executor = system.dispatcher
 
   private def put1(key: JsonKey, value: Json, vectorClock: Option[Json],
@@ -53,7 +53,6 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
     }
     if (jsize(options1) > 0) request = request + ("o" -> options1)
     if (create) request = request + ("create" -> true)
-    //val dest = Map("ring" -> "r1")
     var f1 = new DefaultPromise[Any]
     send ! ("put", ring, f1, tableName, keyEncode(key), (Compact(value), Compact(request)))
     val f2 = f1.map { x =>
@@ -62,7 +61,7 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
         if (code == Codes.Conflict) {
           false
         } else {
-          checkCode(code,v1)
+          checkCode(code, v1)
           true
         }
       }
@@ -133,7 +132,7 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
   }
 
   /**
-   * 
+   *
    * Deletes an item. Has no effect if the item does not exist
    *
    * @param key the key.
@@ -149,7 +148,7 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
   def delete(key: JsonKey, options: JsonObject = emptyJsonObject): Future[Unit] = {
     val ring = jgetString(options, "ring")
     val options1 = options - "ring"
-    val request = JsonObject("o"->options1)
+    val request = JsonObject("o" -> options1)
     var f1 = new DefaultPromise[Any]
     send ! ("delete", ring, f1, tableName, keyEncode(key), Compact(request))
     val f2 = f1.map { x =>
@@ -160,9 +159,9 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
     }
     f2
   }
-      
+
   /**
-   * 
+   *
    * Provides optimistic concurrency control.
    * Deletes the item only if its vector clock on the server matches
    * the vector clock passed in.
@@ -181,10 +180,10 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
    *  clock did not match).
    *
    */
-  def conditionalDelete(key: JsonKey, vectorClock:Json, options: JsonObject = emptyJsonObject): Future[Boolean] = {
-        val ring = jgetString(options, "ring")
+  def conditionalDelete(key: JsonKey, vectorClock: Json, options: JsonObject = emptyJsonObject): Future[Boolean] = {
+    val ring = jgetString(options, "ring")
     val options1 = options - "ring"
-    val request = JsonObject("c"->vectorClock,"o"->options1)
+    val request = JsonObject("c" -> vectorClock, "o" -> options1)
     var f1 = new DefaultPromise[Any]
     send ! ("delete", ring, f1, tableName, keyEncode(key), Compact(request))
     val f2 = f1.map { x =>
@@ -193,14 +192,13 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
         if (code == Codes.Conflict) {
           false
         } else {
-          checkCode(code,v1)
+          checkCode(code, v1)
           true
         }
       }
     }
     f2
   }
-
 
   /**
    * Gets information about an item with a specified key.
@@ -211,7 +209,7 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
    *      (Key, Value, vector Clock, Deleted, Expires time).
    *  - '''"r"=n''' read from at least n rings before returning. Default is 1.
    *  - '''"ring"="ringName"''' get from this ring.
-   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table
+   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table.
    *
    * @return A future that upon completion will have value
    * None if there is no item with that key, or Some(X) if the item exists.
@@ -262,7 +260,7 @@ class AsyncTable private[persist] (val databaseName:String, val tableName: Strin
    *  This option permits trees (where keys are arrays that represents paths) to be traversed.
    *  - '''"includeparent"=true''' if true, any key equal to the parent is also included.
    *  If false, any key equal to the parent is not included. Default is false.
-   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table
+   *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table.
    *
    *  @return a future for the first item (if any).
    *  The value of that future upon completion will be either

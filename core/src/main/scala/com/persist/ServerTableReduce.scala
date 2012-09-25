@@ -28,7 +28,6 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
   class ServerTableReduce {
 
     case class ReduceInfo(val to: String, val reduce: Reduce, val reduceStore: StoreTable)
-    
 
     var reduces: List[ReduceInfo] = Nil
 
@@ -42,7 +41,7 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
       reduces = ri :: reduces
     }
     var fromReduce: Reduce = null
-    for ((from,reduce) <- tconfig.toReduce) {
+    for ((from, reduce) <- tconfig.toReduce) {
       ops.canWrite = false
       fromReduce = getReduce(reduce)
     }
@@ -52,7 +51,7 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
         ri.reduceStore.close()
       }
     }
-        
+
     def delete {
       for (ri <- reduces) {
         ri.reduceStore.delete()

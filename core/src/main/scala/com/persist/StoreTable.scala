@@ -26,13 +26,13 @@ import akka.util.duration._
 import akka.actor.ActorSystem
 import JsonOps._
 
-private class JObject(var j:Json) extends java.io.Serializable {
-  def writeObject(out:java.io.ObjectOutputStream) {
+private class JObject(var j: Json) extends java.io.Serializable {
+  def writeObject(out: java.io.ObjectOutputStream) {
     out.writeObject(Compact(j))
     out.close()
-    
+
   }
-  def readObject(in:java.io.ObjectInputStream) {
+  def readObject(in: java.io.ObjectInputStream) {
     j = Json(in.readObject().asInstanceOf[String])
     in.close()
   }
@@ -41,13 +41,7 @@ private class JObject(var j:Json) extends java.io.Serializable {
   }
 }
 
-private[persist] class StoreTable( name:String
-                                 , system: ActorSystem
-                                 , store: AbstractStore
-                                 , meta: SortedMap[String, String]
-                                 , vals: Map[String, String]
-                                 , doCommit: => Unit
-                                 ) {
+private[persist] class StoreTable(val name: String, system: ActorSystem, store: AbstractStore, meta: SortedMap[String, String], vals: Map[String, String], doCommit: => Unit) {
 
   lazy implicit private val ec = ExecutionContext.defaultExecutionContext(system)
   implicit private val timeout = Timeout(5 seconds)
@@ -142,7 +136,7 @@ private[persist] class StoreTable( name:String
     }
   }
   */
-  
+
   def putBothF1(key: String, metav: String, value: String, fast: Boolean) {
     // TODO the following 2 stmts need to be atomic
     vals.put(key, value)
@@ -181,7 +175,7 @@ private[persist] class StoreTable( name:String
     //println(vals.keySet())
     //db.close()
   }
-  
+
   def delete() = {
     store.deleteCollection(name)
   }
