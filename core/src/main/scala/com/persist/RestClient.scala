@@ -192,7 +192,7 @@ private[persist] class RestClient(config:Json) extends HttpAction {
       val cmd = jgetString(input, "cmd")
       val config = jget(input, "config")
       cmd match {
-        case "create" => client.createDatabase(databaseName, config)
+        case "create" => client.createDatabase(databaseName, config); 
         case "delete" => client.deleteDatabase(databaseName)
         case "start" => client.startDatabase(databaseName)
         case "stop" => client.stopDatabase(databaseName)

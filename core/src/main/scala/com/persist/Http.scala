@@ -214,7 +214,7 @@ private[persist] class HttpActions(httpAction: HttpAction) {
           Response(200, "OK", if (isPretty) { Pretty(j) } else { Compact(j) })
         }
         case None => {
-          Response(200, "OK", "")
+          Response(200, "OK", "{}")
         }
       }
     }

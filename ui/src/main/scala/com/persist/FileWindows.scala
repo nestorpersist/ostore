@@ -33,6 +33,7 @@ import java.io.InputStreamReader
 import scala.actors.Future
 import java.io.FileOutputStream
 import java.io.File
+import Exceptions._
 
 object FileWindows {
 
@@ -41,12 +42,14 @@ object FileWindows {
 
     var reader: BufferedReader = null
     var ireader: InputStreamReader = null
+    var fileName:String = ""
 
     def uploadStarted(event: Upload.StartedEvent) {
     }
 
     def receiveUpload(filename: String, MIMEType: String): OutputStream = {
       // TODO buffer may not be big enough - run act.read on sep thread!
+      this.fileName = filename
       val inStream = new PipedInputStream(100000000)
       val outStream = new PipedOutputStream(inStream)
       ireader = new InputStreamReader(inStream)
@@ -56,7 +59,7 @@ object FileWindows {
 
     def uploadSucceeded(event: Upload.SucceededEvent) {
       // TODO read should run in a separate thread with pipe of bounded size
-      act.read(reader)
+      act.read(fileName, reader)
     }
 
     def uploadFailed(event: Upload.FailedEvent) {
@@ -65,7 +68,7 @@ object FileWindows {
   }
 
   trait Act {
-    def read(reader: BufferedReader): Unit
+    def read(fineName:String, reader: BufferedReader): Unit
   }
 
   class Reader(databaseName: String, tableName: String, exit: () => Unit, error: Label, client: WebClient) extends Act {
@@ -91,7 +94,7 @@ object FileWindows {
       }
     }
 
-    def read(reader: BufferedReader): Unit = {
+    def read(fileName:String, reader: BufferedReader): Unit = {
       var line = 0
       var msg = ""
       var done = false
@@ -129,7 +132,7 @@ object FileWindows {
       return false
 
     }
-    def read(reader: BufferedReader): Unit = {
+    def read(fileName:String, reader: BufferedReader): Unit = {
       val database = ta.getValue().asInstanceOf[String]
       if (databaseExists(database)) {
         error.setValue("database " + database + " already exists")
@@ -145,24 +148,31 @@ object FileWindows {
           b.append(s + "\n")
         }
       }
+      reader.close()
       var config = b.toString()
       val jconfig = try {
         Json(config)
       } catch {
-        case ex: Exception => {
-          val msg = ex.getMessage()
-          error.setValue(msg)
+        case ex: JsonParseException => {
+          val msg = ex.shortString()
+          error.setValue(fileName +": " + msg)
           return
         }
       }
-      client.configAct("create", database, jconfig)
-      reader.close()
+      try {
+         client.configAct("create", database, jconfig)
+      } catch {
+        case ex:SystemException => {
+          error.setValue(ex.toString())
+          return
+        }
+      }
       exit()
     }
   }
   
   class Change(add:Boolean, database:String, kind: String, error: Label, client: WebClient, exit: () => Unit) extends Act {
-    def read(reader: BufferedReader): Unit = {
+    def read(fileName:String, reader: BufferedReader): Unit = {
       var done = false
       var b = new StringBuilder()
       while (!done) {
@@ -173,19 +183,26 @@ object FileWindows {
           b.append(s + "\n")
         }
       }
+      reader.close()
       var config = b.toString()
       val jconfig = try {
         Json(config)
       } catch {
-        case ex: Exception => {
-          val msg = ex.getMessage()
-          error.setValue(msg)
+        case ex: JsonParseException => {
+          val msg = ex.shortString()
+          error.setValue(fileName +": " + msg)
           return
         }
       }
       val cmd = (if (add) "add" else "delete")++(kind ++ "s")
-      client.configAct(cmd, database, jconfig)
-      reader.close()
+      try {
+         client.configAct(cmd, database, jconfig)
+      } catch {
+        case ex:SystemException => {
+          error.setValue(ex.toString())
+          return
+        }
+      }
       exit()
     }
   }

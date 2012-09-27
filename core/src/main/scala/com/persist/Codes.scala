@@ -30,7 +30,11 @@ object Codes {
   // Success
   private[persist] final val Ok = "Ok"
   private[persist] final val Busy = "Busy" // activity still ongoing
-  private[persist] final val Locked = "Locked" // already locked by different guid
+    
+  /**
+   * Database is currently locked by different user
+   */
+  final val Locked = "Locked" 
 
   // Handoffs
   private[persist] final val Handoff = "Handoff"
@@ -71,10 +75,20 @@ object Codes {
    */
   final val ExistDatabase = "ExistDatabase"
     
+  /**
+   * Named table already exists.
+   */
+  final val ExistTable = "ExistTable"
+    
   /** 
    * Named ring already exists.
    */
   final val ExistRing = "ExistRing"
+    
+  /**
+   * Named node already exists.
+   */
+  final val ExistNode = "ExistNode"
 
   /**
    * Optimistic put or delete failed.

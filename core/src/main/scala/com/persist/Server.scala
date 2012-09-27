@@ -163,10 +163,10 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
           for (name <- info.config.servers.keys) {
             servers = name +: servers
           }
-          var result = JsonObject(("s" -> info.state), ("servers" -> servers.reverse))
+          var result = JsonObject("servers" -> servers.reverse , "s" -> info.state)
           if (tableName != "") {
             info.config.tables.get(tableName) match {
-              case Some(tinfo) => {}
+              case Some(tinfo) => 
               case None => {
                 result += ("tableAbsent" -> true)
               }
@@ -196,7 +196,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         (Codes.Ok, Compact(result))
       }
       case None => {
-        var result = JsonObject(("s" -> "none"))
+        var result = JsonObject("databaseAbsent" -> true, "s" -> "none")
         (Codes.Ok, Compact(result))
       }
     }
@@ -436,7 +436,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
           if (table.toMap.size > 0 || table.toReduce.size > 0) {
             result += ("r" -> true) // readOnly
           } else {
-            result += ("r" -> false) 
+            result += ("r" -> false)
           }
         }
         if (get.contains("f")) {
@@ -709,31 +709,31 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
 
 /**
  * An OStore Server.
- * 
+ *
  * @param config the server configuration (see Wiki).
  * @param create if true any existing database files are discarded.
  */
 class Server(config: Json, create: Boolean) {
-  
-/**
- * Constructor with config an empty configuration and create false.
- * 
- * @param config the server configuration (see Wiki).
- */
+
+  /**
+   * Constructor with config an empty configuration and create false.
+   *
+   * @param config the server configuration (see Wiki).
+   */
   def this() = this(emptyJsonObject, false)
-/**
- * Constructor with create false.
- * 
- * @param config the server configuration (see Wiki).
- */
-  def this(config:Json) = this(config, false)
-/**
- * Constructor with config an empty configuration
- * 
- * @param config the server configuration (see Wiki).
- */
-  def this(create:Boolean) = this(emptyJsonObject, create)
-  
+  /**
+   * Constructor with create false.
+   *
+   * @param config the server configuration (see Wiki).
+   */
+  def this(config: Json) = this(config, false)
+  /**
+   * Constructor with config an empty configuration
+   *
+   * @param config the server configuration (see Wiki).
+   */
+  def this(create: Boolean) = this(emptyJsonObject, create)
+
   private implicit val timeout = Timeout(200 seconds)
   private var serverActor: ActorRef = null
   private var system: ActorSystem = null
@@ -747,7 +747,6 @@ class Server(config: Json, create: Boolean) {
   if (port != 0) {
     akkaConfig = akkaConfig.withValue("akka.remote.netty.port", ConfigValueFactory.fromAnyRef(port))
   }
-  //println("Config:" + akkaConfig)
   system = ActorSystem("ostore", akkaConfig)
   serverActor = system.actorOf(Props(new ServerActor(config, create)), name = "@server")
   private val f = serverActor ? ("start")

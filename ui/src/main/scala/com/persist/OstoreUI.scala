@@ -46,6 +46,7 @@ private[persist] class OStoreUI extends Application {
       val all = new All(top.all, left.all, right.all)
       val buttons = new Buttons(client, app)
       val editWindow = new EditWindow
+      client.setWindow(all.all)
     }
 
     setMainWindow(UIAll.all.all)

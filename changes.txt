@@ -1,5 +1,11 @@
 LOG OF CHANGES
 
+9/26/2012 UI better error reporting for errors from server
+9/25/2012 REST server empty 200 response now has body {} (empty not legal Json)
+9/25/2010 Client and Database methods: better exceptions
+9/25/2010 UI better config Json error reporting
+9/25/2010 .gitignore now ignores directories with name "local"
+
 9/24/2012 fixed bug in messaging timers for timeout and retry 
 9/23/2012 fixed bug in report method for prefixtabs
 9/22/2012 prefix maps now work on multinode rings
