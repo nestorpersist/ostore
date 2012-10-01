@@ -163,10 +163,10 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
           for (name <- info.config.servers.keys) {
             servers = name +: servers
           }
-          var result = JsonObject("servers" -> servers.reverse , "s" -> info.state)
+          var result = JsonObject("servers" -> servers.reverse, "s" -> info.state)
           if (tableName != "") {
             info.config.tables.get(tableName) match {
-              case Some(tinfo) => 
+              case Some(tinfo) =>
               case None => {
                 result += ("tableAbsent" -> true)
               }
@@ -202,7 +202,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
     }
   }
 
-  def rec1(cmd: String, databaseName: String, info: DatabaseInfo, request: Json) = {
+  def recAdmin(cmd: String, databaseName: String, info: DatabaseInfo, request: Json) = {
     val database = info.dbRef
     cmd match {
       case "start" => {
@@ -334,17 +334,6 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
       }
-      case "databaseInfo" => {
-        val get = jgetString(request, "get")
-        var result = emptyJsonObject
-        if (get.contains("s")) {
-          result += ("s" -> info.state)
-        }
-        if (get.contains("c")) {
-          result += ("c" -> info.config.toJson)
-        }
-        sender ! (Codes.Ok, Compact(result))
-      }
       case "stopDatabase1" => {
         info.state = "stopping"
         val f = database ? ("stop", true, true, "", "")
@@ -409,6 +398,23 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val f = database ? ("deleteTable2", tableName)
         val v = Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
+      }
+    }
+  }
+
+  def recInfo(cmd: String, databaseName: String, info: DatabaseInfo, request: Json) = {
+    val database = info.dbRef
+    cmd match {
+      case "databaseInfo" => {
+        val get = jgetString(request, "get")
+        var result = emptyJsonObject
+        if (get.contains("s")) {
+          result += ("s" -> info.state)
+        }
+        if (get.contains("c")) {
+          result += ("c" -> info.config.toJson)
+        }
+        sender ! (Codes.Ok, Compact(result))
       }
       case "serverInfo" => {
         val serverName = jgetString(request, "server")
@@ -624,9 +630,9 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       }
       if (!handled) log.error("*****DeadLetter:" + d.sender.path + "=>" + d.recipient.path + ":" + d.message + ":" + serverName)
     }
-    case ("lock", databaseName: String, rs: String) => {
+    case ("lock", guid: String, databaseName: String, rs: String) => {
       val request = Json(rs)
-      val guid = jgetString(request, "guid")
+      //val guid = jgetString(request, "guid")
       val lock = locks.getOrElse(databaseName, "")
       if (lock == "") {
         locks += (databaseName -> guid)
@@ -634,12 +640,12 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       } else if (lock == guid) {
         sender ! doLock(databaseName, request)
       } else {
-        sender ! (Codes.Locked, emptyResponse)
+        sender ! (Codes.Lock, emptyResponse)
       }
     }
-    case ("unlock", databaseName: String, rs: String) => {
+    case ("unlock", guid: String, databaseName: String, rs: String) => {
       val request = Json(rs)
-      val guid = jgetString(request, "guid")
+      //val guid = jgetString(request, "guid")
       val lock = locks.getOrElse(databaseName, "")
       if (lock == "") {
         sender ! (Codes.Ok, emptyResponse)
@@ -647,7 +653,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         locks -= databaseName
         sender ! (Codes.Ok, emptyResponse)
       } else {
-        sender ! (Codes.Locked, emptyResponse)
+        sender ! (Codes.Lock, emptyResponse)
       }
     }
     case ("databaseExists", databaseName: String, rs: String) => {
@@ -657,8 +663,11 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         sender ! (Codes.NoDatabase, emptyResponse)
       }
     }
-    case ("newDatabase", databaseName: String, rs: String) => {
-      if (databases.contains(databaseName)) {
+    case ("newDatabase", guid: String, databaseName: String, rs: String) => {
+      val lock = locks.getOrElse(databaseName, "")
+      if (lock != guid) {
+        sender ! (Codes.Lock, emptyResponse)
+      } else if (databases.contains(databaseName)) {
         val response = JsonObject("database" -> databaseName)
         sender ! (Codes.ExistDatabase, Compact(response))
       } else {
@@ -683,11 +692,27 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       }
       sender ! (Codes.Ok, Compact(result.reverse))
     }
+    case (cmd: String, guid: String, databaseName: String, rs: String) => {
+      val lock = locks.getOrElse(databaseName, "")
+      if (lock != guid) {
+        sender ! (Codes.Lock, emptyResponse)
+      } else {
+        databases.get(databaseName) match {
+          case Some(info) => {
+            val request = Json(rs)
+            recAdmin(cmd, databaseName, info, request)
+          }
+          case None => {
+            sender ! (Codes.NoDatabase, Compact(JsonObject("database" -> databaseName)))
+          }
+        }
+      }
+    }
     case (cmd: String, databaseName: String, rs: String) => {
       databases.get(databaseName) match {
         case Some(info) => {
           val request = Json(rs)
-          rec1(cmd, databaseName, info, request)
+          recInfo(cmd, databaseName, info, request)
         }
         case None => {
           sender ! (Codes.NoDatabase, Compact(JsonObject("database" -> databaseName)))

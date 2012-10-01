@@ -97,7 +97,8 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
   private case class DatabaseActions(databaseName: String) {
 
     private val guid = UUID.randomUUID().toString()
-    private val request0 = JsonObject("guid" -> guid)
+    //private val request0 = JsonObject("guid" -> guid)
+    private val request0 = emptyJsonObject
     private var servers = List[String]()
 
     private def doAll(cmd: String, request: JsonObject, servers1: List[String] = servers): Boolean = {
@@ -106,7 +107,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
       var futures = List[Future[Any]]()
       for (serverName <- servers1) {
         val server = sendServer.serverRef(serverName)
-        val f = server ? (cmd, databaseName, rs)
+        val f = server ? (cmd, guid, databaseName, rs)
         futures = f +: futures
       }
       for (f <- futures.reverse) {
@@ -124,16 +125,16 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
       if (ringName != "") request += ("ring" -> ringName)
       val nodeName = jgetString(check, "node")
       if (nodeName != "") request += ("node" -> nodeName)
-      val f = server ? ("lock", databaseName, Compact(request))
+      val f = server ? ("lock", guid, databaseName, Compact(request))
       val (code, s: String) = Await.result(f, 5 seconds)
       if (code != Codes.Ok) {
-        if (code == Codes.Locked) throw new SystemException(Codes.Locked, JsonObject("database" -> databaseName))
+        if (code == Codes.Lock) throw new SystemException(Codes.Lock, JsonObject("database" -> databaseName))
         throw InternalException("Unknown lock failure: " + code)
       }
       val response = Json(s)
       val state = jgetString(response, "s")
       if (expectedState != "" && expectedState != state) {
-        val f = server ? ("unlock", databaseName, Compact(request0))
+        val f = server ? ("unlock", guid, databaseName, Compact(request0))
         val (code, s: String) = Await.result(f, 5 seconds)
         throw InternalException("Bad state, expected " + expectedState + " actual " + state)
       }
@@ -200,7 +201,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
         }
       }
       if (ex != null) {
-        val f = server ? ("unlock", databaseName, Compact(request0))
+        val f = server ? ("unlock", guid, databaseName, Compact(request0))
         val (code, s: String) = Await.result(f, 5 seconds)
         throw ex
       }
@@ -239,9 +240,14 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
       ok
     }
 
-    def pass(cmd: String, request: JsonObject = emptyJsonObject, servers: List[String] = List[String]()) {
-      doAll(cmd, request)
+    //def pass(cmd: String, request: JsonObject = emptyJsonObject, servers: List[String] = List[String]()) {
+      //doAll(cmd, request)
+    //}
+    def pass(cmd: String, request: JsonObject = emptyJsonObject, servers: List[String] = servers) {
+      doAll(cmd, request, servers)
     }
+    
+    def getGuid = this.guid
 
     def wait(cmd: String, request: JsonObject = emptyJsonObject) {
       for (i <- 1 until 60) { // try for 2 minutes
@@ -479,7 +485,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
             ("\uFFFF", "")
           } else {
             val request3 = request2 + ("node" -> prevNodeName)
-            val f = prevServer ? ("getLowHigh", databaseName, Compact(request3))
+            val f = prevServer ? ("getLowHigh", dba.getGuid, databaseName, Compact(request3))
             val (code: String, s: String) = Await.result(f, 5 seconds)
             val response = Json(s)
             val prevLow = jgetString(response, "low")
@@ -487,7 +493,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
             (prevHigh, prevHigh)
           }
           val request3 = request2 + ("low" -> low, "high" -> high)
-          val f2 = newServer ? ("setLowHigh", databaseName, Compact(request3))
+          val f2 = newServer ? ("setLowHigh", dba.getGuid, databaseName, Compact(request3))
           val (code: String, s: String) = Await.result(f2, 5 seconds)
         }
 

@@ -1,5 +1,10 @@
 LOG OF CHANGES
 
+9/30/2010 Codes.Locked => Codes.Lock
+9/30/2012 Admin commands internal protocol, improve idempotence and conflict detection
+9/29/2012 Fixed bug in admin commands (too many servers were being contacted)
+9/29/2012 Pretty (JSON pretty printer) faster, cleaner, nicer output
+
 9/26/2012 UI better error reporting for errors from server
 9/25/2012 REST server empty 200 response now has body {} (empty not legal Json)
 9/25/2010 Client and Database methods: better exceptions

@@ -21,7 +21,8 @@ import JsonOps._
 
 /**
  * This object defines the exception/error codes for OStore.
- * These codes can appear in SystemException and in REST results.
+ * These codes can appear in SystemException, in REST results
+ * and in UI error reports.
  */
 object Codes {
   
@@ -32,9 +33,10 @@ object Codes {
   private[persist] final val Busy = "Busy" // activity still ongoing
     
   /**
-   * Database is currently locked by different user
+   * when using admin commands, database is currently locked by different user or not locked 
+   * by the current user.
    */
-  final val Locked = "Locked" 
+  final val Lock = "Lock" 
 
   // Handoffs
   private[persist] final val Handoff = "Handoff"

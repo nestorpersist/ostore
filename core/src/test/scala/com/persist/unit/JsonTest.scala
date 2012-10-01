@@ -66,7 +66,6 @@ class JsonTest extends FunSuite {
       case List("a", a) => println(a)
       case x => println("fail:" + x)
     }
-
   }
   
 }

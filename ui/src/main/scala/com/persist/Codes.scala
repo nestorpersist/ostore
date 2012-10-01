@@ -21,7 +21,8 @@ import JsonOps._
 
 /**
  * This object defines the exception/error codes for OStore.
- * These codes can appear in SystemException and in REST results.
+ * These codes can appear in SystemException, in REST results
+ * and in UI error reports.
  */
 object Codes {
   
@@ -30,7 +31,12 @@ object Codes {
   // Success
   private[persist] final val Ok = "Ok"
   private[persist] final val Busy = "Busy" // activity still ongoing
-  private[persist] final val Locked = "Locked" // already locked by different guid
+    
+  /**
+   * when using admin commands, database is currently locked by different user or not locked 
+   * by the current user.
+   */
+  final val Lock = "Lock" 
 
   // Handoffs
   private[persist] final val Handoff = "Handoff"
@@ -71,10 +77,20 @@ object Codes {
    */
   final val ExistDatabase = "ExistDatabase"
     
+  /**
+   * Named table already exists.
+   */
+  final val ExistTable = "ExistTable"
+    
   /** 
    * Named ring already exists.
    */
   final val ExistRing = "ExistRing"
+    
+  /**
+   * Named node already exists.
+   */
+  final val ExistNode = "ExistNode"
 
   /**
    * Optimistic put or delete failed.

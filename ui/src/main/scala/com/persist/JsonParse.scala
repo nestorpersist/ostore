@@ -132,7 +132,7 @@ private[persist] object JsonParse {
           chars.next
         }
       }
-      if (chars.ch != '"') chars.error("Unexpected string character:"+chars.ch.toChar)
+      if (chars.ch != '"') chars.error("Unexpected string character:" + chars.ch.toChar)
       val s1 = chars.substr(first)
       val s2 = if (sb == null) s1 else {
         sb.append(s1)
@@ -454,60 +454,85 @@ private[persist] object JsonUnparse {
     sb.toString
   }
 
-  /**
-   * Returns a pretty JSON representation of the given object
-   */
-  private def elemCount(obj: Json): Int = {
-    obj match {
-      case array: Array[_] => array.map(elemCount(_)).foldLeft(0) { (acc, n) => acc + n }
-      case list: Seq[_] => list.map(elemCount(_)).foldLeft(0) { (acc, n) => acc + n }
-      case map: scala.collection.Map[_, _] => map.map(v => elemCount(v._2)).foldLeft(0) { (acc, n) => acc + n }
-      case x => 1
+  private def isMultiLine(s: String): Boolean = s.indexOf("\n") >= 0
+
+  private def doIndent(s: String, indent: Int, first: String = ""): String = {
+    val space = " " * indent
+    if (isMultiLine(s)) {
+      val parts = s.split("\n")
+      val head = parts.head
+      val tail = parts.tail
+      val indent1 = first.size + indent
+      val space1 = " " * indent1
+      val head1 = space + first + head
+      val tail1 = tail.map(part => space1 + part)
+      val seq1 = head1 +: tail1
+      seq1.mkString("\n")
+    } else {
+      space + first + s
     }
   }
 
-  private val splitCount = 8
-  //TODO make multiLine more efficient
-  private def multiLine(obj: Json): Boolean = elemCount(obj) > splitCount
-  private def space(cnt: Int): String = " " * cnt
+  private def wrap(first: String, sep: String, last: String, indent: Int, seq: Seq[String]): String = {
+    if (seq.size == 0) {
+      doIndent(first + last, indent)
+    } else {
+      val indent1 = first.size + indent
+      val head = seq.head
+      val tail = seq.tail
+      val head1 = doIndent(head, indent, first)
+      val tail1 = tail.map(part => doIndent(part, indent1))
+      val seq1 = head1 +: tail1
+      seq1.mkString(",\n") + "\n" + doIndent(last, indent)
+    }
+  }
 
-  def pretty(obj: Json, incr: Int = 2, indent: Int = 0): String = {
-    val rv = space(indent) + (obj match {
-      case null => "null"
-      case x: Boolean => x.toString
-      case x: Number => x.toString
-      case array: Array[_] => {
-        if (multiLine(array)) {
-          array.map(pretty(_, incr, indent + incr)).mkString("[\n", ",\n", "\n" + space(indent) + "]")
-        } else {
-          array.map(pretty(_, incr, 0)).mkString("[", ",", "]")
-        }
-      }
+  private val WIDTH = 50
+  private val COUNT = 6
+
+  private def split(s: Seq[String]): Boolean = {
+    s.size > COUNT ||
+      s.map(isMultiLine(_)).fold(false) { _ || _ } ||
+      s.map(_.size).fold(0)(_ + _) + s.size + 2 > WIDTH
+  }
+
+  /**
+   * Returns a pretty JSON representation of the given object
+   */
+  def pretty(obj: Json, indent: Int = 0): String = {
+    obj match {
+      case null => doIndent("null", indent)
+      case x: Boolean => doIndent(x.toString, indent)
+      case x: Number => doIndent(x.toString, indent)
+      case array: Array[Json] => pretty(array.toList, indent)
       case list: Seq[_] =>
-        if (multiLine(list)) {
-          list.map(pretty(_, incr, indent + incr)).mkString("[\n", ",\n", "\n" + space(indent) + "]")
+        val strings = list.map(pretty(_))
+        if (!split(strings)) {
+          doIndent("[" + strings.mkString(",") + "]", indent)
         } else {
-          list.map(pretty(_, incr, 0)).mkString("[", ",", "]")
+          wrap("[", ",", "]", indent, strings)
         }
       case map: scala.collection.Map[_, _] =>
-        if (multiLine(map)) {
-          Sorting.stableSort[(Any, Json), String](map.iterator.toList, { case (k, v) => k.toString }).map {
-            case (k, v) =>
-              space(indent + incr) + quote(k.toString) + ":" +
-                (if (multiLine(v)) { "\n" + pretty(v, incr, indent + incr + incr) } else { pretty(v, incr, 0) })
-          }.mkString("{\n", ",\n", "\n" + space(indent) + "}")
+        val seq2 = Sorting.stableSort[(Any, Json), String](map.iterator.toList, { case (k, v) => k.toString })
+        val strings = seq2.map { case (k, v) => {
+          val v1 = pretty(v)
+          val label = quote(k.toString) + ":"
+          if (isMultiLine(v1) || label.size + v1.size > WIDTH) {
+            label + "\n" + doIndent(v1,2)
+          } else {
+            label + v1
+          }
+        }}
+        if (!split(strings)) {
+          doIndent("{" + strings.mkString(",") + "}", indent)
         } else {
-          Sorting.stableSort[(Any, Json), String](map.iterator.toList, { case (k, v) => k.toString }).map {
-            case (k, v) =>
-              quote(k.toString) + ":" + pretty(v, incr, 0)
-          }.mkString("{", ",", "}")
+          wrap("{", ",", "}", indent, strings)
         }
-      case s:String => quote(s)
+      case s: String => doIndent(quote(s), indent)
       case x => {
         throw new SystemException(Codes.JsonUnparse, JsonObject("msg" -> "bad json value", "value" -> x.toString()))
       }
-    })
-    rv
+    }
   }
 
 }
