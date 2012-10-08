@@ -20,116 +20,203 @@ package com.persist
 import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import com.persist.JsonOps._
+import scala.io.Source
 
-/**
- * The Check object contains code for checking the consistency of 
- * an OStore database and fixing any problems it finds.
- * 
- * It is not yet available.
- */
-object Check {
-  // TODO this code is slow, lots of optimizations possible
+private[persist] class Check(fix: Boolean, config: Json) {
+  // TODO scala callable method(s)
   // TODO be able to run continuously as background operation
+  // TODO do expire
+  // TODO garbage collection of deleted items and clock vectors
+  // TODO check map and reduce tables
 
   private val now = System.currentTimeMillis()
+  private val client = new Client(jget(config, "client"))
 
-  private def checkPair(i1: Option[Json], i2: Option[Json], path: String, ringName: String, ringName1: String) {
+  private def checkPair1(database: Database, table: Table, key: JsonKey, i1: Item, i2: Item) {
     def pair(p1: String, p2: String) = "[" + p1 + "," + p2 + "]"
-    def path1 = path + pair(ringName, ringName1)
-    (i1, i2) match {
-      case (Some(vc1), Some(vc2)) => {
-        val v1 = jget(vc1, "v")
-        val c1 = jget(vc1, "c")
-        val d1 = jgetBoolean(vc1, "d")
-        val v2 = jget(vc2, "v")
-        val c2 = jget(vc2, "c")
-        val d2 = jgetBoolean(vc2, "d")
-        if (d1 != d2) {
-          println("Inconsistent deletion " + path1 + " " + pair(d1.toString(), d2.toString()))
-        } else if (d1 && d2) {
+    lazy val path = "/" + database.databaseName + "/" + table.tableName + "/" + Compact(key) + Pair(i1.ringName, i2.ringName)
+    (i1.v, i2.v) match {
+      case (null, null) => println("Both null" + path) // both missing
+      case (null, _) => {
+        if (!i2.d) {
+          println("First item not found " + path)
+          if (fix) {
+            table.sync(key, JsonObject("ring" -> i2.ringName))
+            println("   Fixed " + path)
+          }
+
+        }
+      }
+      case (_, null) => {
+        println("Second item not found" + path)
+        if (!i1.d) {
+          if (fix) {
+            table.sync(key, JsonObject("ring" -> i1.ringName))
+            println("   Fixed " + path)
+          }
+        }
+      }
+      case (v1, v2) => {
+        val cmp = ClockVector.compare(i1.c, i2.c)
+        if (cmp != '=') {
+          // TODO allow if change is very recent ??
+          println("Clock vectors don't match " + path + " " + pair(Compact(i1.c), Compact(i2.c)))
+          if (fix) {
+            if (cmp != '<') table.sync(key, JsonObject("ring" -> i1.ringName))
+            if (cmp != '>') table.sync(key, JsonObject("ring" -> i2.ringName))
+            println("   Fixed " + path)
+          }
+        } else if (i1.d != i2.d) {
+          println("Inconsistent deletion " + path + " " + pair(i1.d.toString(), i2.d.toString()))
+          if (fix) {
+            println("   **** Can't fix: " + path)
+          }
+        } else if (i1.d && i2.d) {
           // OK and deleted
-          println("OK (deleted) " + path1)
-        } else if (ClockVector.compare(c1, c2) != '=') {
-          println("Clock vectors don't match " + path1 + " " + pair(Compact(c1), Compact(c2)))
-        } else if (Compact(v1) != Compact(v2)) {
-          println("Values don't match " + path1 + " " + pair(Compact(v1), Compact(v2)))
+          //println("OK (deleted) " + path)
+        } else if (i1.vs != i2.vs) {
+          println("Values don't match " + path + " " + pair(i1.vs, i2.vs))
+          if (fix) {
+            println("   **** Can't fix: " + path)
+          }
         } else {
           // OK
-          println("OK " + path1)
+          //println("OK " + path)
         }
-      }
-      case (None, _) => {
-        println("First item not found" + path1)
-      }
-      case (_, None) => {
-        println("Second item not found" + path1)
       }
     }
   }
 
-  private def checkItem(database: Database, table: Table, databaseName: String, tableName: String, ringName: String, key: JsonKey) {
-    // TODO deal with MR consistency
-    val path = "/" + databaseName + "/" + tableName + "/" + Compact(key)
-    val info = table.get(key, JsonObject("get" -> "vcde", "ring" -> ringName))
-    val e = info match {
-      case Some(info1) => {
-        jgetLong(info1, "e")
-      }
-      case None => 0
-    }
-    if (e != 0 && e <= now) {
-      table.delete(key)
-      println("Deleting expired item " + path)
+  private case class Key(val k: JsonKey, s: String)
+
+  private case class Item(ringName: String, d: Boolean, c: Json, v: Json, vs: String)
+
+  private def next(old: Key, all: Iterator[Json], prev: Key): Key = {
+    if (old.s > prev.s) {
+      old
+    } else if (all.hasNext) {
+      val next = all.next
+      Key(next, keyEncode(next))
     } else {
+      Key(null, "\uffff")
+    }
+  }
 
-      for (ringName1 <- database.allRings) {
-        if (ringName1 != ringName) {
-          val info1 = table.get(key, JsonObject("get" -> "vcd", "ring" -> ringName1))
-          checkPair(info, info1, path, ringName, ringName1)
+  private def nextItem(database: Database, table: Table, rings: List[String], ringItems: List[Iterator[Json]], keys: List[Key], prev: Key) {
+    val newKeys = keys.zip(ringItems).map(x => {
+      val (k, all) = x
+      next(k, all, prev)
+    })
+    if (newKeys.exists(_.k != null)) {
+      val key = newKeys.fold(Key(null, "\uffff")) { (k1, k2) => if (k1.s < k2.s) k1 else k2 }
+      val checkItems = newKeys.zip(rings).map(x => {
+        val (k, ringName) = x
+        if (k.s == key.s) {
+          val info1 = table.get(key.k, JsonObject("get" -> "vcde", "ring" -> ringName))
+          info1 match {
+            case Some(info) => {
+              val d = jgetBoolean(info, "d")
+              val c = jget(info, "c")
+              val v = jget(info, "v")
+              val vs = Compact(v)
+              Item(ringName, d, c, v, vs)
+            }
+            case None => {
+              Item(ringName, true, emptyJsonObject, null, "")
+            }
+          }
+        } else {
+          Item(ringName, true, emptyJsonObject, null, "")
+        }
+      })
+      checkItems.map { item1 =>
+        // TODO deal with expires
+        checkItems.map { item2 =>
+          if (item1.ringName < item2.ringName) {
+            checkPair1(database, table, key.k, item1, item2)
+          }
         }
       }
+      nextItem(database, table, rings, ringItems, newKeys, key)
     }
   }
 
-  private def checkTable(database: Database, databaseName: String, tableName: String) {
+  private def allRings(database: Database, table: Table) {
+    val rings = database.allRings.toList
+    val ringItems = rings.map(ringName => table.all(JsonObject("ring" -> ringName)).iterator)
+    val keys = rings.map(ringName => Key(null, ""))
+    val prev = Key(null, "")
+    nextItem(database, table, rings, ringItems, keys, prev)
+  }
+
+  private def checkTable(database: Database, tableName: String) {
     // TODO clean up tombstones
-    // TODO merge iterate over all rings
-    val table = database.table(tableName)
-    for (ring <- database.allRings) {
-      // TODO do multiple items in parallel
-      for (key <- table.all(JsonObject("ring" -> ring))) {
-        checkItem(database, table, databaseName: String, tableName: String, ring, key: JsonKey)
-      }
+    val info = database.tableInfo(tableName, JsonObject("get" -> "r"))
+    if (!jgetBoolean(info, "r")) {
+      println("*** TABLE: /" + database.databaseName + "/" + tableName + " ***")
+      val table = database.table(tableName)
+      allRings(database, table)
     }
   }
 
-  private def checkDatabase(client: Client, databaseName: String) {
+  private def checkDatabase(databaseName: String) {
     // TODO make sure databaseexists and is active
     // TODO make sure all servers are reachable
     val database = client.database(databaseName)
+    // TODO verify database is active
+    println("*** DATABASE: /" + databaseName + " ***")
     for (tableName <- database.allTables) {
-      val info = database.tableInfo(tableName,JsonObject("get"->"r"))
-      if (! jgetBoolean(info,"r")) {
-        checkTable(database, databaseName, tableName)
-      }
+      checkTable(database, tableName)
     }
   }
 
+  private def all {
+    for (databaseName <- client.allDatabases) {
+      checkDatabase(databaseName)
+    }
+
+  }
+
+  private def stop() {
+    client.stop()
+  }
+}
+
+/**
+ * The Check object contains code for checking the consistency of
+ * an OStore database and fixing any problems it finds.
+ */
+object Check {
+
   /**
    * This method allow the check program to be run from the command line.
-   * In SBT type 
-   * 
-   * run-main com.persist.Check
+   * In SBT type
+   *
+   * '''run-main com.persist.Check'''
+   *
+   * @param args command line args.
+   *   - args(0) command. Either '''check''' or '''fix'''.
+   *   - args(1) path to config (see wiki). Default is '''config/check.json'''.
    */
   def main(args: Array[String]) {
-    // TODO support a configuration
-    // TODO other command line options
-    // TODO scala callable method(s)
-    val client = new Client()
-    for (databaseName <- client.allDatabases) {
-      checkDatabase(client, databaseName)
+    if (args.size == 0) {
+      println("Must specify either check or fix")
+      return
     }
-    client.stop()
+    val fix = args(0) match {
+      case "check" => false
+      case "fix" => true
+      case _ => {
+        println("Command not check or fix")
+        return
+      }
+    }
+    val path = if (args.size >= 2) args(1) else "config/check.json"
+    val config = Json(Source.fromFile(path).mkString)
+    println(Pretty(config))
+    val check = new Check(fix, config)
+    check.all
+    check.stop()
   }
 
 }

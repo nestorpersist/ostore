@@ -204,6 +204,11 @@ class Table private[persist] (val databaseName: String, val tableName: String, a
     val j = Await.result(f, 5 seconds)
     j
   }
+  
+  private[persist] def sync(key: JsonKey, options: JsonObject = emptyJsonObject) {
+    val f = asyncClient.resync(key, options)
+    Await.result(f, 5 seconds)
+  }
 
   /**
    *

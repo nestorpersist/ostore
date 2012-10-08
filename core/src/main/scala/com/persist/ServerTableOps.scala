@@ -51,8 +51,8 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
         if (items.contains("k")) result = result + ("k" -> keyDecode(key))
         if (items.contains("v")) result = result + ("v" -> Json(value))
         if (items.contains("c")) result = result + ("c" -> jget(meta, "c"))
-        if (items.contains("d")) result = result + ("c" -> jgetBoolean(meta, "d"))
-        if (items.contains("e")) result = result + ("e" ->jgetLong(meta, "e"))
+        if (items.contains("d")) result = result + ("d" -> jgetBoolean(meta, "d"))
+        if (items.contains("e")) result = result + ("e" -> jgetLong(meta, "e"))
         Compact(result)
       } else {
         value
@@ -93,7 +93,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       } else {
         map.prefixes.get(prefixtab) match {
           case Some(pinfo) => pinfo.store
-          case None => return (Codes.NoTable, Compact(JsonObject("table"->info.tableName, "prefixtab"->prefixtab)))
+          case None => return (Codes.NoTable, Compact(JsonObject("table" -> info.tableName, "prefixtab" -> prefixtab)))
         }
       }
       val get = jgetString(options, "get")
@@ -101,7 +101,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       meta match {
         case Some(ms) => {
           val m = Json(ms)
-          if (jgetBoolean(m, "d") && ! get.contains("d")) {
+          if (jgetBoolean(m, "d") && !get.contains("d")) {
             (Codes.NoItem, emptyResponse)
           } else {
             val value = store.get(key)
@@ -133,13 +133,14 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       val request = Json(requests)
       val fast = jgetBoolean(request, "o", "fast")
       val expires = jgetLong(request, "o", "expires")
+      val doSync = !jgetBoolean(request, "o", "testnosync")
       val oldMetaS = info.storeTable.getMeta(key) match {
         case Some(s: String) => s
         case None => info.absentMetaS
       }
       val oldMeta = Json(oldMetaS)
       val oldD = jgetBoolean(oldMeta, "d")
-      if (! oldD && jgetBoolean(request, "create")) {
+      if (!oldD && jgetBoolean(request, "create")) {
         // Create and already exists
         return (Codes.Conflict, emptyResponse)
       }
@@ -165,9 +166,9 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       if (expires != 0) newMeta += ("e" -> expires)
       val newMetaS = Compact(newMeta)
       info.storeTable.putBothF1(key, newMetaS, value, fast)
-      if (sync.hasSync) sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
-      if (map.hasMap) map.mapOut(key, oldMetaS, oldvS, newMetaS, value)
-      if (reduce.hasReduce) reduce.reduceOut(key, oldMetaS, oldvS, newMetaS, value)
+      if (doSync && sync.hasSync) sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
+      map.doMap(key, oldMetaS, oldvS, newMetaS, value)
+      reduce.doReduce(key, oldMetaS, oldvS, newMetaS, value)
       (Codes.Ok, emptyResponse)
     }
 
@@ -185,6 +186,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
     def delete(key: String, requests: String): (String, Any) = {
       val request = Json(requests)
       val fast = jgetBoolean(request, "o", "fast")
+      val doSync = !jgetBoolean("request", "o", "testnosync")
       val value = "null"
       val oldMetaS = info.storeTable.getMeta(key) match {
         case Some(s: String) => s
@@ -208,9 +210,24 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       val newMetaS = Compact(newMeta)
       // if fast, commit will run in background
       info.storeTable.putBothF1(key, newMetaS, value, fast)
-      sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
+      if (doSync && sync.hasSync) sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
       map.doMap(key, oldMetaS, oldvS, newMetaS, value)
       reduce.doReduce(key, oldMetaS, oldvS, newMetaS, value)
+      (Codes.Ok, emptyResponse)
+    }
+
+    def resync(key: String, requests: String): (String, Any) = {
+      if (sync.hasSync) {
+        val metaS = info.storeTable.getMeta(key) match {
+          case Some(s: String) => s
+          case None => info.absentMetaS
+        }
+        val value = info.storeTable.get(key) match {
+          case Some(s: String) => s
+          case None => "null"
+        }
+        sync.toRings(key, info.absentMetaS, "null", metaS, value)
+      }
       (Codes.Ok, emptyResponse)
     }
 
@@ -243,7 +260,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       val equal = kind == "prev"
       val less = kind == "prev-"
       val options = Json(os)
-      val get = jgetString(options,"get")
+      val get = jgetString(options, "get")
       val key1 = getPrev(key, equal, get.contains("d"), options)
       key1 match {
         case Some((key2: String, result: String)) => {
@@ -274,7 +291,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       } else {
         map.prefixes.get(prefixtab) match {
           case Some(pinfo) => pinfo.store
-          case None => return Some((Codes.NoTable, Compact(JsonObject("table"->info.tableName, "prefixtab"->prefixtab))))
+          case None => return Some((Codes.NoTable, Compact(JsonObject("table" -> info.tableName, "prefixtab" -> prefixtab))))
         }
       }
       val key1 = store.next(key, equal)
@@ -322,7 +339,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       } else {
         map.prefixes.get(prefixtab) match {
           case Some(pinfo) => pinfo.store
-          case None => return Some((Codes.NoTable, Compact(JsonObject("table"->info.tableName, "prefixtab"->prefixtab))))
+          case None => return Some((Codes.NoTable, Compact(JsonObject("table" -> info.tableName, "prefixtab" -> prefixtab))))
         }
       }
       val key1 = store.prev(key, equal)

@@ -30,10 +30,10 @@ private[persist] trait ServerTableAssembly extends ServerTableMapComponent with 
 
 private[persist] class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
   store: AbstractStore, monitor: ActorRef, send: ActorRef, initialConfig: DatabaseConfig) extends CheckedActor {
-
+  
   object all extends ServerTableAssembly {
     val info = check(new ServerTableInfo(databaseName, ringName, nodeName, tableName,
-      initialConfig, send, store, monitor))
+      initialConfig, send, store, monitor, log))
     val ops = check(new ServerTableOps(context.system))
     val map = check(new ServerTableMap)
     val reduce = check(new ServerTableReduce)
@@ -146,6 +146,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
                 (Codes.ReadOnly, info.tableName)
               }
             }
+            case ("resync", v: String) => ops.resync(key, v)
             case ("next", v: String) => ops.next(kind, key, v)
             case ("next+", v: String) => ops.next(kind, key, v)
             case ("prev", v: String) => ops.prev(kind, key, v)

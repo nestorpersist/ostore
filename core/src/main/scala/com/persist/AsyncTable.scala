@@ -234,6 +234,20 @@ class AsyncTable private[persist] (val databaseName: String, val tableName: Stri
     }
     f2
   }
+  
+  private[persist] def resync(key: JsonKey, options: JsonObject = emptyJsonObject):Future[Unit] = {
+    val ring = jgetString(options, "ring")
+    val options1 = options - "ring"
+    var f1 = new DefaultPromise[(String, String)]
+    send ! ("resync", ring, f1, tableName, keyEncode(key), Compact(options1))
+    val f2 = f1.map { x =>
+      {
+        val (code: String, v1: String) = x
+        checkCode(code, v1)
+      }
+    }
+    f2
+  }
 
   /**
    *

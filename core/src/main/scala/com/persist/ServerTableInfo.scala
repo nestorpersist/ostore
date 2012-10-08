@@ -18,12 +18,13 @@
 package com.persist
 
 import akka.actor.ActorRef
+import akka.event.LoggingAdapter
 import JsonOps._
 
 private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>
   val info: ServerTableInfo
   class ServerTableInfo(val databaseName: String, val ringName: String, val nodeName: String, val tableName: String,
-    var config: DatabaseConfig, val send: ActorRef, val store: AbstractStore, val monitor: ActorRef) {
+    var config: DatabaseConfig, val send: ActorRef, val store: AbstractStore, val monitor: ActorRef, val log:LoggingAdapter) {
 
     val absentMetaS = """{"c":{},"d":true}"""
 
@@ -55,7 +56,7 @@ private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>
       }
       if (clean != "true") {
         val desc = databaseName + "/" + ringName + "/" + nodeName + "/" + tableName
-        println("Shutdown of " + desc + " was not clean")
+        log.warning("Shutdown of " + desc + " was not clean")
       }
       (low, high)
     }

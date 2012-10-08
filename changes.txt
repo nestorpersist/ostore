@@ -1,5 +1,13 @@
 LOG OF CHANGES
 
+10/7/2010 Added new 2-way and 3-way JSON conflict resolver
+10/5/2012 Fixed bug in get and all where get=cd, d was wiping out c
+10/5/2012 Shutdown not clean now logged warning rather than println
+10/5/2012 Check can now do some basic fixes
+10/5/2012 Check program now has command line options and a config
+10/2/2012 Changed the default Akka client port used by REST from 8011 to 8012
+10/2/2012 Check program now checks main tables
+
 9/30/2010 Codes.Locked => Codes.Lock
 9/30/2012 Admin commands internal protocol, improve idempotence and conflict detection
 9/29/2012 Fixed bug in admin commands (too many servers were being contacted)

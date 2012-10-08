@@ -1,0 +1,13 @@
+{
+   "client": {
+      "client":{
+	"host":"127.0.0.1",
+	"port":8010,
+	"name":"check"
+      },
+      "server":{
+	"host":"127.0.0.1",
+	"port":8011
+      }
+   }
+}

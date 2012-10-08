@@ -114,8 +114,8 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
     var httpPort = jgetInt(restInfo, "port")
     if (httpPort == 0) httpPort = 8081
     var clientPort = jgetInt(restInfo, "client", "port")
-    if (clientPort == 0) clientPort
-    if (clientPort == 0) port = akkaClientConfig.getInt("akka.remote.netty.port")
+    if (clientPort == 0) clientPort = 8012
+    //if (clientPort == 0) port = akkaClientConfig.getInt("akka.remote.netty.port")
     var clientName = jgetString(restInfo, "client", "name")
     if (clientName == "") clientName = "rest"
     val clientConfig = JsonObject(
@@ -799,8 +799,8 @@ object Server {
   /**
    * Main routine.
    *
-   * @param args The first arg is the path to the server configuration file. If
-   * absent the path defaults to config/server.json.
+   * @param args The first arg is the path to the server configuration file (see wiki). If
+   * absent the path defaults to '''config/server.json'''.
    */
   def main(args: Array[String]) {
     val fname = if (args.size > 0) { args(0) } else { "config/server.json" }
