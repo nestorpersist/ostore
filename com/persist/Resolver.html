@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html>
         <head>
-          <title>com.persist.AsyncTable</title>
+          <title>com.persist.Resolver</title>
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link type="text/css" media="screen" rel="stylesheet" href="../../lib/template.css" />
@@ -16,21 +16,19 @@
       <div id="definition">
         <img src="../../lib/class_big.png" />
         <p id="owner"><a name="com" class="extype" href="../package.html">com</a>.<a name="com.persist" class="extype" href="package.html">persist</a></p>
-        <h1>AsyncTable</h1>
+        <h1>Resolver</h1>
       </div>
 
       <h4 class="signature" id="signature">
       <span class="kind">class</span>
       <span class="symbol"> 
-        <span class="name">AsyncTable</span>
+        <span class="name">Resolver</span>
         
         <span class="result"> extends AnyRef</span>
       </span>
       </h4>
       
-          <div class="fullcommenttop" id="comment"><div class="comment cmt"><p>This is the asynchronous interface to OStore tables.
-Instances of this class are created by the <a name="com.persist.Database" class="extype" href="Database.html">Database</a> asyncTable method.
-</p></div><div class="toggleContainer block">
+          <div class="fullcommenttop" id="comment"><div class="toggleContainer block">
           <span class="toggle">Linear Supertypes</span>
           <div class="superTypes hiddenContent">AnyRef, <span name="scala.Any" class="extype">Any</span></div>
         </div></div>
@@ -48,7 +46,7 @@ Instances of this class are created by the <a name="com.persist.Database" class=
                 <span class="filtertype">Inherited</span>
                 <ol><li class="hideall out"><span>Hide All</span></li>
                 <li class="showall in"><span>Show all</span></li></ol>
-                <ol id="linearization"><li name="com.persist.AsyncTable" class="in"><span>AsyncTable</span></li><li name="scala.AnyRef" class="in"><span>AnyRef</span></li><li name="scala.Any" class="in"><span>Any</span></li></ol>
+                <ol id="linearization"><li name="com.persist.Resolver" class="in"><span>Resolver</span></li><li name="scala.AnyRef" class="in"><span>AnyRef</span></li><li name="scala.Any" class="in"><span>Any</span></li></ol>
               </div>
           <div id="visbl">
               <span class="filtertype">Visibility</span>
@@ -56,7 +54,21 @@ Instances of this class are created by the <a name="com.persist.Database" class=
             </div>
         </div>
 
+        <div class="members" id="constructors">
+              <h3>Instance Constructors</h3>
+              <ol><li visbl="pub" name="com.persist.Resolver#this" data-isabs="false">
+      <a id="this:Resolver"></a>
+      <h4 class="signature">
+      <span class="kind">new</span>
+      <span class="symbol"> 
+        <span class="name">Resolver</span>
         
+        <span class="params">()</span>
+      </span>
+      </h4>
+      
+    </li></ol>
+            </div>
 
         
         
@@ -119,30 +131,6 @@ Instances of this class are created by the <a name="com.persist.Database" class=
       </span>
       </h4>
       <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
-    </li><li visbl="pub" name="com.persist.AsyncTable#all" data-isabs="false">
-      <a id="all(JsonObject):Future[Option[NextItem]]"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">all</span>
-        
-        <span class="params">(<span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: <span name="akka.dispatch.Future" class="extype">Future</span>[<span name="scala.Option" class="extype">Option</span>[<a name="com.persist.NextItem" class="extype" href="NextItem.html">NextItem</a>]]</span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">Returns a future that can be used to access a sequence of items.</p><div class="fullcomment"><div class="comment cmt"><p>Returns a future that can be used to access a sequence of items.
-If options are not specified it will include the keys of all items
-in the table.
-</p></div><dl class="paramcmts block"><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.
-   Options can modify what items are returned and what information is
-   returned for each item.</p><ul><li><b>&quot;reverse&quot;=true</b> if true, return keys in reverse order. Default is false.</li><li><b>&quot;get=&quot;kvcde&quot;</b> if specified this method returns an object with requested fields
-     (Key, Value, vector Clock, Deleted, Expires time).</li><li><b>&quot;low&quot;=key</b> the lowest key that should be returned.</li><li><b>&quot;includelow&quot;=true</b> if true, the low option is inclusive.
- If false, the low option is exclusive. Default is false.</li><li><b>&quot;high&quot;=key</b> the highest key that should be returned.</li><li><b>&quot;includehigh&quot;=true</b> if true, the high option is inclusive.
- If false, the high option is exclusive. Default is false.</li><li><b>&quot;prefix&quot;=key</b> only keys for which this is a prefix are returned.</li><li><b>&quot;includeprefix&quot;=true</b> if true, any key equal to the prefix is included.
- If false, any key equal to the prefix is not included. Default is false.</li><li><b>&quot;parent&quot;=key</b> only keys which are direct children of this key are included.
- This option permits trees (where keys are arrays that represents paths) to be traversed.</li><li><b>&quot;includeparent&quot;=true</b> if true, any key equal to the parent is also included.
- If false, any key equal to the parent is not included. Default is false.</li><li><b>&quot;prefixtab&quot;=&quot;prefixName&quot;</b> get items from this prefix table rather than the main table.
-</li></ul></dd><dt>returns</dt><dd class="cmt"><p>a future for the first item (if any).
- The value of that future upon completion will be either</p><ul><li>None. there is no first item.</li><li>Some(NextItem). the first item.</li></ul></dd></dl></div>
     </li><li visbl="pub" name="scala.Any#asInstanceOf" data-isabs="false">
       <a id="asInstanceOf[T0]:T0"></a>
       <h4 class="signature">
@@ -168,86 +156,6 @@ in the table.
                 <span class="name">@throws</span><span class="args">()</span>
               
         </dd></dl></div>
-    </li><li visbl="pub" name="com.persist.AsyncTable#conditionalDelete" data-isabs="false">
-      <a id="conditionalDelete(JsonKey,Json,JsonObject):Future[Boolean]"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">conditionalDelete</span>
-        
-        <span class="params">(<span name="key">key: JsonKey</span>, <span name="vectorClock">vectorClock: Json</span>, <span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: <span name="akka.dispatch.Future" class="extype">Future</span>[<span name="scala.Boolean" class="extype">Boolean</span>]</span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">Provides optimistic concurrency control.</p><div class="fullcomment"><div class="comment cmt"><p>Provides optimistic concurrency control.
-Deletes the item only if its vector clock on the server matches
-the vector clock passed in.
-</p></div><dl class="paramcmts block"><dt class="param">key</dt><dd class="cmt"><p>the key.</p></dd><dt class="param">vectorClock</dt><dd class="cmt"><p>the vector clock to match. This would typically have been returned by a previous get
-call.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;w&quot;=n</b> write at least n rings before returning. Default is 1.</li><li><b>fast=true</b> if true, returns when the item has been updated in server memory.
-       If false, returns only after item has also been written to server disk. Default is false.</li><li><b>&quot;ring&quot;=&quot;ringName&quot;</b> write to this ring.
-</li></ul></dd><dt>returns</dt><dd class="cmt"><p>a future whose value upon completion is
- true if the item was deleted (vector clock matched). False if item was not deleted (vector
- clock did not match).</p></dd></dl></div>
-    </li><li visbl="pub" name="com.persist.AsyncTable#conditionalPut" data-isabs="false">
-      <a id="conditionalPut(JsonKey,Json,Json,JsonObject):Future[Boolean]"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">conditionalPut</span>
-        
-        <span class="params">(<span name="key">key: JsonKey</span>, <span name="value">value: Json</span>, <span name="vectorClock">vectorClock: Json</span>, <span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: <span name="akka.dispatch.Future" class="extype">Future</span>[<span name="scala.Boolean" class="extype">Boolean</span>]</span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">Provides optimistic concurrency control.</p><div class="fullcomment"><div class="comment cmt"><p>Provides optimistic concurrency control.
-Modifies the value of an item only if its vector clock on the server matches
-the vector clock passed in.
-</p></div><dl class="paramcmts block"><dt class="param">key</dt><dd class="cmt"><p>the key.</p></dd><dt class="param">value</dt><dd class="cmt"><p>the new value.</p></dd><dt class="param">vectorClock</dt><dd class="cmt"><p>the vector clock to match. This would typically have been returned by a previous get
-call.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;w&quot;=n</b> write at least n rings before returning. Default is 1.</li><li><b>&quot;fast&quot;=true</b> if true, returns when the item has been updated in server memory.
-       If false, returns only after item has also been written to server disk. Default is false.</li><li><b>&quot;ring&quot;=&quot;ringName&quot;</b> write to this ring.</li><li><b>&quot;expires&quot;=t</b> the millisecond time at which this item expires.
-</li></ul></dd><dt>returns</dt><dd class="cmt"><p>a future whose value upon completion is
- true if the item was modified (vector clock matched). False if item was not modified (vector
- clock did not match).
-</p></dd></dl></div>
-    </li><li visbl="pub" name="com.persist.AsyncTable#create" data-isabs="false">
-      <a id="create(JsonKey,Json,JsonObject):Future[Boolean]"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">create</span>
-        
-        <span class="params">(<span name="key">key: JsonKey</span>, <span name="value">value: Json</span>, <span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: <span name="akka.dispatch.Future" class="extype">Future</span>[<span name="scala.Boolean" class="extype">Boolean</span>]</span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">Creates an item only if it does not already exist.</p><div class="fullcomment"><div class="comment cmt"><p>Creates an item only if it does not already exist.
-</p></div><dl class="paramcmts block"><dt class="param">key</dt><dd class="cmt"><p>the key.</p></dd><dt class="param">value</dt><dd class="cmt"><p>the new value.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;w&quot;=n</b> write at least n rings before returning. Default is 1.</li><li><b>&quot;fast&quot;=true</b> if true, returns when the item has been updated in server memory.
-       If false, returns only after item has also been written to server disk. Default is false.</li><li><b>&quot;ring&quot;=&quot;ringName&quot;</b> write to this ring.</li><li><b>&quot;expires&quot;=t</b> the millisecond time at which this item expires.
-</li></ul></dd><dt>returns</dt><dd class="cmt"><p>a future whose value upon completion is
- true if the item was created. False if the item was not modified because it already exists.
-</p></dd></dl></div>
-    </li><li visbl="pub" name="com.persist.AsyncTable#databaseName" data-isabs="false">
-      <a id="databaseName:String"></a>
-      <h4 class="signature">
-      <span class="kind">val</span>
-      <span class="symbol"> 
-        <span class="name">databaseName</span>
-        
-        <span class="result">: String</span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">the name of the database.</p>
-    </li><li visbl="pub" name="com.persist.AsyncTable#delete" data-isabs="false">
-      <a id="delete(JsonKey,JsonObject):Future[Unit]"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">delete</span>
-        
-        <span class="params">(<span name="key">key: JsonKey</span>, <span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: <span name="akka.dispatch.Future" class="extype">Future</span>[<span name="scala.Unit" class="extype">Unit</span>]</span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">Deletes an item.</p><div class="fullcomment"><div class="comment cmt"><p>Deletes an item. Has no effect if the item does not exist
-</p></div><dl class="paramcmts block"><dt class="param">key</dt><dd class="cmt"><p>the key.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;w&quot;=n</b> write at least n rings before returning. Default is 1.</li><li><b>fast=true</b> if true, returns when the item has been updated in server memory.
-       If false, returns only after item has also been written to server disk. Default is false.</li><li><b>&quot;ring&quot;=&quot;ringName&quot;</b> write to this ring.
-</li></ul></dd><dt>returns</dt><dd class="cmt"><p>a future whose completion indicates that the delete has been handled by the server.</p></dd></dl></div>
     </li><li visbl="pub" name="scala.AnyRef#eq" data-isabs="false">
       <a id="eq(AnyRef):Boolean"></a>
       <h4 class="signature">
@@ -284,24 +192,6 @@ call.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json obj
                 <span class="name">@throws</span><span class="args">()</span>
               
         </dd></dl></div>
-    </li><li visbl="pub" name="com.persist.AsyncTable#get" data-isabs="false">
-      <a id="get(JsonKey,JsonObject):Future[Option[Json]]"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">get</span>
-        
-        <span class="params">(<span name="key">key: JsonKey</span>, <span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: <span name="akka.dispatch.Future" class="extype">Future</span>[<span name="scala.Option" class="extype">Option</span>[Json]]</span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">Gets information about an item with a specified key.</p><div class="fullcomment"><div class="comment cmt"><p>Gets information about an item with a specified key.
-</p></div><dl class="paramcmts block"><dt class="param">key</dt><dd class="cmt"><p>the key.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;get=&quot;kvcde&quot;</b> if specified this method returns an object with requested fields
-     (Key, Value, vector Clock, Deleted, Expires time).</li><li><b>&quot;r&quot;=n</b> read from at least n rings before returning. Default is 1.</li><li><b>&quot;ring&quot;=&quot;ringName&quot;</b> get from this ring.</li><li><b>&quot;prefixtab&quot;=&quot;prefixName&quot;</b> get items from this prefix table rather than the main table.
-</li></ul></dd><dt>returns</dt><dd class="cmt"><p>A future that upon completion will have value
-None if there is no item with that key, or Some(X) if the item exists.
-X will be the value of the item if the get option is not specified;
-otherwise, an object with the fields specified in the get option.
-</p></dd></dl></div>
     </li><li visbl="pub" name="scala.AnyRef#getClass" data-isabs="false">
       <a id="getClass():java.lang.Class[_]"></a>
       <h4 class="signature">
@@ -368,21 +258,17 @@ otherwise, an object with the fields specified in the get option.
       </span>
       </h4>
       <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
-    </li><li visbl="pub" name="com.persist.AsyncTable#put" data-isabs="false">
-      <a id="put(JsonKey,Json,JsonObject):Future[Unit]"></a>
+    </li><li visbl="pub" name="com.persist.Resolver#resolve" data-isabs="false">
+      <a id="resolve(Json,Json,Option[Json]):Json"></a>
       <h4 class="signature">
       <span class="kind">def</span>
       <span class="symbol"> 
-        <span class="name">put</span>
+        <span class="name">resolve</span>
         
-        <span class="params">(<span name="key">key: JsonKey</span>, <span name="value">value: Json</span>, <span name="options">options: JsonObject = <span class="symbol"><span class="name"><a href="JsonOps$.html">emptyJsonObject</a></span></span></span>)</span><span class="result">: <span name="akka.dispatch.Future" class="extype">Future</span>[<span name="scala.Unit" class="extype">Unit</span>]</span>
+        <span class="params">(<span name="i1">i1: Json</span>, <span name="i2">i2: Json</span>, <span name="optionalOld">optionalOld: <span name="scala.Option" class="extype">Option</span>[Json]</span>)</span><span class="result">: Json</span>
       </span>
       </h4>
-      <p class="shortcomment cmt">Modifies the value of an item.</p><div class="fullcomment"><div class="comment cmt"><p>Modifies the value of an item. If the item does not exist it is created.
-</p></div><dl class="paramcmts block"><dt class="param">key</dt><dd class="cmt"><p>the key.</p></dd><dt class="param">value</dt><dd class="cmt"><p>the new value.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;w&quot;=n</b> write at least n rings before returning. Default is 1.</li><li><b>&quot;fast&quot;=true</b> if true, returns when the item has been updated in server memory.
-       If false, returns only after item has also been written to server disk. Default is false.</li><li><b>&quot;ring&quot;=&quot;ringName&quot;</b> write to this ring.</li><li><b>&quot;expires&quot;=t</b> the millisecond time at which this item expires.
-</li></ul></dd><dt>returns</dt><dd class="cmt"><p>a future whose completion indicates that the put has been handled by the server.
-</p></dd></dl></div>
+      
     </li><li visbl="pub" name="scala.AnyRef#synchronized" data-isabs="false">
       <a id="synchronized[T0](⇒ T0):T0"></a>
       <h4 class="signature">
@@ -394,17 +280,6 @@ otherwise, an object with the fields specified in the get option.
       </span>
       </h4>
       <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
-    </li><li visbl="pub" name="com.persist.AsyncTable#tableName" data-isabs="false">
-      <a id="tableName:String"></a>
-      <h4 class="signature">
-      <span class="kind">val</span>
-      <span class="symbol"> 
-        <span class="name">tableName</span>
-        
-        <span class="result">: String</span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">the name of the table.</p>
     </li><li visbl="pub" name="scala.AnyRef#toString" data-isabs="false">
       <a id="toString():String"></a>
       <h4 class="signature">
