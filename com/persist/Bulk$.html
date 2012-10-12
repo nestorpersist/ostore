@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html>
         <head>
-          <title>com.persist.Resolver</title>
+          <title>com.persist.Bulk</title>
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link type="text/css" media="screen" rel="stylesheet" href="../../lib/template.css" />
@@ -12,23 +12,28 @@
       <script type="text/javascript" src="../../lib/tools.tooltip.js"></script>
     
         </head>
-        <body class="type">
+        <body class="value">
       <div id="definition">
-        <img src="../../lib/class_big.png" />
+        <img src="../../lib/object_big.png" />
         <p id="owner"><a name="com" class="extype" href="../package.html">com</a>.<a name="com.persist" class="extype" href="package.html">persist</a></p>
-        <h1>Resolver</h1>
+        <h1>Bulk</h1>
       </div>
 
       <h4 class="signature" id="signature">
-      <span class="kind">class</span>
+      <span class="kind">object</span>
       <span class="symbol"> 
-        <span class="name">Resolver</span>
+        <span class="name">Bulk</span>
         
         <span class="result"> extends AnyRef</span>
       </span>
       </h4>
       
-          <div class="fullcommenttop" id="comment"><div class="toggleContainer block">
+          <div class="fullcommenttop" id="comment"><div class="comment cmt"><p>The Bulk loader moves multiple items in and out
+of OStore tables.</p><p>The external form used is a sequence of lines.
+Each line specifies a single item and
+consists of the item JSON key followed by a tab followed by the
+item JSON value.</p><p>This is the same format used by the UI Upload and Download operations.
+</p></div><div class="toggleContainer block">
           <span class="toggle">Linear Supertypes</span>
           <div class="superTypes hiddenContent">AnyRef, <span name="scala.Any" class="extype">Any</span></div>
         </div></div>
@@ -46,7 +51,7 @@
                 <span class="filtertype">Inherited</span>
                 <ol><li class="hideall out"><span>Hide All</span></li>
                 <li class="showall in"><span>Show all</span></li></ol>
-                <ol id="linearization"><li name="com.persist.Resolver" class="in"><span>Resolver</span></li><li name="scala.AnyRef" class="in"><span>AnyRef</span></li><li name="scala.Any" class="in"><span>Any</span></li></ol>
+                <ol id="linearization"><li name="com.persist.Bulk" class="in"><span>Bulk</span></li><li name="scala.AnyRef" class="in"><span>AnyRef</span></li><li name="scala.Any" class="in"><span>Any</span></li></ol>
               </div>
           <div id="visbl">
               <span class="filtertype">Visibility</span>
@@ -54,21 +59,7 @@
             </div>
         </div>
 
-        <div class="members" id="constructors">
-              <h3>Instance Constructors</h3>
-              <ol><li visbl="pub" name="com.persist.Resolver#this" data-isabs="false">
-      <a id="this:Resolver"></a>
-      <h4 class="signature">
-      <span class="kind">new</span>
-      <span class="symbol"> 
-        <span class="name">Resolver</span>
         
-        <span class="params">()</span>
-      </span>
-      </h4>
-      
-    </li></ol>
-            </div>
 
         
         
@@ -156,6 +147,32 @@
                 <span class="name">@throws</span><span class="args">()</span>
               
         </dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Bulk#download" data-isabs="false">
+      <a id="download(Any):String"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">download</span>
+        
+        <span class="params">(<span name="in">in: <span name="scala.Any" class="extype">Any</span></span>)</span><span class="result">: String</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Downloads items from a table into a string.</p><div class="fullcomment"><div class="comment cmt"><p>Downloads items from a table into a string.
+</p></div><dl class="paramcmts block"><dt class="param">in</dt><dd class="cmt"><p>the source of the items.</p><ul><li>Table or AsyncTable. Get all items from this table. There is no difference in behavior. Use whichever is easiest.</li><li>Iterable[(Json,Json)]. A sequence of key-value pairs. Allows you to program your own source.</li></ul></dd><dt>returns</dt><dd class="cmt"><p>the string containing the items.
+</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Bulk#download" data-isabs="false">
+      <a id="download(Any,Any):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">download</span>
+        
+        <span class="params">(<span name="in">in: <span name="scala.Any" class="extype">Any</span></span>, <span name="out">out: <span name="scala.Any" class="extype">Any</span></span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Downloads items from a table.</p><div class="fullcomment"><div class="comment cmt"><p>Downloads items from a table.
+</p></div><dl class="paramcmts block"><dt class="param">in</dt><dd class="cmt"><p>the source of the items.</p><ul><li>Table or AsyncTable. Get all items from this table. There is no difference in behavior. Use whichever is easiest.</li><li>Iterable[(Json,Json)]. A sequence of key-value pairs. Allows you to program your own source.</li></ul></dd><dt class="param">out</dt><dd class="cmt"><p>the destination of items.</p><ul><li>File. writes items to a file.</li><li>OutputStream. writes items to a stream.
+</li></ul></dd></dl></div>
     </li><li visbl="pub" name="scala.AnyRef#eq" data-isabs="false">
       <a id="eq(AnyRef):Boolean"></a>
       <h4 class="signature">
@@ -258,17 +275,6 @@
       </span>
       </h4>
       <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
-    </li><li visbl="pub" name="com.persist.Resolver#resolve" data-isabs="false">
-      <a id="resolve(Json,Json,Option[Json]):Json"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">resolve</span>
-        
-        <span class="params">(<span name="i1">i1: Json</span>, <span name="i2">i2: Json</span>, <span name="optionalOld">optionalOld: <span name="scala.Option" class="extype">Option</span>[Json]</span>)</span><span class="result">: Json</span>
-      </span>
-      </h4>
-      
     </li><li visbl="pub" name="scala.AnyRef#synchronized" data-isabs="false">
       <a id="synchronized[T0](⇒ T0):T0"></a>
       <h4 class="signature">
@@ -291,6 +297,19 @@
       </span>
       </h4>
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.Bulk#upload" data-isabs="false">
+      <a id="upload(Any,Any,Int):Unit"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">upload</span>
+        
+        <span class="params">(<span name="in">in: <span name="scala.Any" class="extype">Any</span></span>, <span name="out">out: <span name="scala.Any" class="extype">Any</span></span>, <span name="cnt">cnt: <span name="scala.Int" class="extype">Int</span> = <span class="symbol">5</span></span>)</span><span class="result">: <span name="scala.Unit" class="extype">Unit</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Uploads items into a table.</p><div class="fullcomment"><div class="comment cmt"><p>Uploads items into a table.
+</p></div><dl class="paramcmts block"><dt class="param">in</dt><dd class="cmt"><p>the source of items.</p><ul><li>File. Items are in a file.</li><li>String. Items are in string.</li><li>InputStream. Stream containing items.</li><li>Table or AsyncTable. Get all items from this table. Used to copy items between tables.</li><li>Iterable[(Json,Json)]. A sequence of key-value pairs. Allows you to program your own source.</li></ul></dd><dt class="param">out</dt><dd class="cmt"><p>the destination of items.</p><ul><li>Table or AsyncTable. There is no difference in behavior. Use whichever is easiest.</li></ul></dd><dt class="param">cnt</dt><dd class="cmt"><p>the number of parallel &quot;put&quot; operations. The default is 5.
+</p></dd></dl></div>
     </li><li visbl="pub" name="scala.AnyRef#wait" data-isabs="false">
       <a id="wait():Unit"></a>
       <h4 class="signature">
