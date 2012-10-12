@@ -35,10 +35,14 @@ import Exceptions._
  * This is the asynchronous interface to OStore tables.
  * Instances of this class are created by the [[com.persist.Database]] asyncTable method.
  *
- * @param databaseName the name of the database.
+ * @param database the enclosing database.
  * @param tableName the name of the table.
  */
-class AsyncTable private[persist] (val databaseName: String, val tableName: String, system: ActorSystem, send: ActorRef) {
+class AsyncTable private[persist] (val database:Database, val tableName: String, system: ActorSystem, send: ActorRef) {
+  /**
+   * The name of the database.
+   */
+  val databaseName = database.databaseName
 
   private implicit val executor = system.dispatcher
 

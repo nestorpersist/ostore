@@ -20,7 +20,7 @@ package com.persist
 import JsonOps._
 import scala.util.Sorting
 
-class Resolver {
+private[persist] class Resolver {
 
   private def eq(i1: Json, i2: Json) = Compact(i1) == Compact(i2)
 

@@ -1,6 +1,14 @@
 LOG OF CHANGES
 
-10/7/2010 Added new 2-way and 3-way JSON conflict resolver
+10/12/2012 Fixed problems in beers.data
+10/12/2012 Bulk downloader now used in UI
+10/11/2012 New wiki page for multiple servers
+10/11/2012 Bulk uploader now used by UI
+10/10/2012 .gitignore now excludes Scala worksheets 
+10/9/2012 New bulk loader with Scala API
+10/9/2012 Added back links to client class APIs
+
+10/7/2012 Added new 2-way and 3-way JSON conflict resolver
 10/5/2012 Fixed bug in get and all where get=cd, d was wiping out c
 10/5/2012 Shutdown not clean now logged warning rather than println
 10/5/2012 Check can now do some basic fixes
@@ -8,16 +16,16 @@ LOG OF CHANGES
 10/2/2012 Changed the default Akka client port used by REST from 8011 to 8012
 10/2/2012 Check program now checks main tables
 
-9/30/2010 Codes.Locked => Codes.Lock
+9/30/2012 Codes.Locked => Codes.Lock
 9/30/2012 Admin commands internal protocol, improve idempotence and conflict detection
 9/29/2012 Fixed bug in admin commands (too many servers were being contacted)
 9/29/2012 Pretty (JSON pretty printer) faster, cleaner, nicer output
 
 9/26/2012 UI better error reporting for errors from server
 9/25/2012 REST server empty 200 response now has body {} (empty not legal Json)
-9/25/2010 Client and Database methods: better exceptions
-9/25/2010 UI better config Json error reporting
-9/25/2010 .gitignore now ignores directories with name "local"
+9/25/2012 Client and Database methods: better exceptions
+9/25/2012 UI better config Json error reporting
+9/25/2012 .gitignore now ignores directories with name "local"
 
 9/24/2012 fixed bug in messaging timers for timeout and retry 
 9/23/2012 fixed bug in report method for prefixtabs

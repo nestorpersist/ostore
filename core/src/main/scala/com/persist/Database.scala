@@ -34,8 +34,10 @@ import Exceptions._
  * Instances of this class are created by the [[com.persist.Client]] database method.
  * 
  * @param databaseName the name of the database.
+ * @param client the enclosing client.
  */
-class Database private[persist] (system: ActorSystem, val databaseName: String, manager: ActorRef, client:Client) {
+class Database private[persist] (val client:Client, val databaseName: String, manager: ActorRef) {
+  private val system = client.system
   private implicit val timeout = Timeout(5 seconds)
   private lazy implicit val ec = ExecutionContext.defaultExecutionContext(system)
 
@@ -317,7 +319,7 @@ class Database private[persist] (system: ActorSystem, val databaseName: String, 
   def table(tableName: String) = {
     checkName(tableName)
     var p = new DefaultPromise[Table]
-    manager ? ("table", p, databaseName, tableName, client)
+    manager ? ("table", p, this, tableName, client)
     val v = Await.result(p, 5 seconds)
     v
   }
@@ -332,7 +334,7 @@ class Database private[persist] (system: ActorSystem, val databaseName: String, 
   def asyncTable(tableName: String) = {
     checkName(tableName)
     var p = new DefaultPromise[AsyncTable]
-    manager ? ("asyncTable", p, databaseName, tableName, client)
+    manager ? ("asyncTable", p, this, tableName, client)
     val v = Await.result(p, 5 seconds)
     v
   }

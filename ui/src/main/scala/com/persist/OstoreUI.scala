@@ -20,6 +20,7 @@ package com.persist
 import com.vaadin.Application
 import scala.io.Source
 import JsonOps._
+import akka.actor.ActorSystem
 
 // TODO change icon
 
@@ -38,13 +39,14 @@ private[persist] class OStoreUI extends Application {
     setTheme("runo")
 
     object UIAll extends UIAssembly {
+      val system = ActorSystem("UI")
       val page = new Page(client)
       val act = new UIAct(client, page)
       val top = new Top
       val left = new Left
       val right = new Right
       val all = new All(top.all, left.all, right.all)
-      val buttons = new Buttons(client, app)
+      val buttons = new Buttons(system, client, app)
       val editWindow = new EditWindow
       client.setWindow(all.all)
     }

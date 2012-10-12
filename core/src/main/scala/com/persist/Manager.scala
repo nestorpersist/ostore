@@ -52,7 +52,8 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
   private var sends = new TreeMap[String, ActorRef]()
   private var databases = new TreeMap[String, Database]()
 
-  private def getAsyncTable(databaseName: String, tableName: String, client: Client): AsyncTable = {
+  private def getAsyncTable(database: Database, tableName: String, client: Client): AsyncTable = {
+    val databaseName = database.databaseName
     val send = sends.get(databaseName) match {
       case Some(s) => s
       case None => {
@@ -67,18 +68,18 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
         s
       }
     }
-    new AsyncTable(databaseName, tableName, system, send)
+    new AsyncTable(database, tableName, system, send)
   }
 
-  private def getTable(databaseName: String, tableName: String, client: Client): Table = {
-    new Table(databaseName, tableName, getAsyncTable(databaseName, tableName, client))
+  private def getTable(database: Database, tableName: String, client: Client): Table = {
+    new Table(database, tableName, getAsyncTable(database, tableName, client))
   }
 
   private def getDatabase(databaseName: String, client: Client): Database = {
     databases.get(databaseName) match {
       case Some(d) => d
       case None => {
-        val d = new Database(system, databaseName, self, client)
+        val d = new Database(client, databaseName, self)
         databases += (databaseName -> d)
         d
       }
@@ -653,14 +654,14 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
         getDatabase(databaseName, client)
       }
     }
-    case ("table", p: Promise[Table], databaseName: String, tableName: String, client: Client) => {
+    case ("table", p: Promise[Table], database: Database, tableName: String, client: Client) => {
       complete(p) {
-        getTable(databaseName, tableName, client)
+        getTable(database, tableName, client)
       }
     }
-    case ("asyncTable", p: Promise[AsyncTable], databaseName: String, tableName: String, client: Client) => {
+    case ("asyncTable", p: Promise[AsyncTable], database: Database, tableName: String, client: Client) => {
       complete(p) {
-        getAsyncTable(databaseName, tableName, client)
+        getAsyncTable(database, tableName, client)
       }
     }
     case ("allDatabases", p: Promise[Iterable[String]]) => {

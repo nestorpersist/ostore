@@ -24,17 +24,18 @@ import com.vaadin.terminal.StreamResource
 import java.io.InputStream
 import java.io.ByteArrayInputStream
 import JsonOps._
+import akka.actor.ActorSystem
+import java.io.PipedInputStream
+import java.io.PipedOutputStream
 
-private[persist] class StringResource(s: String) extends StreamResource.StreamSource {
-  def getStream(): InputStream = {
-    new ByteArrayInputStream(s.getBytes("UTF-8"))
-  }
+private[persist] class InResource(in:InputStream) extends StreamResource.StreamSource {
+  def getStream(): InputStream = in
 }
 
 private[persist] trait ButtonsComponent { this: UIAssembly =>
   val buttons: Buttons
 
-  class Buttons(client: WebClient, app: Application) {
+  class Buttons(system:ActorSystem, client: WebClient, app: Application) {
 
     // Top Buttons
 
@@ -144,21 +145,18 @@ private[persist] trait ButtonsComponent { this: UIAssembly =>
     val tableUpload = new Button("Upload")
     tableUpload.addListener(new ClickListener {
       def buttonClick(e: Button#ClickEvent) = {
-        FileWindows.load(all.all, act.databaseName, act.tableName, client)
+        FileWindows.load(system, all.all, act.databaseName, act.tableName, client)
       }
     })
     val t5 = new Button("Download")
     t5.addListener(new ClickListener {
       def buttonClick(e: Button#ClickEvent) = {
-        // TODO should stream in for large tables
-        // TODO deal with paging for large tables
-        val items = client.getKeyBatch(act.databaseName, act.tableName, 500, None, false, true, None)
-        var result = ""
-        for (item <- jgetArray(items)) {
-          result += Compact(jget(item, "k")) + "\t" + Compact(jget(item, "v")) + "\n"
-        }
-        val sr = new StreamResource(new StringResource(result), act.databaseName + "." + act.tableName + ".json", app)
+        val it = client.getKeys(act.databaseName, act.tableName)
+        val out = new PipedOutputStream()
+        val in = new PipedInputStream(out)
+        val sr = new StreamResource(new InResource(in), act.databaseName + "." + act.tableName + ".data", app)
         all.all.open(sr)
+        BulkImpl.download(system, it, out)
       }
     })
     right.tableButtons.addComponent(t1)

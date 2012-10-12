@@ -56,7 +56,7 @@ object Exceptions {
    * @param line the line where the error occurred.
    * @param char the character position of the error on the line where it occurred.
    */
-  class JsonParseException(msg: String, input: String, line: Int, char: Int)
+  class JsonParseException(val msg: String, val input: String, val line: Int, val char: Int)
     extends SystemException(Codes.JsonParse, JsonObject("msg" -> msg, "line" -> line, "char" -> char, "input" -> input)) {
     /** 
      * There is a special version of toString for JSON parse errors.

@@ -30,19 +30,53 @@ import java.io.PipedInputStream
 import java.io.PipedOutputStream
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import scala.actors.Future
+//import scala.actors.Future
 import java.io.FileOutputStream
 import java.io.File
 import Exceptions._
+import akka.actor.ActorSystem
+import akka.dispatch.Future
 
 object FileWindows {
+
+  class Loader(system: ActorSystem, put: (Json, Json) => Future[Unit], done: => Unit, error: Label)
+    extends Upload.Receiver with Upload.SucceededListener with Upload.FailedListener with Upload.StartedListener {
+
+    var loader: BulkImpl.Load = null
+    var fileName: String = ""
+
+    def uploadStarted(event: Upload.StartedEvent) {
+    }
+
+    def receiveUpload(filename: String, MIMEType: String): OutputStream = {
+      this.fileName = filename
+      val inStream = new PipedInputStream()
+      val outStream = new PipedOutputStream(inStream)
+      loader = new BulkImpl.Load(system, new BulkImpl.Split(inStream), put, 10)
+      outStream
+    }
+
+    def uploadSucceeded(event: Upload.SucceededEvent) {
+      try {
+        loader.waitDone
+        done
+      } catch {
+        case ex: JsonParseException => error.setValue(fileName + ": " + ex.shortString)
+        case ex: Throwable => error.setValue(fileName + ": " + ex.toString)
+      }
+    }
+
+    def uploadFailed(event: Upload.FailedEvent) {
+      println("upload fail")
+    }
+  }
 
   class Receiver(act: Act)
     extends Upload.Receiver with Upload.SucceededListener with Upload.FailedListener with Upload.StartedListener {
 
     var reader: BufferedReader = null
     var ireader: InputStreamReader = null
-    var fileName:String = ""
+    var fileName: String = ""
 
     def uploadStarted(event: Upload.StartedEvent) {
     }
@@ -68,58 +102,7 @@ object FileWindows {
   }
 
   trait Act {
-    def read(fineName:String, reader: BufferedReader): Unit
-  }
-
-  class Reader(databaseName: String, tableName: String, exit: () => Unit, error: Label, client: WebClient) extends Act {
-
-    private def doItem(item: String): String = {
-      val parts = item.split("\t")
-      if (parts.size >= 2) {
-        try {
-          val key = Json(parts(0))
-          val value = Json(parts(1))
-          client.putItem(databaseName, tableName, key, value)
-          ""
-        } catch {
-          case ex: Exception => {
-            //val msg = ex.getMessage()
-            val msg = ex.toString()
-            msg + ": " + item
-          }
-          case x => "unknown: "+ x.toString()
-        }
-      } else {
-        "no tab" + ": " + item
-      }
-    }
-
-    def read(fileName:String, reader: BufferedReader): Unit = {
-      var line = 0
-      var msg = ""
-      var done = false
-      while (!done) {
-        line += 1
-        //val ch = ireader.read()
-        val s = reader.readLine()
-        if (s == null) {
-          done = true
-        } else {
-          val error = doItem(s)
-          if (error != "") {
-            msg = "[Line:" + line + "] " + error
-            done = true
-          }
-        }
-      }
-      reader.close()
-      if (msg == "") {
-        exit()
-      } else {
-        error.setValue(msg)
-      }
-    }
-
+    def read(fineName: String, reader: BufferedReader): Unit
   }
 
   class Create(ta: TextField, error: Label, client: WebClient, exit: () => Unit) extends Act {
@@ -132,7 +115,7 @@ object FileWindows {
       return false
 
     }
-    def read(fileName:String, reader: BufferedReader): Unit = {
+    def read(fileName: String, reader: BufferedReader): Unit = {
       val database = ta.getValue().asInstanceOf[String]
       if (databaseExists(database)) {
         error.setValue("database " + database + " already exists")
@@ -155,14 +138,14 @@ object FileWindows {
       } catch {
         case ex: JsonParseException => {
           val msg = ex.shortString()
-          error.setValue(fileName +": " + msg)
+          error.setValue(fileName + ": " + msg)
           return
         }
       }
       try {
-         client.configAct("create", database, jconfig)
+        client.configAct("create", database, jconfig)
       } catch {
-        case ex:SystemException => {
+        case ex: SystemException => {
           error.setValue(ex.toString())
           return
         }
@@ -170,9 +153,9 @@ object FileWindows {
       exit()
     }
   }
-  
-  class Change(add:Boolean, database:String, kind: String, error: Label, client: WebClient, exit: () => Unit) extends Act {
-    def read(fileName:String, reader: BufferedReader): Unit = {
+
+  class Change(add: Boolean, database: String, kind: String, error: Label, client: WebClient, exit: () => Unit) extends Act {
+    def read(fileName: String, reader: BufferedReader): Unit = {
       var done = false
       var b = new StringBuilder()
       while (!done) {
@@ -190,15 +173,15 @@ object FileWindows {
       } catch {
         case ex: JsonParseException => {
           val msg = ex.shortString()
-          error.setValue(fileName +": " + msg)
+          error.setValue(fileName + ": " + msg)
           return
         }
       }
-      val cmd = (if (add) "add" else "delete")++(kind ++ "s")
+      val cmd = (if (add) "add" else "delete") ++ (kind ++ "s")
       try {
-         client.configAct(cmd, database, jconfig)
+        client.configAct(cmd, database, jconfig)
       } catch {
-        case ex:SystemException => {
+        case ex: SystemException => {
           error.setValue(ex.toString())
           return
         }
@@ -207,7 +190,7 @@ object FileWindows {
     }
   }
 
-  def load(w: Window, databaseName: String, tableName: String, client: WebClient) {
+  def load(system: ActorSystem, w: Window, databaseName: String, tableName: String, client: WebClient) {
     val fileWin = new Window("Bulk Load Items for /" + databaseName + "/" + tableName)
     fileWin.getContent().setSizeFull()
     fileWin.setReadOnly(true)
@@ -228,7 +211,10 @@ object FileWindows {
     val error = new Label("")
     c.addComponent(error)
 
-    val r = new Receiver(new Reader(databaseName, tableName, () => w.removeWindow(fileWin), error, client))
+    implicit val executor = system.dispatcher
+    def put(key: Json, value: Json) = Future { client.putItem(databaseName, tableName, key, value) }
+    def done = w.removeWindow(fileWin)
+    val r = new Loader(system, put, done, error)
 
     val upload = new Upload("", r)
     upload.setButtonCaption("Load Now")
@@ -303,9 +289,8 @@ object FileWindows {
       }
     })
   }
-  
-  
-  def change(add:Boolean, database:String, kind:String, w: Window, client: WebClient, act: () => Unit) {
+
+  def change(add: Boolean, database: String, kind: String, w: Window, client: WebClient, act: () => Unit) {
     val fileWin = new Window("Create Database")
     fileWin.getContent().setSizeFull()
     fileWin.setReadOnly(true)

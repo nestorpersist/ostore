@@ -33,15 +33,15 @@ import scala.collection.Traversable
 import Exceptions._
 
 private object SyncAllItems {
-  def apply(client: AsyncTable, options: JsonObject) = new SyncAllItems(client, options)
+  def apply(asyncTable: AsyncTable, options: JsonObject) = new SyncAllItems(asyncTable, options)
 }
 
-private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: JsonObject) extends Iterable[Json] {
+private class SyncAllItems private[persist] (asyncTable: AsyncTable, options: JsonObject) extends Iterable[Json] {
 
   // TODO fix so only 1 wait for entire loop
   // This has fewer waits that using the Iterator
   override def foreach[T](body: Json => T) = {
-    var f = asyncClient.all(options)
+    var f = asyncTable.all(options)
     var done = false
     while (!done) {
       var r = Await.result(f, 20 seconds)
@@ -55,7 +55,7 @@ private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: J
     }
   }
   case class I() extends Iterator[Json] {
-    var f = asyncClient.all(options)
+    var f = asyncTable.all(options)
     var r = Await.result(f, 20 seconds)
     def hasNext = r != None
     def next(): Json = {
@@ -78,10 +78,14 @@ private class SyncAllItems private[persist] (asyncClient: AsyncTable, options: J
  * This is the synchronous interface to OStore tables.
  * Instances of this class are created by the [[com.persist.Database]] table method.
  *
- * @param databaseName the name of the database.
+ * @param database the enclosing database.
  * @param tableName the name of the table.
  */
-class Table private[persist] (val databaseName: String, val tableName: String, asyncClient: AsyncTable) {
+class Table private[persist] (val database:Database, val tableName: String, asyncTable: AsyncTable) {
+  /**
+   * The name of the database.
+   */
+  val databaseName = database.databaseName
   // TODO pass in config rather than default to first ring
   // TODO option to get config from remote server
 
@@ -98,7 +102,7 @@ class Table private[persist] (val databaseName: String, val tableName: String, a
    *  - '''"expires"=t''' the millisecond time at which this item expires.
    */
   def put(key: JsonKey, value: Json, options: JsonObject = emptyJsonObject): Unit = {
-    val f1 = asyncClient.put(key, value, options)
+    val f1 = asyncTable.put(key, value, options)
     Await.result(f1, 5 seconds)
   }
 
@@ -122,7 +126,7 @@ class Table private[persist] (val databaseName: String, val tableName: String, a
    *  clock did not match).
    */
   def conditionalPut(key: JsonKey, value: Json, vectorClock: Json, options: JsonObject = emptyJsonObject): Boolean = {
-    val f1 = asyncClient.conditionalPut(key, value, vectorClock, options)
+    val f1 = asyncTable.conditionalPut(key, value, vectorClock, options)
     Await.result(f1, 5 seconds)
   }
 
@@ -141,7 +145,7 @@ class Table private[persist] (val databaseName: String, val tableName: String, a
    *  @return true if the item was created. False if the item was not modified because it already exists.
    */
   def create(key: JsonKey, value: Json, options: JsonObject = emptyJsonObject): Boolean = {
-    val f1 = asyncClient.create(key, value, options)
+    val f1 = asyncTable.create(key, value, options)
     Await.result(f1, 5 seconds)
   }
 
@@ -156,7 +160,7 @@ class Table private[persist] (val databaseName: String, val tableName: String, a
    *  - '''"ring"="ringName"''' write to this ring.
    */
   def delete(key: JsonKey, options: JsonObject = emptyJsonObject): Unit = {
-    val f1 = asyncClient.delete(key, options)
+    val f1 = asyncTable.delete(key, options)
     Await.result(f1, 5 seconds)
   }
 
@@ -180,7 +184,7 @@ class Table private[persist] (val databaseName: String, val tableName: String, a
    *
    */
   def conditionalDelete(key: JsonKey, vectorClock: Json, options: JsonObject = emptyJsonObject): Boolean = {
-    val f1 = asyncClient.conditionalDelete(key, vectorClock, options)
+    val f1 = asyncTable.conditionalDelete(key, vectorClock, options)
     Await.result(f1, 5 seconds)
   }
 
@@ -200,13 +204,13 @@ class Table private[persist] (val databaseName: String, val tableName: String, a
    * otherwise, an object with the fields specified in the get option.
    */
   def get(key: JsonKey, options: JsonObject = emptyJsonObject): Option[Json] = {
-    val f = asyncClient.get(key, options)
+    val f = asyncTable.get(key, options)
     val j = Await.result(f, 5 seconds)
     j
   }
   
   private[persist] def sync(key: JsonKey, options: JsonObject = emptyJsonObject) {
-    val f = asyncClient.resync(key, options)
+    val f = asyncTable.resync(key, options)
     Await.result(f, 5 seconds)
   }
 
@@ -242,6 +246,6 @@ class Table private[persist] (val databaseName: String, val tableName: String, a
    *
    */
   def all[T](options: JsonObject = emptyJsonObject): Iterable[Json] = {
-    SyncAllItems(asyncClient, options)
+    SyncAllItems(asyncTable, options)
   }
 }

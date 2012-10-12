@@ -1,6 +1,8 @@
 *.class
 *.log
 
+.worksheet
+*.sc
 .history
 .DS_Store
 .project

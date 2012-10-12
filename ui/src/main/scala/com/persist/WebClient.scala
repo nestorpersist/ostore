@@ -187,6 +187,38 @@ class WebClient(host: String, port: Int) {
     }
   }
 
+  private class AllKeys(databaseName: String, tableName: String) extends Iterable[(Json, Json)] {
+    var items = JsonArray()
+    var pos = 0
+    var itemsSize = 0
+
+    def getBatch(low:String) {
+      val qlow = if (low == "") "" else "low=" + low + "&"
+      val info = Source.fromURL(new URL("http://" + server + "/" + databaseName + "/" + tableName + "?" + qlow + "count=10&get=kv")).mkString
+      items = jgetArray(Json(info))
+      pos = 0
+      itemsSize = jsize(items)
+    }
+    
+    case class I() extends Iterator[(Json,Json)] {
+      getBatch("")
+      def hasNext = itemsSize > 0
+      def next(): (Json, Json) = {
+        val item = jget(items,pos)
+        val key = jget(item, "k")
+        pos += 1
+        if (pos == itemsSize) getBatch(keyUriEncode(key))
+        (key,jget(item,"v"))
+      }
+    }
+
+    def iterator = I()
+  }
+
+  def getKeys(databaseName: String, tableName: String): Iterable[(Json, Json)] = {
+    new AllKeys(databaseName, tableName)
+  }
+
   def getKeyBatch(databaseName: String, tableName: String, count: Int,
     key: Option[JsonKey], includeKey: Boolean, first: Boolean,
     parentKey: Option[JsonKey]): JsonArray = {
