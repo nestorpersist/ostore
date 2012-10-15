@@ -24,12 +24,13 @@ import akka.util.Timeout
 import akka.util.duration._
 import Exceptions._
 import Codes.emptyResponse
+import Stores._
 
 private[persist] trait ServerTableAssembly extends ServerTableMapComponent with ServerTableReduceComponent with ServerTableSyncComponent
   with ServerTableBalanceComponent with ServerTableOpsComponent with ServerTableInfoComponent with ServerTableBackgroundComponent
 
 private[persist] class ServerTable(databaseName: String, ringName: String, nodeName: String, tableName: String,
-  store: AbstractStore, monitor: ActorRef, send: ActorRef, initialConfig: DatabaseConfig) extends CheckedActor {
+  store: Store, monitor: ActorRef, send: ActorRef, initialConfig: DatabaseConfig) extends CheckedActor {
   
   object all extends ServerTableAssembly {
     val info = check(new ServerTableInfo(databaseName, ringName, nodeName, tableName,
@@ -106,7 +107,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
       for ((name, pinfo) <- map.prefixes) {
         val plow = keyEncode(info.getPrefix(keyDecode(info.low), pinfo.size))
         val phigh = keyEncode(info.getPrefix(keyDecode(info.high), pinfo.size))
-        prefixes += (name -> makeArray(pinfo.store, plow, phigh, JsonObject("prefixtab" -> name, "includehigh" -> true)))
+        prefixes += (name -> makeArray(pinfo.storeTable, plow, phigh, JsonObject("prefixtab" -> name, "includehigh" -> true)))
       }
       r += ("prefixes" -> prefixes)
     }
@@ -191,14 +192,14 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
       case ("stop2") => {
         map.close
         reduce.close
-        info.storeTable.put("!clean", "true")
+        info.storeTable.putControl("!clean", "true")
         info.storeTable.close()
         sender ! Codes.Ok
       }
       case ("delete2") => {
         map.delete
         reduce.delete
-        info.storeTable.delete()
+        info.storeTable.store.deleteTable(info.storeTable.tableName)
         sender ! Codes.Ok
 
       }

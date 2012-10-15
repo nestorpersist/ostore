@@ -31,7 +31,7 @@ class TimeTest extends FunSuite {
     val dbName = "timedb"
     val serverConfig = Json("""
     {
-     "path":"data",
+     "store":{"class":"com.persist.store.Jdbm3","path":"/tmp/time"},
      "host":"127.0.0.1", "port":8011
     }        
     """)

@@ -36,6 +36,7 @@ import java.io.File
 import scala.io.Source
 import akka.event.Logging
 import com.typesafe.config.ConfigValueFactory
+import Stores._
 
 // Server Actor Paths
 //       /user/@server
@@ -87,14 +88,17 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
 
   private val path = jgetString(serverConfig, "path")
   private var exists = false
+  /*
   private val store = path match {
-    case "" => new InMemoryStore(context, "@server", "", false)
+    case "" => new com.persist.store.InMemory(context, "@server", "", false)
     case _ =>
       val fname = path + "/" + "@server" + "/" + serverName
       val f = new File(fname)
       exists = f.exists()
-      new Store(context, "@server", fname, !exists || create)
+      new com.persist.store.Jdbm3(context, "@server", fname, !exists || create)
   }
+  */
+  val store = Store("@server" + "/" + serverName, jget(serverConfig, "store"), context, create)
   private val system = context.system
   private val sendServer = new SendServer(system)
   private val storeTable = store.getTable(serverName)
@@ -247,7 +251,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val port = jgetInt(request, "port")
         val serverName = host + ":" + port
         info.config = info.config.addNode(ringName, nodeName, host, port)
-        storeTable.putMeta(databaseName, Compact(info.config.toJson))
+        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
         val f = database ? ("addNode", ringName, nodeName, host, port, info.config)
         Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
@@ -257,7 +261,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val ringName = jgetString(request, "ring")
         val nodeName = jgetString(request, "node")
         info.config = info.config.deleteNode(ringName, nodeName)
-        storeTable.putMeta(databaseName, Compact(info.config.toJson))
+        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
         val f = database ? ("deleteNode", ringName, nodeName, info.config)
         Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
@@ -278,7 +282,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val ringName = jgetString(request, "ring")
         val nodes = jgetArray(request, "nodes")
         info.config = info.config.addRing(ringName, nodes)
-        storeTable.putMeta(databaseName, Compact(info.config.toJson))
+        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
         val f = database ? ("addRing", ringName, nodes, info.config)
         Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
@@ -301,7 +305,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       case "deleteRing1" => {
         val ringName = jgetString(request, "ring")
         info.config = info.config.deleteRing(ringName)
-        storeTable.putMeta(databaseName, Compact(info.config.toJson))
+        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
         val f = database ? ("deleteRing1", ringName, info.config)
         Await.result(f, 5 seconds)
         // stop user on ring
@@ -372,7 +376,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       case "addTable1" => {
         val tableName = jgetString(request, "table")
         info.config = info.config.addTable(tableName)
-        storeTable.putMeta(databaseName, Compact(info.config.toJson))
+        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
         val f = database ? ("addTable1", tableName, info.config)
         val v = Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
@@ -387,7 +391,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       case "deleteTable1" => {
         val tableName = jgetString(request, "table")
         info.config = info.config.deleteTable(tableName)
-        storeTable.putMeta(databaseName, Compact(info.config.toJson))
+        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
         val f = database ? ("deleteTable1", tableName, info.config)
         val v = Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
@@ -675,7 +679,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val dbConfig = jget(request, "config")
         val dbConf = Compact(dbConfig)
         var config = DatabaseConfig(databaseName, dbConfig)
-        storeTable.putMeta(databaseName, dbConf)
+        storeTable.put(databaseName, dbConf, NOVAL)
         val database = system.actorOf(Props(new ServerDatabase(config, serverConfig, true)), name = databaseName)
         val info = new DatabaseInfo(database, config, "starting")
         databases += (databaseName -> info)
@@ -727,6 +731,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       log.info("Stopping server")
       if (restClient != null) restClient.stop()
       storeTable.close()
+      storeTable.store.close()
       sender ! Codes.Ok
     }
   }

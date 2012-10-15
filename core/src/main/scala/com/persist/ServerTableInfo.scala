@@ -20,11 +20,12 @@ package com.persist
 import akka.actor.ActorRef
 import akka.event.LoggingAdapter
 import JsonOps._
+import Stores._
 
 private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>
   val info: ServerTableInfo
   class ServerTableInfo(val databaseName: String, val ringName: String, val nodeName: String, val tableName: String,
-    var config: DatabaseConfig, val send: ActorRef, val store: AbstractStore, val monitor: ActorRef, val log:LoggingAdapter) {
+    var config: DatabaseConfig, val send: ActorRef, val store: Store, val monitor: ActorRef, val log:LoggingAdapter) {
 
     val absentMetaS = """{"c":{},"d":true}"""
 
@@ -32,25 +33,25 @@ private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>
 
     val uidGen = new UidGen
 
-    val (initLow: String, initHigh: String) = if (store.create) {
+    val (initLow: String, initHigh: String) = if (store.created) {
       val ringConfig = config.rings(ringName)
       val pos = ringConfig.nodePosition(nodeName)
       val nextPos = ringConfig.nodePosition(ringConfig.nextNodeName(nodeName))
       val low = if (pos == nextPos) { "" } else { keyEncode(pos) }
       val high = if (pos == nextPos) { "\uFFFF" } else { keyEncode(nextPos) }
-      storeTable.put("!low", low)
-      storeTable.put("!high", high)
+      storeTable.putControl("!low", low)
+      storeTable.putControl("!high", high)
       (low, high)
     } else {
-      val low = storeTable.get("!low") match {
+      val low = storeTable.getControl("!low") match {
         case Some(s: String) => s
         case None => ""
       }
-      val high = storeTable.get("!high") match {
+      val high = storeTable.getControl("!high") match {
         case Some(s: String) => s
         case None => ""
       }
-      val clean = storeTable.get("!clean") match {
+      val clean = storeTable.getControl("!clean") match {
         case Some(s: String) => s
         case None => "false"
       }
@@ -61,7 +62,7 @@ private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>
       (low, high)
     }
 
-    storeTable.put("!clean", "false")
+    storeTable.putControl("!clean", "false")
 
     // current node
     var low: String = initLow

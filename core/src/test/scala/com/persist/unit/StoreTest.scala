@@ -87,9 +87,10 @@ class StoreTest extends FunSuite {
   }
 
   test("test with JDBM3 store") {
+    println("TEST JDBM3")
     val serverConfig = Json("""
     {
-     "path":"/tmp/store",
+     "store":{"class":"com.persist.store.Jdbm3","path":"/tmp/store"},
      "host":"127.0.0.1", "port":8011
     }        
     """)
@@ -97,8 +98,10 @@ class StoreTest extends FunSuite {
   }
 
   test("test with in-memory store") {
+    println("TEST INMEMORY")
     val serverConfig = Json("""
     {
+     "store":{"class":"com.persist.store.InMemory"},
      "host":"127.0.0.1", "port":8011
     }
     """)

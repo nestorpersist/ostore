@@ -21,6 +21,7 @@ import JsonOps._
 import akka.actor.ActorSystem
 import akka.actor.ActorRef
 import Exceptions._
+import Stores._
 
 private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =>
   val bal: ServerTableBalance
@@ -120,12 +121,10 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       }
       val v = info.storeTable.get(key) match {
         case Some(value: String) => value
-        case None => {
-          throw InternalException("sendToNext 3")
-        }
+        case None => Stores.NOVAL
       }
       info.high = key
-      info.storeTable.put("!high", info.high)
+      info.storeTable.putControl("!high", info.high)
       nextCount += 1
       cntToNext += 1
       val uid = info.uidGen.get
@@ -137,15 +136,15 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
         for ((prefix, pinfo) <- map.prefixes) {
           val jfirstkey = info.getPrefix(jkey, pinfo.size)
           val firstkey = keyEncode(jfirstkey)
-          for (prefixkey <- info.range(pinfo.store, firstkey, nextLow, singleNode, JsonObject("prefixtab" -> prefix))) {
+          for (prefixkey <- info.range(pinfo.storeTable, firstkey, nextLow, singleNode, JsonObject("prefixtab" -> prefix))) {
             val jprefixkey = keyDecode(prefixkey)
-            val pmeta = pinfo.store.getMeta(prefixkey) match {
+            val pmeta = pinfo.storeTable.getMeta(prefixkey) match {
               case Some(value: String) => value
               case None => {
                 throw InternalException("sendToNext p2")
               }
             }
-            val pv = pinfo.store.get(prefixkey) match {
+            val pv = pinfo.storeTable.get(prefixkey) match {
               case Some(value: String) => value
               case None => {
                 throw InternalException("sendToNext p3")
@@ -188,15 +187,15 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
 
       if (t != 0) info.uidGen.set(t) // sync current clock to prev clock
       cntFromPrev += 1
-      info.storeTable.putBoth(key, meta, value)
+      info.storeTable.put(key, meta, value)
       info.low = if (low == "") key else low
       if (low != "" && prevNodeName == nextNodeName) {
         info.low = ""
         info.high = "\uFFFF"
         nextLow = info.high
       }
-      info.storeTable.put("!low", info.low)
-      if (reduce.hasReduce) reduce.reduceOut(key, info.absentMetaS, "null", meta, value)
+      info.storeTable.putControl("!low", info.low)
+      if (reduce.hasReduce) reduce.reduceOut(key, info.absentMetaS, NOVAL, meta, value)
       for (pre <- jgetArray(request, "prefixes")) {
         val prefix = jgetString(pre, "p")
         val pkey = jgetString(pre, "k")
@@ -210,7 +209,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
             // else 
 
             // map2 already run on prev
-            pinfo.store.putBoth(pkey, pmeta, pv)
+            pinfo.storeTable.put(pkey, pmeta, pv)
           }
           case None =>
         }
@@ -240,7 +239,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
           case Some(s: String) => s
           case None => ""
         }
-        reduce.reduceOut(k, oldMeta, oldValue, info.absentMetaS, "null")
+        reduce.reduceOut(k, oldMeta, oldValue, info.absentMetaS, NOVAL)
       }
       info.storeTable.remove(k)
     }
@@ -266,11 +265,11 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
         for ((prefix, pinfo) <- map.prefixes) {
           val plow = keyEncode(info.getPrefix(keyDecode(info.low), pinfo.size))
           val phigh = keyEncode(info.getPrefix(keyDecode(nlow), pinfo.size))
-          for (pk <- info.range(pinfo.store, nlow, nextLow, singleNode, JsonObject("prefixtab" -> prefix))) {
+          for (pk <- info.range(pinfo.storeTable, nlow, nextLow, singleNode, JsonObject("prefixtab" -> prefix))) {
             if (pk == phigh && pk != nlow) {
               // prefix not yet moved to next node
             } else if (!info.checkKey(pk, false, plow, phigh)) {
-              pinfo.store.remove(pk)
+              pinfo.storeTable.remove(pk)
             }
           }
         }

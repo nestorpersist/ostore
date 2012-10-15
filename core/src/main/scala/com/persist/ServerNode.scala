@@ -27,6 +27,7 @@ import akka.dispatch._
 import akka.util.Timeout
 import scala.collection.immutable.TreeMap
 import JsonOps._
+import Stores._
 
 private[persist] class ServerNode(databaseName: String, ringName: String, nodeName: String, send: ActorRef, var config: DatabaseConfig, serverConfig: Json, create: Boolean) extends CheckedActor {
 
@@ -38,13 +39,18 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
   private var tables = TreeMap[String, TableInfo]()
 
   private val path = jgetString(serverConfig, "path")
+  /*
   private val store = path match {
-    case "" => new InMemoryStore(context, nodeName, "", true)
+    case "" => new com.persist.store.InMemory(context, nodeName, "", true)
     case _ =>
       val desc = databaseName + "/" + ringName + "/" + nodeName
       val fname = path + "/" + desc
-      new Store(context, nodeName, fname, create)
+      new com.persist.store.Jdbm3(context, nodeName, fname, create)
   }
+  */
+  val storeName = databaseName + "/" + ringName + "/" + nodeName
+  val store = Store(storeName, jget(serverConfig, "store"),context, create)
+
   private val system = context.system
 
   def newTable(tableName: String) {

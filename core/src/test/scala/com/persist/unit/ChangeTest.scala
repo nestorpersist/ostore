@@ -32,7 +32,7 @@ class ChangeTest extends FunSuite {
     val dbName = "testdb"
     val serverConfig = Json("""
     {
-     "path":"/tmp/change",
+     "store":{"class":"com.persist.store.Jdbm3","path":"/tmp/change"},
      "host":"127.0.0.1", "port":8011
     }        
     """)

@@ -22,12 +22,13 @@ import akka.actor.ActorRef
 import MapReduce._
 import scala.collection.immutable.HashMap
 import Codes.emptyResponse
+import Stores._
 
 private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
   val reduce: ServerTableReduce
   class ServerTableReduce {
 
-    case class ReduceInfo(val to: String, val reduce: Reduce, val reduceStore: StoreTable)
+    case class ReduceInfo(val to: String, val reduce: Reduce, val storeTable: StoreTable)
 
     var reduces: List[ReduceInfo] = Nil
 
@@ -48,13 +49,13 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
 
     def close {
       for (ri <- reduces) {
-        ri.reduceStore.close()
+        ri.storeTable.close()
       }
     }
 
     def delete {
       for (ri <- reduces) {
-        ri.reduceStore.delete()
+        ri.storeTable.store.deleteTable(ri.storeTable.tableName)
       }
     }
 
@@ -66,10 +67,10 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
         case _ => return // key is not an array
       }
       // jkey must be an array
-      val joldValue = Json(oldValue)
-      val jvalue = Json(value)
       val hasOld = !jgetBoolean(Json(oldMeta), "d")
+      val joldValue = if (hasOld) Json(oldValue) else null
       val hasNew = !jgetBoolean(Json(meta), "d")
+      val jvalue = if (hasNew) Json(value) else null
       for (ri <- reduces) {
         if (jkeya.size < ri.reduce.size) return // key is too short
         var prefix = JsonArray()
@@ -81,7 +82,7 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
           i += 1
         }
         prefix = prefix.reverse
-        val oldsum = ri.reduceStore.get(keyEncode(prefix)) match {
+        val oldsum = ri.storeTable.get(keyEncode(prefix)) match {
           case Some(s: String) => Json(s)
           case None => ri.reduce.zero
         }
@@ -106,10 +107,10 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
         // save and send to dest
         if (Compact(oldsum) != Compact(newsum)) {
           val newsum1 = if (Compact(newsum) == Compact(ri.reduce.zero)) {
-            ri.reduceStore.remove(keyEncode(prefix))
+            ri.storeTable.remove(keyEncode(prefix))
             ri.reduce.zero
           } else {
-            ri.reduceStore.put(keyEncode(prefix), Compact(newsum))
+            ri.storeTable.put(keyEncode(prefix), info.absentMetaS, Compact(newsum))
             newsum
           }
           val dest = Map("ring" -> info.ringName)
@@ -153,9 +154,9 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
         val csum = Compact(sum)
         val oldSum = info.storeTable.get(key) match {
           case Some(s) => s
-          case None => "null"
+          case None => NOVAL
         }
-        info.storeTable.putBoth(key, cmeta, csum)
+        info.storeTable.put(key, cmeta, csum)
         map.doMap(key, oldMetaS, oldSum, cmeta, csum)
         doReduce(key, oldMetaS, oldSum, cmeta, csum)
       }

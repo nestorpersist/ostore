@@ -32,7 +32,7 @@ class ExceptionTest extends FunSuite {
   test("test exceptions") {
     val serverConfig = Json("""
     {
-     "path":"/tmp/exception",
+     "store":{"class":"com.persist.store.Jdbm3","path":"/tmp/exception"},
      "host":"127.0.0.1", "port":8011
     }        
     """)

@@ -32,7 +32,7 @@ class SimpleTest extends FunSuite {
   test("simple test") {
     val serverConfig = Json("""
     {
-     "path":"/tmp/simple",
+     "store":{"class":"com.persist.store.Jdbm3","path":"/tmp/simple"},
      "host":"127.0.0.1", "port":8011
     }        
     """)

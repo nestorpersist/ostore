@@ -1,5 +1,5 @@
 {
-   "path":"data",
+   "store":{"class":"com.persist.store.Jdbm3","path":"data"},
    "host":"127.0.0.1",
    "port":8011,
    "rest":{}

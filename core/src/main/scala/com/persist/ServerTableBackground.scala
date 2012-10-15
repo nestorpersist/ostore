@@ -19,6 +19,7 @@ package com.persist
 
 import com.persist.JsonOps._
 import akka.actor.ActorRef
+import Stores._
 
 private[persist] case class RingCopyTask(val ringName: String, val low: String, var high: String)
 
@@ -39,7 +40,7 @@ private[persist] trait ServerTableBackgroundComponent { this: ServerTableAssembl
       }
       val v = info.storeTable.get(key) match {
         case Some(v1: String) => v1
-        case None => "null"
+        case None => NOVAL
       }
       sync.toRing(ringName, key, meta, v)
     }

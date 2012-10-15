@@ -39,7 +39,7 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
     }
 
     def toRing(ringName:String, key:String, meta:String, value:String) {
-      val vals = (info.absentMetaS, "null", meta, value)
+      val vals = (info.absentMetaS, Stores.NOVAL, meta, value)
       info.send ! ("sync", ringName, info.tableName, key, vals)
     }
     
@@ -93,9 +93,9 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
           // record the new value
           val value2 = info.storeTable.get(key) match {
             case Some(v) => v
-            case None => "null"
+            case None => Stores.NOVAL
           }
-          info.storeTable.putBoth(key, meta, v)
+          info.storeTable.put(key, meta, v)
           map.doMap(key, oldMetaS, value2, Compact(cv1), v)
           reduce.doReduce(key, oldMetaS, value2, Compact(cv1), v)
         }
@@ -111,7 +111,7 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
           val newValue = Compact(value)
           val dobj = if (deleted) JsonObject("d"->true) else JsonObject()
           val newMeta = Compact(JsonObject("c"->cv) ++ dobj)
-          info.storeTable.putBoth(key, newMeta, newValue)
+          info.storeTable.put(key, newMeta, newValue)
           toRings(key, oldMetaS, value2, newMeta, newValue)
           map.doMap(key, oldMetaS, value2, newMeta, newValue)
           reduce.doReduce(key, oldMetaS, value2, newMeta, newValue)

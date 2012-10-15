@@ -22,6 +22,7 @@ import akka.actor.ActorRef
 import MapReduce._
 import scala.collection.immutable.HashMap
 import Codes.emptyResponse
+import Stores._
 
 private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
   val map: ServerTableMap
@@ -29,7 +30,7 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
 
     case class MapInfo(val to: String, val map: MapAll)
 
-    case class PrefixInfo(val size: Int, val store: StoreTable, var sentMeta: String = "", var sentKey: String = "")
+    case class PrefixInfo(val size: Int, val storeTable: StoreTable, var sentMeta: String = "", var sentKey: String = "")
 
     var maps: List[MapInfo] = Nil
     var prefixes = new HashMap[String, PrefixInfo]()
@@ -54,13 +55,13 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
 
     def close {
       for ((name, info) <- prefixes) {
-        info.store.close()
+        info.storeTable.close()
       }
     }
 
     def delete {
       for ((name, info) <- prefixes) {
-        info.store.delete()
+        info.storeTable.store.deleteTable(info.storeTable.tableName)
       }
     }
 
@@ -93,7 +94,7 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
       val dest = Map("ring" -> info.ringName)
       val ret = "" // TODO will eventually hook this up
       val passMeta = Compact(JsonObject("c" -> JsonObject(info.tableName -> t), "d" -> true))
-      info.send ! ("map", info.ringName, to, key, (prefix, passMeta, "null"))
+      info.send ! ("map", info.ringName, to, key, (prefix, passMeta, NOVAL))
     }
 
     private def mapPairs(to: String, prefix: String, dedup: Boolean, hasOld: Boolean, hasNew: Boolean,
@@ -164,14 +165,14 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
                 if (a.size >= pinfo.size) {
                   val jprekey = a.take(pinfo.size)
                   val prekey = keyEncode(jprekey)
-                  val premeta = pinfo.store.getMeta(prekey) match {
+                  val premeta = pinfo.storeTable.getMeta(prekey) match {
                     case Some(s) => Json(s)
                     case None => info.absentMetaS
                   }
                   if (jgetBoolean(premeta, "d")) {
                     None
                   } else {
-                    pinfo.store.get(prekey) match {
+                    pinfo.storeTable.get(prekey) match {
                       case Some(s: String) => {
                         Some(jprekey, Json(s))
                       }
@@ -198,10 +199,10 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
 
     def mapOut(key: String, oldMeta: String, oldValue: String, meta: String, value: String) {
       val jkey = keyDecode(key)
-      val joldValue = Json(oldValue)
-      val jvalue = Json(value)
       val hasOld = !jgetBoolean(Json(oldMeta), "d")
+      val joldValue = if (hasOld) Json(oldValue) else NOVAL
       val hasNew = !jgetBoolean(Json(meta), "d")
+      val jvalue = if (hasNew) Json(value) else NOVAL
       for (mi <- maps) {
         val dedup = jgetBoolean(mi.map.options, "dedup")
         val toprefix = jgetString(mi.map.options, "toprefix")
@@ -281,7 +282,7 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
         (0, info.storeTable, null)
       } else {
         prefixes.get(prefix) match {
-          case Some(pinfo) => (pinfo.size, pinfo.store, pinfo)
+          case Some(pinfo) => (pinfo.size, pinfo.storeTable, pinfo)
           case None => (0, info.storeTable, null)
         }
       }
@@ -302,9 +303,9 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
       if (newt > oldt) {
         val oldvS = store.get(key) match {
           case Some(s: String) => s
-          case None => "null"
+          case None => NOVAL
         }
-        store.putBoth(key, meta, value)
+        store.put(key, meta, value)
         if (prefix == "") {
           // Main table update 
           doMap(key, oldMetaS, oldvS, meta, value)
@@ -330,7 +331,7 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
                 if (itemKey < limit) {
                   val itemValue = info.storeTable.get(itemKey) match {
                     case Some(s: String) => s
-                    case None => "null"
+                    case None => NOVAL
                   }
                   maps2(prefix, k, hasOld, hasNew, value, oldvS, itemKey, itemValue)
                   k = itemKey

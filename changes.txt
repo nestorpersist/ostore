@@ -1,5 +1,12 @@
 LOG OF CHANGES
 
+10/14/2010 InMemory store now uses Scala immutable collections
+10/13/2012 FORMAT CHANGE: Jdbm3 files. Delete and rebuild
+10/13/2012 Server config files changes to support store reflection
+10/13/2012 Support new local store implementations via reflection
+10/13/2012 StoreTables now have control in addition to meta and value
+10/13/2012 Reorg store code 
+
 10/12/2012 Fixed problems in beers.data
 10/12/2012 Bulk downloader now used in UI
 10/11/2012 New wiki page for multiple servers
