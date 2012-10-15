@@ -1,5 +1,10 @@
 LOG OF CHANGES
 
+10/15/2012 Table config can now specify a resolver
+10/15/2012 Add Newest resolver (last writer wins)
+10/15/2012 Class VectorClock now public
+10/15/2012 Use reflection to find conflict resolvers
+
 10/14/2010 InMemory store now uses Scala immutable collections
 10/13/2012 FORMAT CHANGE: Jdbm3 files. Delete and rebuild
 10/13/2012 Server config files changes to support store reflection

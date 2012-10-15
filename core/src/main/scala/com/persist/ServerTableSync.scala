@@ -28,54 +28,32 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
     val hasSync = info.config.rings.size > 1
     var cntSync: Long = 0
 
+    val tconfig = info.config.tables(info.tableName)
+    val config3 = tconfig.resolve3
+    val config2 = tconfig.resolve2
+    val (resolve2, resolve3, threeWay) = {
+      if (config3 != null) {
+        (null, Resolve.Resolve3(config3), true)
+      } else if (config2 != null) {
+        (Resolve.Resolve2(config2), null, false)
+      } else {
+        (null, Resolve.Resolve3(null), true)
+      }
+    }
+
     def toRings(key: String, oldMeta: String, oldValue: String, meta: String, value: String) {
       // send to other rings
       val vals = (oldMeta, oldValue, meta, value)
-      for ((name,config) <- info.config.rings) {
+      for ((name, config) <- info.config.rings) {
         if (name != info.ringName) {
           info.send ! ("sync", name, info.tableName, key, vals)
         }
       }
     }
 
-    def toRing(ringName:String, key:String, meta:String, value:String) {
+    def toRing(ringName: String, key: String, meta: String, value: String) {
       val vals = (info.absentMetaS, Stores.NOVAL, meta, value)
       info.send ! ("sync", ringName, info.tableName, key, vals)
-    }
-    
-    private def reconcile(cv1:Json, value1: Json, deleted1:Boolean,
-                          cv2:Json, value2: Json, deleted2:Boolean,
-                          cv0:Json, value0: Json, deleted0:Boolean):(Boolean, Json) = {
-      val cmp1 = ClockVector.compare(cv1,cv0)
-      val cmp2 = ClockVector.compare(cv2,cv0)
-      val r = new Resolver()
-      if ((cmp1 == '=' || cmp1 == '>') && (cmp2 == '=' || cmp2 == '>')) {
-        // 3 way
-        if (deleted1 && deleted2) {
-          (true, null)
-        } else if (deleted1 && ! deleted0) {
-          (true, null)
-        } else if (deleted2 && ! deleted0) {
-          (true, null)
-        } else if (deleted1 && deleted0) {
-          (false, value2)
-        } else if (deleted2 && deleted0) {
-          (false, value1)
-        } else {
-          (false, r.resolve(value1, value2, Some(value0)))
-        }
-      } else {
-        // 2 way
-        if (deleted1 && deleted2) {
-          (true, null)
-        } else if (deleted1) {
-          (false, JsonObject("$opt"->value2))
-        } else if (deleted2) {
-          (false, JsonObject("$opt"->value1))
-        } else {
-          (false, r.resolve(value1, value2, None))
-        }
-      }
     }
 
     def sync(key: String, oldmeta: String, oldv: String, meta: String, v: String): (String, Any) = {
@@ -101,16 +79,20 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
         }
         case 'I' => {
           // conflict detected
-          val cv0 = jget(Json(oldmeta),"c")
-          val deleted1 = jgetBoolean(Json(meta),"d")
-          val deleted2 = jgetBoolean(Json(oldMetaS),"d")
-          val deleted0 = jgetBoolean(Json(oldmeta), "d")
+          val cv0 = jget(Json(oldmeta), "c")
+          val deleted1 = jgetBoolean(Json(meta), "d")
+          val deleted2 = jgetBoolean(Json(oldMetaS), "d")
           val Some(value2) = info.storeTable.get(key)
-          val (deleted, value) = reconcile(cv1, Json(v), deleted1, cv2, Json(value2),deleted2, cv0, Json(oldv), deleted0)
+          val (deleted, value) = if (threeWay) {
+            val deleted0 = jgetBoolean(Json(oldmeta), "d")
+            resolve3.resolve3(keyDecode(key), cv1, Json(v), deleted1, cv2, Json(value2), deleted2, cv0, Json(oldv), deleted0)
+          } else {
+            resolve2.resolve2(keyDecode(key), cv1, Json(v), deleted1, cv2, Json(value2), deleted2)
+          }
           val cv = ClockVector.merge(cv1, cv2)
-          val newValue = Compact(value)
-          val dobj = if (deleted) JsonObject("d"->true) else JsonObject()
-          val newMeta = Compact(JsonObject("c"->cv) ++ dobj)
+          val newValue = if (deleted) Stores.NOVAL else Compact(value)
+          val dobj = if (deleted) JsonObject("d" -> true) else JsonObject()
+          val newMeta = Compact(JsonObject("c" -> cv) ++ dobj)
           info.storeTable.put(key, newMeta, newValue)
           toRings(key, oldMetaS, value2, newMeta, newValue)
           map.doMap(key, oldMetaS, value2, newMeta, newValue)

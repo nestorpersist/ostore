@@ -72,7 +72,9 @@ private[persist] case class TableConfig(
   val toMap: Map[String, Json],
   val fromMap: Map[String, Json],
   val toReduce: Map[String, Json],
-  val fromReduce: Map[String, Json])
+  val fromReduce: Map[String, Json],
+  val resolve2:Json,
+  val resolve3:Json)
 
 private[persist] object DatabaseConfig {
 
@@ -121,7 +123,9 @@ private[persist] object DatabaseConfig {
         case obj: JsonObject => (true,JsonArray(obj))
         case x => (false,JsonArray())
       }
-      val info = TableConfig(name, hasPrefix, prefix, getMap(toMap, name), getMap(fromMap, name), getMap(toReduce, name), getMap(fromReduce, name))
+      val info = TableConfig(name, hasPrefix, 
+          prefix, getMap(toMap, name), getMap(fromMap, name), getMap(toReduce, name), getMap(fromReduce, name),
+          jget(tab,"resolve2"), jget(tab, "resolve3"))
       tables += (name -> info)
     }
 
@@ -185,7 +189,7 @@ private[persist] class DatabaseConfig(
   }
 
   def addTable(tableName: String): DatabaseConfig = {
-    val tableConfig = TableConfig(tableName, false, JsonArray(), emptyMap, emptyMap, emptyMap, emptyMap)
+    val tableConfig = TableConfig(tableName, false, JsonArray(), emptyMap, emptyMap, emptyMap, emptyMap, null, null)
     val tables1 = tables + (tableName -> tableConfig)
     new DatabaseConfig(name, rings, tables1, servers)
   }

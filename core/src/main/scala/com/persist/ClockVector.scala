@@ -19,9 +19,17 @@ package com.persist
 
 import JsonOps._
 
-private[persist] object ClockVector {
-
-  // {"r1:"d1,"r2":d2} can be empty but not null
+/**
+ * This object contains operations on ClockVectors, the OStore implementation of 
+ * vector clocks.
+ * OStore uses ClockVectors for conflict detection and resolution.
+ * 
+ * ClockVectors are represented by Json Objects. The object
+ * contains a set of name-value pairs where the name is the name
+ * of the ring where a change was made and the value is a long
+ * integer which is the millisecond time when that change was made.
+ */
+object ClockVector {
 
   private def getRingNames(cv1: Json, cv2: Json) = {
     var result = Set[String]()
@@ -36,8 +44,18 @@ private[persist] object ClockVector {
     result
   }
 
-  val empty = emptyJsonObject
+  /**
+   * The empty clock vector.
+   */
+  val empty:Json = emptyJsonObject
 
+  /**
+   * Determines which clock vector was last modified.
+   * 
+   * @param cv1 the first clock vector.
+   * @param cv2 the second clock vector.
+   * @return true if cv1 was modified before cv2.
+   */
   def newer(cv1: Json, cv2: Json): Boolean = {
     var max: Long = 0
     var result = true
@@ -55,6 +73,17 @@ private[persist] object ClockVector {
     false
   }
 
+  /**
+   * Compares two clock vectors.
+   * 
+   * @param cv1 the first clock vector.
+   * @param cv2 the second clock vector.
+   * @return the result of the comparison
+   *  - '<' if cv1 < cv2
+   *  - '>' if cv1 > cv2
+   *  - '=' if cv1 == cv2
+   *  - 'I' otherwise
+   */
   def compare(cv1: Json, cv2: Json): Char = {
     var ls = false
     var gt = false
@@ -73,6 +102,13 @@ private[persist] object ClockVector {
     }
   }
 
+  /**
+   * Merge two clock vectors.
+   *  
+   * @param cv1 the first clock vector.
+   * @param cv2 the second clock vector.
+   * @return the smallest clock vector that is greater than both cv1 and cv2
+   */
   def merge(cv1: Json, cv2: Json): Json = {
     var result = JsonObject()
     for (n <- getRingNames(cv1, cv2)) {
@@ -84,11 +120,19 @@ private[persist] object ClockVector {
     result
   }
 
-  def incr(cv: Json, rn: String, d: Long): Json = {
+  /** 
+   * Increment a clock vector
+   * 
+   * @param cv a vector clock
+   * @param ringName the name of a ring
+   * @param the current millisecond time
+   * @return a new clock vector whose ringName component value is max of d and the current value + 1.
+   */
+  def incr(cv: Json, ringName: String, t: Long): Json = {
     var result = jgetObject(cv)
-    val oldd = jgetLong(result, rn)
-    val newd = List(oldd + 1, d).max
-    result = result + (rn -> newd)
+    val oldd = jgetLong(result, ringName)
+    val newd = List(oldd + 1, t).max
+    result = result + (ringName -> newd)
     result
   }
 

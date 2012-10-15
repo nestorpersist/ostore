@@ -15,12 +15,15 @@
  *  limitations under the License.
 */
 
-package com.persist
+package com.persist.resolve
 
+import com.persist._
 import JsonOps._
 import scala.util.Sorting
 
-private[persist] class Resolver {
+private[persist] class Merge3 extends Resolve.Resolve3 {
+
+  def init(config: Json) {}
 
   private def eq(i1: Json, i2: Json) = Compact(i1) == Compact(i2)
 
@@ -149,7 +152,7 @@ private[persist] class Resolver {
     }
   }
 
-  def resolve(i1: Json, i2: Json, optionalOld: Option[Json]): Json = {
+  private def resolve(i1: Json, i2: Json, optionalOld: Option[Json]): Json = {
     // Assumes the cv for old is less or equal to each of i1 and i2 cvs
     if (eq(i1, i2)) {
       i1
@@ -186,5 +189,52 @@ private[persist] class Resolver {
         }
       }
     }
+  }
+
+  def resolve3(key:Json, cv1: Json, value1: Json, deleted1: Boolean,
+    cv2: Json, value2: Json, deleted2: Boolean,
+    cv0: Json, value0: Json, deleted0: Boolean): (Boolean, Json) = {
+    val cmp1 = ClockVector.compare(cv1, cv0)
+    val cmp2 = ClockVector.compare(cv2, cv0)
+    if ((cmp1 == '=' || cmp1 == '>') && (cmp2 == '=' || cmp2 == '>')) {
+      // 3 way
+      if (deleted1 && deleted2) {
+        (true, null)
+      } else if (deleted1 && !deleted0) {
+        (true, null)
+      } else if (deleted2 && !deleted0) {
+        (true, null)
+      } else if (deleted1 && deleted0) {
+        (false, value2)
+      } else if (deleted2 && deleted0) {
+        (false, value1)
+      } else {
+        (false, resolve(value1, value2, Some(value0)))
+      }
+    } else {
+      // 2 way
+      if (deleted1 && deleted2) {
+        (true, null)
+      } else if (deleted1) {
+        (false, JsonObject("$opt" -> value2))
+      } else if (deleted2) {
+        (false, JsonObject("$opt" -> value1))
+      } else {
+        (false, resolve(value1, value2, None))
+      }
+    }
+  }
+}
+
+private[persist] class Merge2 extends Resolve.Resolve2 {
+  val merge3 = new Merge3()
+  def init(config: Json) {
+    merge3.init(config)
+  }
+  def resolve2(key:Json, cv1: Json, value1: Json, deleted1: Boolean,
+    cv2: Json, value2: Json, deleted2: Boolean): (Boolean, Json) = {
+    merge3.resolve3(key, cv1, value1, deleted1,
+      cv2, value2, deleted2,
+      ClockVector.empty, null, true)
   }
 }
