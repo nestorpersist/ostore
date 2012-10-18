@@ -250,7 +250,7 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
       // Sends updates to downstream tables with a map2 from this prefix
       val jkey = keyDecode(key)
       val jvalue = Json(value)
-      val joldvalue = Json(oldvalue)
+      val joldvalue = if (hasOld) Json(oldvalue) else NOVAL
       val jitemKey = keyDecode(itemKey)
       val jitemValue = Json(itemValue)
       for (mi <- maps) {

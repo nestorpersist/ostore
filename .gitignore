@@ -9,7 +9,7 @@
 .settings
 .classpath
 .idea*
-data*
+data/
 .cache
 WebContent
 bin

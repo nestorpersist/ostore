@@ -39,6 +39,7 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
   private val msgs = new Msgs()
   private val databaseName = config.name
   val change = context.actorOf(Props(new Change(config, client, self)), name = "change")
+  var serverMsgCount:Long = 0L
 
   private class Msg(
     var cmd: String,
@@ -102,6 +103,9 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
     private var events = TreeMap[Long, Long]()
     private var timer: Cancellable = null
     private var timerWhen = 0L
+    
+    
+    def size = msgs.size
 
     private def timeout(cnt: Int, delay: Boolean): Int = {
       if (cnt < 5) {
@@ -303,9 +307,13 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
       //}
       sender ! Codes.Ok
     }
+    case ("busy") => {
+      sender ! (Codes.Ok, serverMsgCount, msgs.size)
+    }
     case (cmd: String, ringName: String, tableName: String, key: String, value: Any) => {
       // server request
       // TODO value should be String so msgs can be stored in persist store
+      serverMsgCount += 1
       val msg = new ServerMsg(cmd, ringName, tableName, key, value)
       msgs.newMsg(msg)
     }
@@ -325,7 +333,6 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
         case None => // Discard it (already processed) 
       }
     }
-    // TODO check for idle
     // TODO r=n, w=n
     case (0, "addRing", ringName: String, nodes: JsonArray) => {
       if (!map.hasRing(ringName)) {

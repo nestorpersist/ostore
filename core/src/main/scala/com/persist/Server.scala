@@ -59,11 +59,6 @@ private class Listener extends CheckedActor {
   }
 }
 
-private[persist] class DatabaseInfo(
-  var dbRef: ActorRef,
-  var config: DatabaseConfig,
-  var state: String)
-
 private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends CheckedActor {
   private implicit val timeout = Timeout(5 seconds)
 
@@ -86,31 +81,15 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
   if (port == 0) port = akkaServerConfig.getInt("akka.remote.netty.port")
   private val serverName = host + ":" + port
 
-  private val path = jgetString(serverConfig, "path")
-  private var exists = false
-  /*
-  private val store = path match {
-    case "" => new com.persist.store.InMemory(context, "@server", "", false)
-    case _ =>
-      val fname = path + "/" + "@server" + "/" + serverName
-      val f = new File(fname)
-      exists = f.exists()
-      new com.persist.store.Jdbm3(context, "@server", fname, !exists || create)
-  }
-  */
   val store = Store("@server" + "/" + serverName, jget(serverConfig, "store"), context, create)
   private val system = context.system
   private val sendServer = new SendServer(system)
-  private val storeTable = store.getTable(serverName)
   private val listener = system.actorOf(Props[Listener])
 
   system.eventStream.subscribe(self, classOf[DeadLetter])
   system.eventStream.subscribe(listener, classOf[RemoteLifeCycleEvent])
 
-  private var databases = TreeMap[String, DatabaseInfo]()
-
-  // databaseName -> locking guid or "" if unlocked
-  private var locks = TreeMap[String, String]()
+  private var states = new DatabaseStates(store)
 
   private val restInfo = jget(serverConfig, "rest")
   private var restClient: RestClient = null
@@ -119,7 +98,6 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
     if (httpPort == 0) httpPort = 8081
     var clientPort = jgetInt(restInfo, "client", "port")
     if (clientPort == 0) clientPort = 8012
-    //if (clientPort == 0) port = akkaClientConfig.getInt("akka.remote.netty.port")
     var clientName = jgetString(restInfo, "client", "name")
     if (clientName == "") clientName = "rest"
     val clientConfig = JsonObject(
@@ -134,42 +112,23 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
     restClient = new RestClient(clientConfig)
   }
 
-  if (exists) {
-    var done = false
-    var key = storeTable.first()
-    do {
-      key match {
-        case Some(databaseName: String) => {
-          val dbConf = storeTable.getMeta(databaseName) match {
-            case Some(s: String) => s
-            case None => ""
-          }
-          val dbConfig = Json(dbConf)
-          val config = DatabaseConfig(databaseName, dbConfig)
-          val info = new DatabaseInfo(null, config, "stop")
-          databases += (databaseName -> info)
-          key = storeTable.next(databaseName, false)
-        }
-        case None => done = true
-      }
-    } while (!done)
-  }
+  if (!store.created) states.restore
 
   private def doLock(databaseName: String, request: Json): (String, String) = {
     val getInfo = jgetBoolean(request, "getinfo")
     val tableName = jgetString(request, "table")
     val ringName = jgetString(request, "ring")
     val nodeName = jgetString(request, "node")
-    databases.get(databaseName) match {
-      case Some(info) => {
-        val result = if (getInfo) {
+    states.get(databaseName) match {
+      case Some(state) => {
+        val result = if (getInfo && state.config != null) {
           var servers = JsonArray()
-          for (name <- info.config.servers.keys) {
+          for (name <- state.config.servers.keys) {
             servers = name +: servers
           }
-          var result = JsonObject("servers" -> servers.reverse, "s" -> info.state)
+          var result = JsonObject("servers" -> servers.reverse, "s" -> state.state)
           if (tableName != "") {
-            info.config.tables.get(tableName) match {
+            state.config.tables.get(tableName) match {
               case Some(tinfo) =>
               case None => {
                 result += ("tableAbsent" -> true)
@@ -177,7 +136,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
             }
           }
           if (ringName != "") {
-            info.config.rings.get(ringName) match {
+            state.config.rings.get(ringName) match {
               case Some(tinfo) => {
                 if (nodeName != "") {
                   tinfo.nodes.get(nodeName) match {
@@ -195,7 +154,11 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
           }
           result
         } else {
-          emptyJsonObject
+          if (getInfo && state.config == null) {
+             JsonObject("databaseAbsent"->true)
+          } else {
+            emptyJsonObject
+          }
         }
         (Codes.Ok, Compact(result))
       }
@@ -206,8 +169,8 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
     }
   }
 
-  def recAdmin(cmd: String, databaseName: String, info: DatabaseInfo, request: Json) = {
-    val database = info.dbRef
+  def recAdmin(cmd: String, databaseName: String, state: DatabaseState, request: Json) = {
+    val database = state.ref
     cmd match {
       case "start" => {
         val balance = jgetBoolean(request, "balance")
@@ -217,7 +180,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val f = database ? ("start", ring, node, balance, user)
         Await.result(f, 5 seconds)
         if (user) {
-          info.state = "active"
+          state.state = "active"
           log.info("Database started " + databaseName)
         }
         sender ! (Codes.Ok, emptyResponse)
@@ -234,9 +197,14 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       case "setRingAvailable" => {
         val ringName = jgetString(request, "ring")
         val avail = jgetBoolean(request, "avail")
-        val config = info.config.enableRing(ringName, avail)
+        val config = state.config.enableRing(ringName, avail)
         // TODO enable user ops on new ring node table nodes
         sender ! (Codes.Ok, emptyResponse)
+      }
+      case "busySend" => {
+        val f = database ? ("busySend")
+        val (code: String, result: String) = Await.result(f, 5 seconds)
+        sender ! (code, emptyResponse)
       }
       case "busyBalance" => {
         val f = database ? ("busyBalance")
@@ -250,9 +218,8 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val host = jgetString(request, "host")
         val port = jgetInt(request, "port")
         val serverName = host + ":" + port
-        info.config = info.config.addNode(ringName, nodeName, host, port)
-        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
-        val f = database ? ("addNode", ringName, nodeName, host, port, info.config)
+        state.config = state.config.addNode(ringName, nodeName, host, port)
+        val f = database ? ("addNode", ringName, nodeName, host, port, state.config)
         Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
         log.info("Added node " + ringName + "/" + nodeName)
@@ -260,9 +227,8 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       case "deleteNode" => {
         val ringName = jgetString(request, "ring")
         val nodeName = jgetString(request, "node")
-        info.config = info.config.deleteNode(ringName, nodeName)
-        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
-        val f = database ? ("deleteNode", ringName, nodeName, info.config)
+        state.config = state.config.deleteNode(ringName, nodeName)
+        val f = database ? ("deleteNode", ringName, nodeName, state.config)
         Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
         log.info("Deleted node " + ringName + "/" + nodeName)
@@ -273,7 +239,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         if (empty) {
           val stopped = gracefulStop(database, 5 seconds)(system)
           Await.result(stopped, 5 seconds)
-          databases -= databaseName
+          states.delete(databaseName)
           log.info("Database deleted " + databaseName)
         }
         sender ! (Codes.Ok, emptyResponse)
@@ -281,9 +247,8 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       case "addRing" => {
         val ringName = jgetString(request, "ring")
         val nodes = jgetArray(request, "nodes")
-        info.config = info.config.addRing(ringName, nodes)
-        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
-        val f = database ? ("addRing", ringName, nodes, info.config)
+        state.config = state.config.addRing(ringName, nodes)
+        val f = database ? ("addRing", ringName, nodes, state.config)
         Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
         log.info("Added ring " + ringName)
@@ -304,9 +269,8 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       }
       case "deleteRing1" => {
         val ringName = jgetString(request, "ring")
-        info.config = info.config.deleteRing(ringName)
-        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
-        val f = database ? ("deleteRing1", ringName, info.config)
+        state.config = state.config.deleteRing(ringName)
+        val f = database ? ("deleteRing1", ringName, state.config)
         Await.result(f, 5 seconds)
         // stop user on ring
         // pass config down
@@ -339,27 +303,44 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         sender ! (Codes.Ok, emptyResponse)
       }
       case "stopDatabase1" => {
-        info.state = "stopping"
+        state.state = "stopping"
         val f = database ? ("stop", true, true, "", "")
         val v = Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
       }
       case "stopDatabase2" => {
-        info.state = "stop"
+        state.state = "stop"
         val f = database ? ("stop2")
         val v = Await.result(f, 5 seconds)
         val stopped = gracefulStop(database, 5 seconds)(system)
         Await.result(stopped, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
-        info.dbRef = null
+        state.ref = null
         log.info("Database stopped " + databaseName)
       }
+      case "newDatabase" => {
+        if (state.state != "") {
+          val response = JsonObject("database" -> databaseName)
+          sender ! (Codes.ExistDatabase, Compact(response))
+        } else {
+          val jconfig = jget(request, "config")
+          var config = DatabaseConfig(databaseName, jconfig)
+          val database = system.actorOf(Props(new ServerDatabase(config, serverConfig, true)), name = databaseName)
+          state.ref = database
+          state.state = "starting"
+          state.config = config
+          val f = database ? ("init")
+          val x = Await.result(f, 5 seconds)
+          sender ! (Codes.Ok, emptyResponse)
+          log.info("Created database " + databaseName)
+        }
+      }
       case "startDatabase1" => {
-        val database = system.actorOf(Props(new ServerDatabase(info.config, serverConfig, false)), name = databaseName)
+        state.state = "starting"
+        val database = system.actorOf(Props(new ServerDatabase(state.config, serverConfig, false)), name = databaseName)
         val f = database ? ("init")
         Await.result(f, 5 seconds)
-        info.state = "starting"
-        info.dbRef = database
+        state.ref = database
         sender ! (Codes.Ok, emptyResponse)
         log.info("Database starting " + databaseName)
       }
@@ -368,16 +349,14 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val fname = path + "/" + databaseName
         val f = new File(fname)
         deletePath(f)
-        databases -= databaseName
+        state.state = ""
         sender ! (Codes.Ok, emptyResponse)
-        storeTable.remove(databaseName)
         log.info("Database deleted " + databaseName)
       }
       case "addTable1" => {
         val tableName = jgetString(request, "table")
-        info.config = info.config.addTable(tableName)
-        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
-        val f = database ? ("addTable1", tableName, info.config)
+        state.config = state.config.addTable(tableName)
+        val f = database ? ("addTable1", tableName, state.config)
         val v = Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
         log.info("Added table " + tableName)
@@ -390,9 +369,8 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       }
       case "deleteTable1" => {
         val tableName = jgetString(request, "table")
-        info.config = info.config.deleteTable(tableName)
-        storeTable.put(databaseName, Compact(info.config.toJson), NOVAL)
-        val f = database ? ("deleteTable1", tableName, info.config)
+        state.config = state.config.deleteTable(tableName)
+        val f = database ? ("deleteTable1", tableName, state.config)
         val v = Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
         log.info("Deleted table " + tableName)
@@ -406,17 +384,17 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
     }
   }
 
-  def recInfo(cmd: String, databaseName: String, info: DatabaseInfo, request: Json) = {
-    val database = info.dbRef
+  def recInfo(cmd: String, databaseName: String, state: DatabaseState, request: Json) = {
+    val database = state.ref
     cmd match {
       case "databaseInfo" => {
         val get = jgetString(request, "get")
         var result = emptyJsonObject
         if (get.contains("s")) {
-          result += ("s" -> info.state)
+          result += ("s" -> state.state)
         }
-        if (get.contains("c")) {
-          result += ("c" -> info.config.toJson)
+        if (get.contains("c") && state.config != null) {
+          result += ("c" -> state.config.toJson)
         }
         sender ! (Codes.Ok, Compact(result))
       }
@@ -426,11 +404,11 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val get = jgetString(options, "get")
         var result = emptyJsonObject
         if (get.contains("h")) {
-          val host = info.config.servers(serverName).host
+          val host = state.config.servers(serverName).host
           result += ("h" -> host)
         }
         if (get.contains("p")) {
-          val port = info.config.servers(serverName).port
+          val port = state.config.servers(serverName).port
           result += ("p" -> port)
         }
         sender ! (Codes.Ok, Compact(result))
@@ -439,7 +417,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val tableName = jgetString(request, "table")
         val options = jget(request, "o")
         val get = jgetString(options, "get")
-        val config = info.config
+        val config = state.config
         val table = config.tables(tableName)
         var result = emptyJsonObject
         if (get.contains("r")) {
@@ -513,7 +491,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val nodeName = jgetString(request, "node")
         val options = jget(request, "o")
         val get = jgetString(options, "get")
-        val config = info.config
+        val config = state.config
         var result = emptyJsonObject
         if (get.contains("h")) {
           result += ("h" -> config.rings(ringName).nodes(nodeName).server.host)
@@ -531,28 +509,28 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       }
       case "allTables" => {
         var result = JsonArray()
-        for (name <- info.config.tables.keys) {
+        for (name <- state.config.tables.keys) {
           result = name +: result
         }
         sender ! (Codes.Ok, Compact(result.reverse))
       }
       case "allServers" => {
         var result = JsonArray()
-        for (name <- info.config.servers.keys) {
+        for (name <- state.config.servers.keys) {
           result = name +: result
         }
         sender ! (Codes.Ok, Compact(result.reverse))
       }
       case "allRings" => {
         var result = JsonArray()
-        for (name <- info.config.rings.keys) {
+        for (name <- state.config.rings.keys) {
           result = name +: result
         }
         sender ! (Codes.Ok, Compact(result.reverse))
       }
       case "allNodes" => {
         val ringName = jgetString(request, "ring")
-        info.config.rings.get(ringName) match {
+        state.config.rings.get(ringName) match {
           case Some(info) => {
             //var result = JsonArray()
             //for (name <- info.nodes.keys) {
@@ -590,17 +568,17 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
           msg match {
             case (cmd: String, uid: Long, key: String, value: Any) => {
               handled = true
-              databases.get(databaseName) match {
-                case Some(info) => {
-                  val config = info.config
+              states.get(databaseName) match {
+                case Some(state) => {
+                  val config = state.config
                   config.rings.get(ringName) match {
                     case Some(ringConfig) => {
                       ringConfig.nodes.get(nodeName) match {
                         case Some(nodeConfig) => {
                           config.tables.get(tableName) match {
                             case Some(tableConfig) => {
-                              if (info.state != "active") {
-                                sender1 ! (Codes.NotAvailable, uid, Compact(JsonObject("database" -> databaseName, "state" -> info.state)))
+                              if (state.state != "active") {
+                                sender1 ! (Codes.NotAvailable, uid, Compact(JsonObject("database" -> databaseName, "state" -> state.state)))
                               } else {
                                 // Should never get here
                                 log.error("*****Internal Error DeadLetter:" + d.recipient.path + ":" + d.message)
@@ -636,87 +614,81 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
     }
     case ("lock", guid: String, databaseName: String, rs: String) => {
       val request = Json(rs)
-      //val guid = jgetString(request, "guid")
-      val lock = locks.getOrElse(databaseName, "")
-      if (lock == "") {
-        locks += (databaseName -> guid)
-        sender ! doLock(databaseName, request)
-      } else if (lock == guid) {
-        sender ! doLock(databaseName, request)
-      } else {
-        sender ! (Codes.Lock, emptyResponse)
+      states.get(databaseName) match {
+        case Some(state) => {
+          if (state.lock == "" || state.lock == guid) {
+            state.lock = guid
+            sender ! doLock(databaseName, request)
+          } else {
+            sender ! (Codes.Lock, emptyResponse)
+          }
+        }
+        case None => {
+          val state = states.add(databaseName, guid)
+          sender ! doLock(databaseName, request)
+        }
       }
     }
     case ("unlock", guid: String, databaseName: String, rs: String) => {
       val request = Json(rs)
-      //val guid = jgetString(request, "guid")
-      val lock = locks.getOrElse(databaseName, "")
-      if (lock == "") {
-        sender ! (Codes.Ok, emptyResponse)
-      } else if (lock == guid) {
-        locks -= databaseName
-        sender ! (Codes.Ok, emptyResponse)
-      } else {
-        sender ! (Codes.Lock, emptyResponse)
+      states.get(databaseName) match {
+        case Some(state) => {
+          if (state.lock == guid) {
+            if (state.state == "") {
+              states.delete(databaseName)
+            }
+            state.lock = ""
+          }
+        }
+        case None =>
       }
+      sender ! (Codes.Ok, emptyResponse)
     }
     case ("databaseExists", databaseName: String, rs: String) => {
-      if (databases.contains(databaseName)) {
-        sender ! (Codes.Ok, emptyResponse)
-      } else {
-        sender ! (Codes.NoDatabase, emptyResponse)
-      }
-    }
-    case ("newDatabase", guid: String, databaseName: String, rs: String) => {
-      val lock = locks.getOrElse(databaseName, "")
-      if (lock != guid) {
-        sender ! (Codes.Lock, emptyResponse)
-      } else if (databases.contains(databaseName)) {
-        val response = JsonObject("database" -> databaseName)
-        sender ! (Codes.ExistDatabase, Compact(response))
-      } else {
-        val request = Json(rs)
-        val dbConfig = jget(request, "config")
-        val dbConf = Compact(dbConfig)
-        var config = DatabaseConfig(databaseName, dbConfig)
-        storeTable.put(databaseName, dbConf, NOVAL)
-        val database = system.actorOf(Props(new ServerDatabase(config, serverConfig, true)), name = databaseName)
-        val info = new DatabaseInfo(database, config, "starting")
-        databases += (databaseName -> info)
-        val f = database ? ("init")
-        val x = Await.result(f, 5 seconds)
-        sender ! (Codes.Ok, emptyResponse)
-        log.info("Created database " + databaseName)
+      states.get(databaseName) match {
+        case Some(state) => {
+          if (state.state == "") {
+            sender ! (Codes.NoDatabase, emptyResponse)
+          } else {
+            sender ! (Codes.Ok, emptyResponse)
+          }
+        }
+        case None => {
+          sender ! (Codes.NoDatabase, emptyResponse)
+        }
       }
     }
     case ("allDatabases", dummy: String, rs: String) => {
       var result = JsonArray()
-      for ((name, info) <- databases) {
-        result = name +: result
+      for ((name, state) <- states.all) {
+        if (state.state != "") result = name +: result
       }
       sender ! (Codes.Ok, Compact(result.reverse))
     }
     case (cmd: String, guid: String, databaseName: String, rs: String) => {
-      val lock = locks.getOrElse(databaseName, "")
-      if (lock != guid) {
-        sender ! (Codes.Lock, emptyResponse)
-      } else {
-        databases.get(databaseName) match {
-          case Some(info) => {
+      states.get(databaseName) match {
+        case Some(state) => {
+          if (state.lock != guid) {
+            sender ! (Codes.Lock, emptyResponse)
+          } else {
             val request = Json(rs)
-            recAdmin(cmd, databaseName, info, request)
+            recAdmin(cmd, databaseName, state, request)
           }
-          case None => {
-            sender ! (Codes.NoDatabase, Compact(JsonObject("database" -> databaseName)))
-          }
+        }
+        case None => {
+          sender ! (Codes.NoDatabase, Compact(JsonObject("database" -> databaseName)))
         }
       }
     }
     case (cmd: String, databaseName: String, rs: String) => {
-      databases.get(databaseName) match {
-        case Some(info) => {
-          val request = Json(rs)
-          recInfo(cmd, databaseName, info, request)
+      states.get(databaseName) match {
+        case Some(state) => {
+          if (state.state == "") {
+            sender ! (Codes.NoDatabase, Compact(JsonObject("database" -> databaseName)))
+          } else {
+            val request = Json(rs)
+            recInfo(cmd, databaseName, state, request)
+          }
         }
         case None => {
           sender ! (Codes.NoDatabase, Compact(JsonObject("database" -> databaseName)))
@@ -730,8 +702,8 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
     case ("stop") => {
       log.info("Stopping server")
       if (restClient != null) restClient.stop()
-      storeTable.close()
-      storeTable.store.close()
+      states.close()
+      store.close()
       sender ! Codes.Ok
     }
   }

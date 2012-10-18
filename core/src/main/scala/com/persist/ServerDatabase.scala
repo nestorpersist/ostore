@@ -33,8 +33,8 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
   private val system = context.system
   val serverName = jgetString(serverConfig, "host") + ":" + jgetInt(serverConfig, "port")
   val databaseName = config.name
-  //val send = context.actorOf(Props(new Send(context.system, config)), name = "@send")
   val send = context.actorOf(Props(new Messaging(config, None)), name = "@send")
+  var lastSendCount:Long = 0L
   var rings = TreeMap[String, RingInfo]()
   implicit val timeout = Timeout(5 seconds)
 
@@ -86,6 +86,13 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
         }
       }
       sender ! Codes.Ok
+    }
+    case ("busySend") => {
+      val f = send ? ("busy")
+      val (code:String, count:Long, size:Int) = Await.result(f, 5 seconds)
+      val resultCode = if (size > 0 || count != lastSendCount) Codes.Busy else code
+      lastSendCount = count
+      sender ! (resultCode, "")
     }
     case ("busyBalance") => {
       var code = Codes.Ok

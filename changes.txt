@@ -1,5 +1,11 @@
 LOG OF CHANGES
 
+10/18/2010 Fixed bug in prefix maps
+10/17/2010 DatabaseStop now waits for all msgs to complete
+10/16/2012 FORMAT CHANGE: Jdbm3 files. Delete and rebuild
+10/16/2012 Per server database state now persisted
+10/16/2012 new DatabaseState class
+
 10/15/2012 Table config can now specify a resolver
 10/15/2012 Add Newest resolver (last writer wins)
 10/15/2012 Class VectorClock now public

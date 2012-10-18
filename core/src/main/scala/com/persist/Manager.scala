@@ -60,7 +60,6 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
         val info = databaseInfo(databaseName, JsonObject("get" -> "c"))
         val jconfig = jget(info, "c")
         val config = DatabaseConfig(databaseName, jconfig)
-        //val s = system.actorOf(Props(new Messaging(config, Some(client))),name="@messaging")
         val s = system.actorOf(Props(new Messaging(config, Some(client))), name = databaseName)
         val f = s ? ("start")
         Await.result(f, 5 seconds)
@@ -206,6 +205,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
         val (code, s: String) = Await.result(f, 5 seconds)
         throw ex
       }
+      // TODO can exclude initially locked server
       val ok = doAll("lock", request0)
       if (!ok) finalUnlock()
       ok
@@ -240,10 +240,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
       }
       ok
     }
-
-    //def pass(cmd: String, request: JsonObject = emptyJsonObject, servers: List[String] = List[String]()) {
-      //doAll(cmd, request)
-    //}
+    
     def pass(cmd: String, request: JsonObject = emptyJsonObject, servers: List[String] = servers) {
       doAll(cmd, request, servers)
     }
@@ -256,7 +253,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
         if (done) return
         Thread.sleep(2000) // 2 seconds
       }
-      throw InternalException("Wait " + cmd + " timeout")
+      throw new SystemException(Codes.Timeout, "Wait " + cmd + " timeout")
     }
 
     def getServers: List[String] = {
@@ -387,21 +384,26 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
   private def createDatabase(databaseName: String, jconfig: Json) {
     val dba = DatabaseActions(databaseName)
     val config = DatabaseConfig(databaseName, jconfig)
+    val servers = config.servers.keys.toSeq
+    /*
     var servers = JsonArray()
     for ((serverName, serverConfig) <- config.servers) {
       servers = serverName +: servers
     }
-    val check = JsonObject("databaseAbsent" -> true, "servers" -> servers.reverse)
-    val request = JsonObject("config" -> jconfig)
+    servers = servers.reverse
+    */
+    // States: "", "starting", "active"
+    val check = JsonObject("databaseAbsent" -> true, "servers" -> servers)
     dba.act("", check) {
+      val request = JsonObject("config" -> jconfig)
       dba.pass("newDatabase", request)
-      //dba.pass("startDatabase2")
       dba.pass("start", JsonObject("user" -> true, "balance" -> true))
     }
   }
 
   private def deleteDatabase(databaseName: String) {
     val dba = DatabaseActions(databaseName)
+    // States: "stop", ""
     dba.act("stop") {
       dba.pass("deleteDatabase")
     }
@@ -409,17 +411,20 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
 
   private def startDatabase(databaseName: String) {
     val dba = DatabaseActions(databaseName)
+    // States: "stop", "starting", "active"
     dba.act("stop") {
       dba.pass("startDatabase1")
-      //dba.pass("startDatabase2")
       dba.pass("start", JsonObject("user" -> true, "balance" -> true))
     }
   }
 
   private def stopDatabase(databaseName: String) {
     val dba = DatabaseActions(databaseName)
+    // States: "active", "stopping", "stop"
     dba.act("active") {
       dba.pass("stopDatabase1")
+      dba.wait("busyBalance")
+      dba.wait("busySend")
       dba.pass("stopDatabase2")
     }
   }
