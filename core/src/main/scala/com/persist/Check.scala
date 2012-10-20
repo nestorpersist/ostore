@@ -21,8 +21,18 @@ import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import com.persist.JsonOps._
 import scala.io.Source
+import scala.collection.immutable.HashMap
 
-private[persist] class Check(fix: Boolean, config: Json) {
+
+// UNLOCK
+// 1. Some in deployed or deploying
+//      fwd(if deploying) and unlock
+// 2. Some in preparing
+//      bwd(if preparing) and unlock
+// 3. Some in locked
+//      unlock those that are locked
+
+private[persist] class Check(cmd: String, config: Json) {
   // TODO scala callable method(s)
   // TODO be able to run continuously as background operation
   // TODO do expire
@@ -31,6 +41,7 @@ private[persist] class Check(fix: Boolean, config: Json) {
 
   private val now = System.currentTimeMillis()
   private val client = new Client(jget(config, "client"))
+  val fix = cmd == "fix"
 
   private def checkPair1(database: Database, table: Table, key: JsonKey, i1: Item, i2: Item) {
     def pair(p1: String, p2: String) = "[" + p1 + "," + p2 + "]"
@@ -159,14 +170,22 @@ private[persist] class Check(fix: Boolean, config: Json) {
     }
   }
 
-  private def checkDatabase(databaseName: String) {
-    // TODO make sure databaseexists and is active
-    // TODO make sure all servers are reachable
+  def checkDatabase(databaseName: String) {
     val database = client.database(databaseName)
-    // TODO verify database is active
     println("*** DATABASE: /" + databaseName + " ***")
-    for (tableName <- database.allTables) {
-      checkTable(database, tableName)
+    if (cmd == "state") {
+      for (server <- database.allServers) {
+        println("*** SERVER: /" + server + " ***")
+        val info = client.serverInfo(server, JsonObject("get" -> "hpd", "database" -> databaseName))
+        println(Pretty(info))
+      }
+    } else {
+      // TODO make sure databaseexists and is active
+      // TODO make sure all servers are reachable
+      // TODO verify database is active
+      for (tableName <- database.allTables) {
+        checkTable(database, tableName)
+      }
     }
   }
 
@@ -188,6 +207,15 @@ private[persist] class Check(fix: Boolean, config: Json) {
  */
 object Check {
 
+  def params(args: Array[String]): (Array[String], Map[String, String]) = {
+    val (named, pos) = args.span(_.contains("="))
+    val map = named.foldLeft(HashMap[String, String]())((map, s) => {
+      val parts = s.split("=")
+      map + (parts(0) -> parts(1))
+    })
+    (pos, map)
+  }
+
   /**
    * This method allow the check program to be run from the command line.
    * In SBT type
@@ -195,27 +223,35 @@ object Check {
    * '''run-main com.persist.Check'''
    *
    * @param args command line args.
-   *   - args(0) command. Either '''check''' or '''fix'''.
-   *   - args(1) path to config (see wiki). Default is '''config/check.json'''.
+   *   - args(0) command. Either '''check''', '''fix''' or '''check'''.
+   *   - args(1) databaseName. If missing do all databases.
+   *   - config=path path to config (see wiki). Default is '''config/check.json'''.
    */
   def main(args: Array[String]) {
-    if (args.size == 0) {
-      println("Must specify either check or fix")
+    val (pos, named) = params(args)
+    val path = named.getOrElse("config", "config/check.json")
+    val config = Json(Source.fromFile(path).mkString)
+    if (pos.size == 0) {
+      println("Must specify command")
       return
     }
-    val fix = args(0) match {
-      case "check" => false
-      case "fix" => true
-      case _ => {
-        println("Command not check or fix")
+    val cmd = pos(0)
+    cmd match {
+      case "check" =>
+      case "fix" =>
+      case "state" =>
+      case x => {
+        println("Unknown command:" + x)
         return
       }
     }
-    val path = if (args.size >= 2) args(1) else "config/check.json"
-    val config = Json(Source.fromFile(path).mkString)
-    println(Pretty(config))
-    val check = new Check(fix, config)
-    check.all
+    val check = new Check(cmd, config)
+
+    if (pos.size > 1) {
+      check.checkDatabase(pos(1))
+    } else {
+      check.all
+    }
     check.stop()
   }
 

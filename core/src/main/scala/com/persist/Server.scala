@@ -155,7 +155,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
           result
         } else {
           if (getInfo && state.config == null) {
-             JsonObject("databaseAbsent"->true)
+            JsonObject("databaseAbsent" -> true)
           } else {
             emptyJsonObject
           }
@@ -180,7 +180,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         val f = database ? ("start", ring, node, balance, user)
         Await.result(f, 5 seconds)
         if (user) {
-          state.state = "active"
+          state.state = DBState.ACTIVE
           log.info("Database started " + databaseName)
         }
         sender ! (Codes.Ok, emptyResponse)
@@ -303,13 +303,13 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         sender ! (Codes.Ok, emptyResponse)
       }
       case "stopDatabase1" => {
-        state.state = "stopping"
+        state.state = DBState.STOPPING
         val f = database ? ("stop", true, true, "", "")
         val v = Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
       }
       case "stopDatabase2" => {
-        state.state = "stop"
+        state.state = DBState.STOP
         val f = database ? ("stop2")
         val v = Await.result(f, 5 seconds)
         val stopped = gracefulStop(database, 5 seconds)(system)
@@ -327,7 +327,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
           var config = DatabaseConfig(databaseName, jconfig)
           val database = system.actorOf(Props(new ServerDatabase(config, serverConfig, true)), name = databaseName)
           state.ref = database
-          state.state = "starting"
+          state.state = DBState.STARTING
           state.config = config
           val f = database ? ("init")
           val x = Await.result(f, 5 seconds)
@@ -336,7 +336,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         }
       }
       case "startDatabase1" => {
-        state.state = "starting"
+        state.state = DBState.STARTING
         val database = system.actorOf(Props(new ServerDatabase(state.config, serverConfig, false)), name = databaseName)
         val f = database ? ("init")
         Await.result(f, 5 seconds)
@@ -384,6 +384,12 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
     }
   }
 
+  private def stateInfo(state: DatabaseState): Json = {
+    val dstate = JsonObject("state" -> state.state)
+    val dstate1 = if (state.lock != "") dstate + ("lock" -> state.lock) else dstate
+    if (state.phase != "") dstate1 + ("phase" -> state.phase) else dstate1
+  }
+
   def recInfo(cmd: String, databaseName: String, state: DatabaseState, request: Json) = {
     val database = state.ref
     cmd match {
@@ -395,21 +401,6 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
         }
         if (get.contains("c") && state.config != null) {
           result += ("c" -> state.config.toJson)
-        }
-        sender ! (Codes.Ok, Compact(result))
-      }
-      case "serverInfo" => {
-        val serverName = jgetString(request, "server")
-        val options = jget(request, "o")
-        val get = jgetString(options, "get")
-        var result = emptyJsonObject
-        if (get.contains("h")) {
-          val host = state.config.servers(serverName).host
-          result += ("h" -> host)
-        }
-        if (get.contains("p")) {
-          val port = state.config.servers(serverName).port
-          result += ("p" -> port)
         }
         sender ! (Codes.Ok, Compact(result))
       }
@@ -577,7 +568,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
                         case Some(nodeConfig) => {
                           config.tables.get(tableName) match {
                             case Some(tableConfig) => {
-                              if (state.state != "active") {
+                              if (state.state != DBState.ACTIVE) {
                                 sender1 ! (Codes.NotAvailable, uid, Compact(JsonObject("database" -> databaseName, "state" -> state.state)))
                               } else {
                                 // Should never get here
@@ -694,6 +685,32 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
           sender ! (Codes.NoDatabase, Compact(JsonObject("database" -> databaseName)))
         }
       }
+    }
+    case ("serverInfo", rs: String) => {
+      val request = Json(rs)
+      val serverName = jgetString(request, "server")
+      val options = jget(request, "o")
+      val get = jgetString(options, "get")
+      val requestDatabaseName = jgetString(options, "database")
+      var result = emptyJsonObject
+      if (get.contains("h")) {
+        //val host = state.config.servers(serverName).host
+        result += ("h" -> host)
+      }
+      if (get.contains("p")) {
+        //val port = state.config.servers(serverName).port
+        result += ("p" -> port)
+      }
+      if (get.contains("d")) {
+        var dinfo = JsonObject()
+        for ((databaseName,state) <- states.all) {
+          if (requestDatabaseName == "" || requestDatabaseName == databaseName) {
+            dinfo += (databaseName -> stateInfo(state))
+          }
+        }
+        result += ("d" -> dinfo)
+      }
+      sender ! (Codes.Ok, Compact(result))
     }
     case ("start") => {
       log.info("Starting server")

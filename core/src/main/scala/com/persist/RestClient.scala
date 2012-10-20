@@ -93,7 +93,7 @@ private[persist] object QParser extends QParse {
  *    }
  * }
  */
-private[persist] class RestClient(config:Json) extends HttpAction {
+private[persist] class RestClient(config: Json) extends HttpAction {
 
   private var port = jgetInt(config, "port")
   if (port == 0) port = 8081
@@ -106,10 +106,10 @@ private[persist] class RestClient(config:Json) extends HttpAction {
   lazy implicit val ec = ExecutionContext.defaultExecutionContext(system)
   implicit val timeout = Timeout(5 seconds)
 
-  val httpServer = system.actorOf(Props(new HttpServer(port, this, "rest")),name="@http")
+  val httpServer = system.actorOf(Props(new HttpServer(port, this, "rest")), name = "@http")
   val f = httpServer ? ("start")
   Await.result(f, 5 seconds)
-  
+
   private[persist] def stop() {
     val f = httpServer ? ("stop")
     Await.result(f, 5 seconds)
@@ -192,7 +192,7 @@ private[persist] class RestClient(config:Json) extends HttpAction {
       val cmd = jgetString(input, "cmd")
       val config = jget(input, "config")
       cmd match {
-        case "create" => client.createDatabase(databaseName, config); 
+        case "create" => client.createDatabase(databaseName, config);
         case "delete" => client.deleteDatabase(databaseName)
         case "start" => client.startDatabase(databaseName)
         case "stop" => client.stopDatabase(databaseName)
@@ -231,9 +231,18 @@ private[persist] class RestClient(config:Json) extends HttpAction {
     }
   }
 
+  /*
   private def getServerInfo(database: Database, serverName: String, options: JsonObject): Future[Option[Json]] = {
     Future {
       val result = database.serverInfo(serverName, options)
+      Some(result)
+    }
+  }
+  */
+
+  private def getServerInfo(serverName: String, options: JsonObject): Future[Option[Json]] = {
+    Future {
+      val result = client.serverInfo(serverName, options)
       Some(result)
     }
   }
@@ -347,11 +356,11 @@ private[persist] class RestClient(config:Json) extends HttpAction {
           val f = doAllParts(method, path, input, options - "pretty")
           (isPretty, f)
         } catch {
-          case ex:SystemException => {
+          case ex: SystemException => {
             (false, Promise.failed(ex))
           }
           case x => {
-            (false, Promise.failed(InternalException("doAll:"+x.toString())))
+            (false, Promise.failed(InternalException("doAll:" + x.toString())))
           }
         }
       }
@@ -362,10 +371,21 @@ private[persist] class RestClient(config:Json) extends HttpAction {
   }
 
   private def doParts1(databaseName: String, method: String, input: Json, options: JsonObject): Future[Option[Json]] = {
-    if (method == "post") {
+    val parts = databaseName.split(":")
+    val numParts = parts.size
+    if (parts(0) == "server") {
+      val sname = databaseName.substring(parts(0).size + 1)
+      val info = jgetBoolean(options, "info")
+      if (info) {
+       getServerInfo(sname, options - "info")
+      } else {
+        Promise.failed(RequestException("bad cmd"))
+      }
+
+    } else if (method == "post") {
       databaseAct(databaseName, input)
     } else {
-      val info = jgetBoolean(options,"info")
+      val info = jgetBoolean(options, "info")
       val rings = jgetBoolean(options, "rings")
       val servers = jgetBoolean(options, "servers")
       val check = JsonObject("skipCheck" -> true)
@@ -388,6 +408,7 @@ private[persist] class RestClient(config:Json) extends HttpAction {
   private def doParts2(database: Database, name: String, method: String, input: Json, options: JsonObject): Future[Option[Json]] = {
     val parts = name.split(":")
     val numParts = parts.size
+    /*
     if (parts(0) == "server") {
       val sname = name.substring(parts(0).size + 1)
       val info = jgetBoolean(options, "info")
@@ -396,7 +417,9 @@ private[persist] class RestClient(config:Json) extends HttpAction {
       } else {
         Promise.failed(RequestException("bad cmd"))
       }
-    } else if (parts(0) == "ring" && numParts == 2) {
+    } else
+    */ 
+    if (parts(0) == "ring" && numParts == 2) {
       val info = jgetBoolean("info")
       if (info) {
         getRingInfo(database, parts(1), options - "info")

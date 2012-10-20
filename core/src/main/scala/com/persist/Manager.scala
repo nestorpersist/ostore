@@ -299,9 +299,10 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
     Json(s)
   }
 
-  private def serverInfo(databaseName: String, serverName: String, options: JsonObject): Json = {
-    val request = JsonObject("server" -> serverName, "o" -> options)
-    val f = server ? ("serverInfo", databaseName, Compact(request))
+  private def serverInfo(serverName: String, options: JsonObject): Json = {
+    val request = JsonObject("o" -> options)
+    val server1 = sendServer.serverRef(serverName)
+    val f = server1 ? ("serverInfo", Compact(request))
     val (code: String, s: String) = Await.result(f, 5 seconds)
     checkCode(code, s)
     Json(s)
@@ -404,7 +405,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
   private def deleteDatabase(databaseName: String) {
     val dba = DatabaseActions(databaseName)
     // States: "stop", ""
-    dba.act("stop") {
+    dba.act(DBState.STOP) {
       dba.pass("deleteDatabase")
     }
   }
@@ -412,7 +413,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
   private def startDatabase(databaseName: String) {
     val dba = DatabaseActions(databaseName)
     // States: "stop", "starting", "active"
-    dba.act("stop") {
+    dba.act(DBState.STOP) {
       dba.pass("startDatabase1")
       dba.pass("start", JsonObject("user" -> true, "balance" -> true))
     }
@@ -421,7 +422,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
   private def stopDatabase(databaseName: String) {
     val dba = DatabaseActions(databaseName)
     // States: "active", "stopping", "stop"
-    dba.act("active") {
+    dba.act(DBState.ACTIVE) {
       dba.pass("stopDatabase1")
       dba.wait("busyBalance")
       dba.wait("busySend")
@@ -623,6 +624,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
    * Temporary debugging method
    */
   def monitor(databaseName: String, tableName: String): Json = {
+    // TODO support call to single ring or ring+node, or maybe even single table
     var result = JsonObject()
     for (ringName <- allRings(databaseName)) {
       var ro = JsonObject()
@@ -714,9 +716,9 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
         ringInfo(databaseName, ringName, options)
       }
     }
-    case ("serverInfo", p: Promise[Json], databaseName: String, serverName: String, options: JsonObject) => {
+    case ("serverInfo", p: Promise[Json], serverName: String, options: JsonObject) => {
       complete(p) {
-        serverInfo(databaseName, serverName, options)
+        serverInfo(serverName, options)
       }
     }
     case ("nodeInfo", p: Promise[Json], databaseName: String, ringName: String, nodeName: String, options: JsonObject) => {

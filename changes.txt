@@ -1,5 +1,11 @@
 LOG OF CHANGES
 
+10/20/2010 add phase to DatabaseState for failure recovery
+10/19/2010 serverInfo method moved from Database to Client
+10/19/2010 serverInfo now contacts named server
+10/19/2010 serverInfo now has get=d (database) option
+10/19/2010 Check program arguments changed
+
 10/18/2010 Fixed bug in prefix maps
 10/17/2010 DatabaseStop now waits for all msgs to complete
 10/16/2012 FORMAT CHANGE: Jdbm3 files. Delete and rebuild

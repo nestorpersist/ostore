@@ -190,4 +190,21 @@ class Client(config: Json) {
     val database = Await.result(p, 5 seconds)
     database
   }
+  
+    /**
+   * 
+   * Returns information about a server.
+   * 
+   * @param serverName the name of the server.
+   * @param options optional json object containing options.
+   *  - '''"get="hpd"''' if specified this method returns an object with requested fields
+   *      (Host, Port, Databases).
+   *  - '''"database"=databaseName''' for get=d, get only this database, else get all databases.
+   */
+  def serverInfo(serverName: String, options: JsonObject = emptyJsonObject): Json = {
+    var p = new DefaultPromise[Json]
+    manager ! ("serverInfo", p, serverName, options)
+    val v = Await.result(p, 5 seconds)
+    v
+  }
 }

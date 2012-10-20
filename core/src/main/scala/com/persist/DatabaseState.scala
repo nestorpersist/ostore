@@ -22,6 +22,21 @@ import Stores._
 import JsonOps._
 import scala.collection.immutable.TreeMap
 
+private[persist] object DBState {
+  val STOP = "stop"
+  val STOPPING = "stopping"
+  val STARTING = "starting"
+  val ACTIVE = "active"
+}
+
+private[persist] object DBPhase {
+  val EMPTY = ""
+  val LOCKED = "locked"
+  val PREPARING = "preparing"
+  val DEPLOYING = "deploying"
+  val DEPLOYED = "deployed"
+}
+
 private[persist] class DatabaseStates(store: Store) {
 
   private val configTable = store.getTable("config")
@@ -80,6 +95,14 @@ private[persist] class DatabaseState(stateTable: StoreTable, configTable: StoreT
     stateTable.put(databaseName, Compact(toJson), NOVAL)
   }
 
+  private var phase1: String = ""
+
+  def phase = phase1
+
+  def phase_=(phase: String) {
+    phase1 = phase
+  }
+
   // ref to Database actor
   var ref: ActorRef = null
 
@@ -89,6 +112,11 @@ private[persist] class DatabaseState(stateTable: StoreTable, configTable: StoreT
   def lock = lock1
 
   def lock_=(lock: String) {
+    if (lock == "") {
+      phase1 = DBPhase.EMPTY
+    } else {
+      phase1 = DBPhase.LOCKED
+    }
     lock1 = lock
     stateTable.put(databaseName, Compact(toJson), NOVAL)
   }

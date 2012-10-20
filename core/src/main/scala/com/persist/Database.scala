@@ -159,22 +159,6 @@ class Database private[persist] (val client:Client, val databaseName: String, ma
     v
   }
 
-    /**
-   * 
-   * Returns information about a server.
-   * 
-   * @param serverName the name of the server.
-   * @param options optional json object containing options.
-   *  - '''"get="hp"''' if specified this method returns an object with requested fields
-   *      (Host, Port).
-   */
-  def serverInfo(serverName: String, options: JsonObject = emptyJsonObject): Json = {
-    var p = new DefaultPromise[Json]
-    manager ! ("serverInfo", p, databaseName, serverName, options)
-    val v = Await.result(p, 5 seconds)
-    v
-  }
-
   /**
    * Adds one or more tables to the database.
    * The Json configuration specifies the new tables.
