@@ -36,7 +36,10 @@ import java.net.URLDecoder
  *
  * Scala types used for Json are
  *
- *  - Json Object. Immutable Map[String,Json]
+ *  - Json Object. Immutable Map[String,Json] 
+ *     - Note that keys are not ordered.
+ *    -  When converting to a string with Compact or Pretty
+ *       keys are sorted.
  *  - Json Array. Immutable Seq[Json]
  *  - Json String. String
  *  - Json Boolean. Boolean

@@ -1,5 +1,11 @@
 LOG OF CHANGES
 
+11/4/2010  Check now checks (but not yet fixes) simple maps
+10/21/2012 Added sbt-assembly plugin to core
+10/21/2010 Admin locks now include time locked
+10/21/2010 Admin commands better error handling on lock failure
+10/21/2010 Refactoring of Manager classes
+
 10/20/2010 add phase to DatabaseState for failure recovery
 10/19/2010 serverInfo method moved from Database to Client
 10/19/2010 serverInfo now contacts named server

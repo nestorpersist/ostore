@@ -23,7 +23,6 @@ import com.persist.JsonOps._
 import scala.io.Source
 import scala.collection.immutable.HashMap
 
-
 // UNLOCK
 // 1. Some in deployed or deploying
 //      fwd(if deploying) and unlock
@@ -160,13 +159,164 @@ private[persist] class Check(cmd: String, config: Json) {
     nextItem(database, table, rings, ringItems, keys, prev)
   }
 
+  private def loc(table: String, key: JsonKey) = table + ":" + Compact(key)
+  private def loc(table: String, key: JsonKey, value: Json) = table + ":(" + Compact(key) + "," + Compact(value) + ")"
+
+  private def checkMaps(table: Table, t: Json) {
+    val mappers = jgetArray(t, "map").foldLeft(HashMap[String, MapReduce.Map]())((mappers, map) => {
+      val from = jgetString(map, "from")
+      if (jgetString(map, "toprefix") != "") {
+        println("    MAP TO PREFIX NYI")
+        mappers
+      } else if (jgetString(map, "act2") != "") {
+        println("    MAP2 NYI")
+        mappers
+      } else {
+        val act = jgetString(map, "act")
+        val mapper = MapReduce.getMap(act, map)
+        mappers + (from -> mapper)
+      }
+    })
+    for (ring <- table.database.allRings) {
+      val ringOption = JsonObject("ring" -> ring)
+      // Checking sources
+      for (map <- jgetArray(t, "map")) {
+        val from = jgetString(map, "from")
+        if (jgetString(map, "toprefix") != "") {
+        } else if (jgetString(map, "act2") != "") {
+        } else {
+          val mapper = mappers(from)
+          for (kv <- table.database.table(from).all(ringOption + ("get" -> "kv"))) {
+            val k = jget(kv, "k")
+            val v = jget(kv, "v")
+            for ((k1, v1) <- mapper.to(k, v)) {
+              table.get(k1) match {
+                case Some(v2) => {
+                  if (Compact(v1) != Compact(v2)) {
+                    println("Wrong destination item value " + loc(table.tableName, k1, v1) + " from " + loc(from, k, v) + " on ring " + ring)
+                    // TODO fix
+                  }
+                }
+                case None => {
+                  println("Missing destination item " + loc(table.tableName, k1) + " from " + loc(from, k, v) + " on ring " + ring)
+                  // TODO fix
+                }
+              }
+              val k2 = mapper.from(k1)
+              if (Compact(k2) != Compact(k)) {
+                println("Bad map inverse " + Compact(k2) + " from " + loc(from, k, v) + " via " + Compact(k1) + " on ring " + ring)
+              }
+            }
+          }
+        }
+        // Checking destination
+        for (kvc <- table.all(ringOption + ("get" -> "kvc"))) {
+          val k = jget(kvc, "k")
+          val v = jget(kvc, "v")
+          val c = jget(kvc, "c")
+          val from = jgetObject(c).keys.head
+          val mapper = mappers(from)
+          val k1 = mapper.from(k)
+          val v1 = table.database.table(from).get(k1, ringOption).getOrElse(null)
+          if (!mapper.to(k1, v1).exists { case (k2, v2) => k2 == k }) {
+            println("Extra destination item " + loc(table.tableName, k, v) + " from " + loc(from, k1, v1) + " on ring " + ring)
+            // TODO fix
+          }
+        }
+      }
+    }
+  }
+
+  private def checkReduces(table: Table, t: Json) {
+    val ring0 = table.database.allRings.head
+    for (ring <- table.database.allRings) {
+      for (reduce <- jgetArray(t, "reduce")) {
+        // TODO add reduce checks
+        if (ring == ring0) println("    REDUCE NYI")
+      }
+    }
+  }
+
   private def checkTable(database: Database, tableName: String) {
-    // TODO clean up tombstones
-    val info = database.tableInfo(tableName, JsonObject("get" -> "r"))
-    if (!jgetBoolean(info, "r")) {
-      println("*** TABLE: /" + database.databaseName + "/" + tableName + " ***")
-      val table = database.table(tableName)
+    val info = database.tableInfo(tableName, JsonObject("get" -> "t"))
+    val t = jget(info, "t")
+    println("*** TABLE: /" + database.databaseName + "/" + tableName + " ***")
+    val table = database.table(tableName)
+    if (t == null) {
+      // TODO clean up tombstones
       allRings(database, table)
+    } else {
+      checkMaps(table, t)
+      checkReduces(table, t)
+      /*
+      val mappers = jgetArray(t, "map").foldLeft(HashMap[String, MapReduce.Map]())((mappers, map) => {
+        val from = jgetString(map, "from")
+        if (jgetString(map, "toprefix") != "") {
+          println("    MAP TO PREFIX NYI")
+          mappers
+        } else if (jgetString(map, "act2") != "") {
+          println("    MAP2 NYI")
+          mappers
+        } else {
+          val act = jgetString(map, "act")
+          val mapper = MapReduce.getMap(act, map)
+          mappers + (from -> mapper)
+        }
+      })
+      val ring0 = database.allRings.head
+      for (ring <- database.allRings) {
+        val ringOption = JsonObject("ring" -> ring)
+        // Checking sources
+        for (map <- jgetArray(t, "map")) {
+          val from = jgetString(map, "from")
+          if (jgetString(map, "toprefix") != "") {
+          } else if (jgetString(map, "act2") != "") {
+          } else {
+            val mapper = mappers(from)
+            for (kv <- database.table(from).all(ringOption + ("get" -> "kv"))) {
+              val k = jget(kv, "k")
+              val v = jget(kv, "v")
+              for ((k1, v1) <- mapper.to(k, v)) {
+                table.get(k1) match {
+                  case Some(v2) => {
+                    if (Compact(v1) != Compact(v2)) {
+                      println("Wrong destination item value " + loc(tableName, k1, v1) + " from " + loc(from, k, v) + " on ring " + ring)
+                      // TODO fix
+                    }
+                  }
+                  case None => {
+                    println("Missing destination item " + loc(tableName, k1) + " from " + loc(from, k, v) + " on ring " + ring)
+                    // TODO fix
+                  }
+                }
+                val k2 = mapper.from(k1)
+                if (Compact(k2) != Compact(k)) {
+                  println("Bad map inverse " + Compact(k2) + " from " + loc(from, k, v) + " via " + Compact(k1) + " on ring " + ring)
+                }
+              }
+            }
+          }
+          // Checking destination
+          for (kvc <- table.all(ringOption + ("get" -> "kvc"))) {
+            val k = jget(kvc, "k")
+            val v = jget(kvc, "v")
+            val c = jget(kvc, "c")
+            val from = jgetObject(c).keys.head
+            val mapper = mappers(from)
+            val k1 = mapper.from(k)
+            val v1 = database.table(from).get(k1, ringOption).getOrElse(null)
+            if (!mapper.to(k1, v1).exists { case (k2, v2) => k2 == k }) {
+              println("Extra destination item " + loc(tableName, k, v) + " from " + loc(from, k1, v1) + " on ring " + ring)
+              // TODO fix
+            }
+          }
+        }
+        for (reduce <- jgetArray(t, "reduce")) {
+          // TODO add reduce checks
+          if (ring == ring0) println("    REDUCE NYI")
+        }
+      }
+      */
     }
   }
 

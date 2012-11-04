@@ -83,7 +83,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
 
   val store = Store("@server" + "/" + serverName, jget(serverConfig, "store"), context, create)
   private val system = context.system
-  private val sendServer = new SendServer(system)
+  private val sendServer = new ManagerMessaging(system)
   private val listener = system.actorOf(Props[Listener])
 
   system.eventStream.subscribe(self, classOf[DeadLetter])
@@ -386,7 +386,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
 
   private def stateInfo(state: DatabaseState): Json = {
     val dstate = JsonObject("state" -> state.state)
-    val dstate1 = if (state.lock != "") dstate + ("lock" -> state.lock) else dstate
+    val dstate1 = if (state.lock != "") dstate + ("lock" -> state.lock, "lockt" -> state.lockt) else dstate
     if (state.phase != "") dstate1 + ("phase" -> state.phase) else dstate1
   }
 

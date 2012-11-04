@@ -199,7 +199,7 @@ object MapReduce {
     def subtract(value1: Json, value2: Json): Json
   }
   
-  private def getMap(className:String, options:Json):Map = {
+  private[persist] def getMap(className:String, options:Json):Map = {
     try {
       val c = Class.forName(className)
       val obj = c.newInstance()
@@ -215,7 +215,7 @@ object MapReduce {
     }
   }
   
-  private def getMap2(className:String, options:Json, fromPrefix:String):Map2 = {
+  private[persist] def getMap2(className:String, options:Json, fromPrefix:String):Map2 = {
     try {
       val c = Class.forName(className)
       val obj = c.newInstance()

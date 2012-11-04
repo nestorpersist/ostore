@@ -1,3 +1,7 @@
+import sbtassembly.Plugin._
+
+import AssemblyKeys._
+
 name := "ostore"
 
 version := "0.5"
@@ -15,3 +19,11 @@ libraryDependencies ++=Seq(
 )
 
 parallelExecution in Test := false
+
+assemblySettings
+
+test in assembly := {}
+
+jarName in assembly := "ostore-core-0.1.jar"
+
+

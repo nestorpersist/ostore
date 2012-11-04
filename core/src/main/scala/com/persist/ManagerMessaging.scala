@@ -24,7 +24,7 @@ import akka.actor.ActorSystem
 //       /user/database
 //       /user/database/@send
 
-private[persist] class SendServer(system:ActorSystem) {
+private[persist] class ManagerMessaging(system:ActorSystem) {
   // TODO this should become an actor that sends a message to an actor
   // rather than returning the actor ref
   

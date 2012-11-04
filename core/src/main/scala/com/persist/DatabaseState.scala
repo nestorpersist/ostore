@@ -110,11 +110,18 @@ private[persist] class DatabaseState(stateTable: StoreTable, configTable: StoreT
   private var lock1: String = ""
 
   def lock = lock1
+  
+  /* time lock set */
+  private var lockt1:Long = 0L
+  
+  def lockt = lockt1
 
   def lock_=(lock: String) {
     if (lock == "") {
+      lockt1 = 0L
       phase1 = DBPhase.EMPTY
     } else {
+      lockt1 = System.currentTimeMillis()
       phase1 = DBPhase.LOCKED
     }
     lock1 = lock
