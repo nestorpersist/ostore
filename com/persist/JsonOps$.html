@@ -30,7 +30,8 @@
       
           <div class="fullcommenttop" id="comment"><div class="comment cmt"><p>Provides types and functions for working with the OStore Json types.</p><p>In OStore, Json is represented by immutable Scala types.
 Instead of having separate Json types, type aliases are
-defined for Json forms.</p><p>Scala types used for Json are</p><ul><li>Json Object. Immutable Map[String,Json]</li><li>Json Array. Immutable Seq[Json]</li><li>Json String. String</li><li>Json Boolean. Boolean</li><li>Json Number. Int, Long, BigDecimal</li><li>Json Null. Null</li></ul></div><div class="toggleContainer block">
+defined for Json forms.</p><p>Scala types used for Json are</p><ul><li>Json Object. Immutable Map[String,Json]<ul><li>Note that keys are not ordered.</li></ul><ul><li> When converting to a string with Compact or Pretty
+      keys are sorted.</li></ul></li><li>Json Array. Immutable Seq[Json]</li><li>Json String. String</li><li>Json Boolean. Boolean</li><li>Json Number. Int, Long, BigDecimal</li><li>Json Null. Null</li></ul></div><div class="toggleContainer block">
           <span class="toggle">Linear Supertypes</span>
           <div class="superTypes hiddenContent">AnyRef, <span name="scala.Any" class="extype">Any</span></div>
         </div></div>
