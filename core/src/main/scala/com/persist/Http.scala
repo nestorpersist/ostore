@@ -32,6 +32,7 @@ import akka.util.duration._
 import akka.util.Timeout
 import akka.dispatch.Future
 import Exceptions._
+import ExceptionOps._
 
 private[persist] object HttpConstants {
   val SP = ByteString(" ")

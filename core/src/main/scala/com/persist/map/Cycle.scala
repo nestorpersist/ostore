@@ -18,6 +18,7 @@
 package com.persist.map
 
 import com.persist.JsonOps._
+import com.persist.JsonKeys._
 
 private[persist] object Cycle {
   private[persist] def checkCycle(a: JsonArray): (Boolean, Boolean) = {

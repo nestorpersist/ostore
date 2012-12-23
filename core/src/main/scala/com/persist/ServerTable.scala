@@ -19,10 +19,12 @@ package com.persist
 
 import akka.actor.ActorRef
 import JsonOps._
+import JsonKeys._
 import akka.dispatch.ExecutionContext
 import akka.util.Timeout
 import akka.util.duration._
 import Exceptions._
+import ExceptionOps._
 import Codes.emptyResponse
 import Stores._
 

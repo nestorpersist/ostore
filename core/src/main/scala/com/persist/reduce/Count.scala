@@ -18,6 +18,7 @@
 package com.persist.reduce
 
 import com.persist.JsonOps._
+import com.persist.JsonKeys._
 
 private[persist] class Count() extends com.persist.MapReduce.Reduce {
   val zero = 0

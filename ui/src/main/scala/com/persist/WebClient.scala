@@ -19,6 +19,7 @@ package com.persist
 
 import scala.io.Source
 import JsonOps._
+import JsonKeys._
 import java.net.URL
 import org.apache.http.conn.scheme.SchemeRegistry
 import org.apache.http.params.BasicHttpParams

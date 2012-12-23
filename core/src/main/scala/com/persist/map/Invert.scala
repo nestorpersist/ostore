@@ -18,6 +18,7 @@
 package com.persist.map
 
 import com.persist.JsonOps._
+import com.persist.JsonKeys._
 
 private[persist] class Invert() extends com.persist.MapReduce.Map {
   def to(key: JsonKey, value: Json) = List((JsonArray(value, key), null))

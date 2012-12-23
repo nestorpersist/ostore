@@ -22,6 +22,7 @@ import com.vaadin.ui._
 import com.vaadin.ui.Button.ClickListener
 import com.vaadin.ui.themes._
 import JsonOps._
+import JsonKeys._
 import scala.collection.JavaConversions._
 import com.vaadin.data.Property
 import java.util.regex.Pattern

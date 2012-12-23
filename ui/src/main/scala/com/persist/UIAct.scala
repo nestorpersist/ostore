@@ -18,6 +18,7 @@
 package com.persist
 
 import JsonOps._
+import JsonKeys._
 
 private[persist] trait ActComponent { this: UIAssembly =>
   val act: UIAct

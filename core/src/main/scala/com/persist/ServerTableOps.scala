@@ -18,6 +18,7 @@
 package com.persist 
 
 import JsonOps._
+import JsonKeys._
 import scala.math.max
 import akka.dispatch.Future
 import akka.dispatch.Promise
@@ -26,6 +27,7 @@ import akka.util.Timeout
 import akka.util.duration._
 import akka.actor.ActorSystem
 import Exceptions._
+import ExceptionOps._
 import Codes.emptyResponse
 
 private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>

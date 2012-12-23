@@ -32,6 +32,7 @@ import akka.dispatch.DefaultPromise
 import akka.actor.ActorRef
 import java.util.UUID
 import Exceptions._
+import ExceptionOps._
 
 // TODO multipart actions should occur as single step
 // TODO lock and send actions only to ring involved (e.g.addNode)
@@ -294,7 +295,6 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
       val oldServers = dba.servers
       val creatingNewServer = !oldServers.contains(newServerName)
       val newServers = if (creatingNewServer) List(newServerName) else List[String]()
-
       dba.lock(newServers) {
 
         // Stop balancing

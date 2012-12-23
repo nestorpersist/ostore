@@ -28,6 +28,7 @@ import akka.actor.Props
 import akka.dispatch.DefaultPromise
 import akka.dispatch.ExecutionContext
 import Exceptions._
+import ExceptionOps._
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigValueFactory
 
@@ -63,8 +64,6 @@ class Client(config: Json) {
   if (port != 0) {
     clientConfig = clientConfig.withValue("akka.remote.netty.port", ConfigValueFactory.fromAnyRef(port))
   }
-  //println("ClientConfig:" + clientConfig)
-  //println("ServerConfig:"+serverConfig)
   if (name == "") name = "ostorec"
   /**
    * The actor system used by the client.
@@ -78,7 +77,6 @@ class Client(config: Json) {
     serverPort = serverConfig.getInt("akka.remote.netty.port")
   }
 
-  //println("sp:"+serverPort)
   private val manager = system.actorOf(Props(new Manager(serverHost, serverPort)), name = "@manager")
 
   private implicit val timeout = Timeout(60 seconds)

@@ -20,6 +20,7 @@ package com.persist
 import akka.actor.Actor
 import akka.actor.ActorRef
 import JsonOps._
+import JsonKeys._
 import Codes.emptyResponse
 
 private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>

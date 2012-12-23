@@ -18,6 +18,7 @@
 package com.persist
 
 import JsonOps._
+import JsonKeys._
 import akka.actor.ActorRef
 import MapReduce._
 import scala.collection.immutable.HashMap

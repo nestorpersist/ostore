@@ -18,6 +18,7 @@
 package com.persist.map
 
 import com.persist.JsonOps._
+import com.persist.JsonKeys._
 
 private[persist] class Index() extends com.persist.MapReduce.Map {
   private lazy val field = jgetString(options, "field")

@@ -18,8 +18,10 @@
 package com.persist
 
 import JsonOps._
+import JsonKeys._
 import scala.collection.immutable.HashSet
 import Exceptions._
+import ExceptionOps._
 
 /**
  * Map and reduce operations are defined by extending the traits

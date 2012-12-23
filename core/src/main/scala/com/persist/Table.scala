@@ -21,6 +21,7 @@ import akka.actor.Actor
 import akka.dispatch.Future
 import Actor._
 import JsonOps._
+import JsonKeys._
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.dispatch.DefaultPromise
@@ -31,6 +32,7 @@ import akka.pattern._
 import akka.util.Timeout
 import scala.collection.Traversable
 import Exceptions._
+import ExceptionOps._
 
 private object SyncAllItems {
   def apply(asyncTable: AsyncTable, options: JsonObject) = new SyncAllItems(asyncTable, options)

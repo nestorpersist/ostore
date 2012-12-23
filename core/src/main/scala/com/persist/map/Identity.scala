@@ -16,7 +16,9 @@
 */
 
 package com.persist.map
+
 import com.persist.JsonOps._
+import com.persist.JsonKeys._
 
 private[persist] class Identity() extends com.persist.MapReduce.Map {
   def to(key: JsonKey, value: Json) = List((key, value))

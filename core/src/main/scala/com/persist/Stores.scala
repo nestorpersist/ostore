@@ -19,6 +19,7 @@ package com.persist
 
 import JsonOps._
 import Exceptions._
+import ExceptionOps._
 import akka.actor.ActorContext
 
 /**

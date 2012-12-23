@@ -1,19 +1,33 @@
 LOG OF CHANGES
 
-11/4/2010  Check now checks (but not yet fixes) simple maps
+12/22/2012 Check now checks (but not yet fixes) all maps
+12/22/2012 fixed bug in addNode (and related commands)
+12/19/2012 Performance improvements: Json parser and mapper
+12/1/2012  Added CheckMap
+11/22/2012 Add JsonMapper
+11/17/2012 JsonOps add jput, jdelete, jinsert, jhas
+11/17/2012 Json parser now supports floating point (10.2E3)
+11/17/2012 Split Exceptions.scala into Exceptions + ExceptionOps
+11/17/2012 Json parser now allows "s to be omitted on simple field names
+11/17/2012 Json parser now permits ""{raw strings}""
+11/17/2012 Json parser now permits // comments
+11/17/2012 Key operations moved from JsonOps to JsonKeys
+11/10/2012 Table getInfo now has get p (prefixes)
+
+11/4/2012  Check now checks (but not yet fixes) simple maps
 10/21/2012 Added sbt-assembly plugin to core
-10/21/2010 Admin locks now include time locked
-10/21/2010 Admin commands better error handling on lock failure
-10/21/2010 Refactoring of Manager classes
+10/21/2012 Admin locks now include time locked
+10/21/2012 Admin commands better error handling on lock failure
+10/21/2012 Refactoring of Manager classes
 
-10/20/2010 add phase to DatabaseState for failure recovery
-10/19/2010 serverInfo method moved from Database to Client
-10/19/2010 serverInfo now contacts named server
-10/19/2010 serverInfo now has get=d (database) option
-10/19/2010 Check program arguments changed
+10/20/2012 add phase to DatabaseState for failure recovery
+10/19/2012 serverInfo method moved from Database to Client
+10/19/2012 serverInfo now contacts named server
+10/19/2012 serverInfo now has get=d (database) option
+10/19/2012 Check program arguments changed
 
-10/18/2010 Fixed bug in prefix maps
-10/17/2010 DatabaseStop now waits for all msgs to complete
+10/18/2012 Fixed bug in prefix maps
+10/17/2012 DatabaseStop now waits for all msgs to complete
 10/16/2012 FORMAT CHANGE: Jdbm3 files. Delete and rebuild
 10/16/2012 Per server database state now persisted
 10/16/2012 new DatabaseState class
@@ -23,7 +37,7 @@ LOG OF CHANGES
 10/15/2012 Class VectorClock now public
 10/15/2012 Use reflection to find conflict resolvers
 
-10/14/2010 InMemory store now uses Scala immutable collections
+10/14/2012 InMemory store now uses Scala immutable collections
 10/13/2012 FORMAT CHANGE: Jdbm3 files. Delete and rebuild
 10/13/2012 Server config files changes to support store reflection
 10/13/2012 Support new local store implementations via reflection

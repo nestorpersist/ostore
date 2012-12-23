@@ -20,6 +20,7 @@ package com.persist
 import akka.actor.ActorRef
 import akka.event.LoggingAdapter
 import JsonOps._
+import JsonKeys._
 import Stores._
 
 private[persist] trait ServerTableInfoComponent { this: ServerTableAssembly =>

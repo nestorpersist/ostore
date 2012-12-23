@@ -18,6 +18,7 @@
 package com.persist.map
 
 import com.persist.JsonOps._
+import com.persist.JsonKeys._
 import com.persist.Text.Words
 
 private[persist] class TextIndex() extends com.persist.MapReduce.Map {

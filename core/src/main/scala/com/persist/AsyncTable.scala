@@ -21,6 +21,7 @@ import akka.actor.Actor
 import akka.dispatch.Future
 import Actor._
 import JsonOps._
+import JsonKeys._
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.dispatch.DefaultPromise
@@ -30,6 +31,7 @@ import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
 import Exceptions._
+import ExceptionOps._
 
 /**
  * This is the asynchronous interface to OStore tables.

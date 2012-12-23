@@ -23,6 +23,7 @@ import org.scalatest.junit.JUnitRunner
 import com.persist.JsonOps._
 import com.persist.MapReduce._
 import com.persist.Exceptions._
+import com.persist.ExceptionOps._
 import scala.reflect
 
 @RunWith(classOf[JUnitRunner])

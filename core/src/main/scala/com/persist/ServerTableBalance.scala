@@ -18,9 +18,11 @@
 package com.persist
 
 import JsonOps._
+import JsonKeys._
 import akka.actor.ActorSystem
 import akka.actor.ActorRef
 import Exceptions._
+import ExceptionOps._
 import Stores._
 
 private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =>

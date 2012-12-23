@@ -28,6 +28,7 @@ import akka.util.duration._
 import akka.pattern._
 import akka.dispatch.ExecutionContext
 import Exceptions._
+import ExceptionOps._
 
 /**
  * This is the API for accessing a specific OStore database.
@@ -59,8 +60,8 @@ class Database private[persist] (val client:Client, val databaseName: String, ma
    * 
    * @param tableName the name of the table.
    * @param options optional json object containing options.
-   *  - '''"get="rft"''' if specified this method returns an object with requested fields
-   *      (Readonly, From map-reduce, To map-reduce).
+   *  - '''"get="rftp"''' if specified this method returns an object with requested fields
+   *      (Readonly, From map-reduce, To map-reduce, Prefixes).
    */
   def tableInfo(tableName: String, options: JsonObject = emptyJsonObject): Json = {
     checkName(tableName)

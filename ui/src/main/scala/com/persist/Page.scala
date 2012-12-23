@@ -18,6 +18,7 @@
 package com.persist
 
 import JsonOps._
+import JsonKeys._
 
 class Page(client: WebClient) {
 

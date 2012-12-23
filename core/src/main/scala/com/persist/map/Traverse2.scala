@@ -18,6 +18,7 @@
 package com.persist.map
 
 import com.persist.JsonOps._
+import com.persist.JsonKeys._
 
 private[persist] class Traverse2() extends com.persist.MapReduce.Map2 {
   def to(prefixKey: JsonKey, prefixValue: Json, key: JsonKey, value: Json): Traversable[(JsonKey, Json)] = {

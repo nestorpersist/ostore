@@ -19,6 +19,7 @@
 package com.persist
 
 import JsonOps._
+import JsonKeys._
 import scala.util.parsing.combinator._
 import scala.collection.immutable.HashSet
 

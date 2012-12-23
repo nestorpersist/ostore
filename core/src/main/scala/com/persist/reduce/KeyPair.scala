@@ -18,6 +18,7 @@
 package com.persist.reduce
 
 import com.persist.JsonOps._
+import com.persist.JsonKeys._
 import scala.collection.immutable.HashSet
 
 private[persist] class KeyPair() extends com.persist.MapReduce.Reduce {

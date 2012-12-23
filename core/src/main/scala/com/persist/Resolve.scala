@@ -19,6 +19,7 @@ package com.persist
 
 import JsonOps._
 import Exceptions._
+import ExceptionOps._
 
 /**
  * This object contains the traits needed to define 2-way and 3-way conflict

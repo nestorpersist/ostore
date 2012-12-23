@@ -25,6 +25,7 @@ import akka.pattern._
 import akka.util.duration._
 import akka.dispatch.Await
 import Exceptions._
+import ExceptionOps._
 import akka.actor.ActorRef
 import java.util.concurrent.TimeoutException
 
@@ -190,7 +191,8 @@ private[persist] class ManagerActions(serverName: String, server: ActorRef, mess
     }
 
     def lock(servers1: List[String])(body: => Unit) = {
-      doAll("lock", emptyJsonObject, servers1)
+        doAll("lock", emptyJsonObject, servers1)
+        body
     }
 
     def pass(cmd: String, request: JsonObject = emptyJsonObject, servers: List[String] = servers) {

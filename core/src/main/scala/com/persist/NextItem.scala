@@ -22,7 +22,9 @@ import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.dispatch.DefaultPromise
 import JsonOps._
+import JsonKeys._
 import Exceptions._
+import ExceptionOps._
 
 /**
  * The result of the all method of [[com.persist.AsyncTable]].

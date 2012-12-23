@@ -459,11 +459,14 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
               }
               t += ("reduce" -> a)
             }
-            if (table.hasPrefix) {
-              t += ("prefix" -> table.prefix)
-            }
+            //if (table.hasPrefix) {
+            //  t += ("prefix" -> table.prefix)
+            //}
             result += ("t" -> t)
           }
+        }
+        if (get.contains("p") && table.hasPrefix) {
+          result += ("p" -> table.prefix)
         }
         sender ! (Codes.Ok, Compact(result))
       }
@@ -703,7 +706,7 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       }
       if (get.contains("d")) {
         var dinfo = JsonObject()
-        for ((databaseName,state) <- states.all) {
+        for ((databaseName, state) <- states.all) {
           if (requestDatabaseName == "" || requestDatabaseName == databaseName) {
             dinfo += (databaseName -> stateInfo(state))
           }

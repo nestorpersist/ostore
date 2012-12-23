@@ -20,6 +20,7 @@ package com.persist
 import akka.actor.Actor
 import akka.actor.ActorLogging
 import Exceptions._
+import ExceptionOps._
 import JsonOps._
 
 private[persist] abstract class CheckedActor extends Actor with ActorLogging {
