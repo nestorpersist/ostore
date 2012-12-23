@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html>
         <head>
-          <title>com.persist.Exceptions</title>
+          <title>com.persist.JsonKeys</title>
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link type="text/css" media="screen" rel="stylesheet" href="../../lib/template.css" />
@@ -16,20 +16,19 @@
       <div id="definition">
         <img src="../../lib/object_big.png" />
         <p id="owner"><a name="com" class="extype" href="../package.html">com</a>.<a name="com.persist" class="extype" href="package.html">persist</a></p>
-        <h1>Exceptions</h1>
+        <h1>JsonKeys</h1>
       </div>
 
       <h4 class="signature" id="signature">
       <span class="kind">object</span>
       <span class="symbol"> 
-        <span class="name">Exceptions</span>
+        <span class="name">JsonKeys</span>
         
         <span class="result"> extends AnyRef</span>
       </span>
       </h4>
       
-          <div class="fullcommenttop" id="comment"><div class="comment cmt"><p>This object defines the Exceptions used within Persist-Json.
-</p></div><div class="toggleContainer block">
+          <div class="fullcommenttop" id="comment"><div class="comment cmt"><p>Provides types and functions for working with the OStore Json key types.</p></div><div class="toggleContainer block">
           <span class="toggle">Linear Supertypes</span>
           <div class="superTypes hiddenContent">AnyRef, <span name="scala.Any" class="extype">Any</span></div>
         </div></div>
@@ -47,7 +46,7 @@
                 <span class="filtertype">Inherited</span>
                 <ol><li class="hideall out"><span>Hide All</span></li>
                 <li class="showall in"><span>Show all</span></li></ol>
-                <ol id="linearization"><li name="com.persist.Exceptions" class="in"><span>Exceptions</span></li><li name="scala.AnyRef" class="in"><span>AnyRef</span></li><li name="scala.Any" class="in"><span>Any</span></li></ol>
+                <ol id="linearization"><li name="com.persist.JsonKeys" class="in"><span>JsonKeys</span></li><li name="scala.AnyRef" class="in"><span>AnyRef</span></li><li name="scala.Any" class="in"><span>Any</span></li></ol>
               </div>
           <div id="visbl">
               <span class="filtertype">Visibility</span>
@@ -59,28 +58,20 @@
 
         <div class="types members" id="types">
               <h3>Type Members</h3>
-              <ol><li visbl="pub" name="com.persist.Exceptions.JsonParseException" data-isabs="false">
-      <a id="JsonParseException:JsonParseException"></a>
+              <ol><li visbl="pub" name="com.persist.JsonKeys#JsonKey" data-isabs="false">
+      <a id="JsonKey:JsonKey"></a>
       <h4 class="signature">
-      <span class="kind">class</span>
+      <span class="kind">type</span>
       <span class="symbol"> 
-        <a href="Exceptions$$JsonParseException.html"><span class="name">JsonParseException</span></a>
+        <span class="name">JsonKey</span>
         
-        <span class="result"> extends SystemException</span>
+        <span class="result"> = <span name="scala.Any" class="extype">Any</span></span>
       </span>
       </h4>
-      <p class="comment cmt">This subclass of SystemException is used for errors that occur parsing JSON.</p>
-    </li><li visbl="pub" name="com.persist.Exceptions.SystemException" data-isabs="false">
-      <a id="SystemException:SystemException"></a>
-      <h4 class="signature">
-      <span class="kind">class</span>
-      <span class="symbol"> 
-        <a href="Exceptions$$SystemException.html"><span class="name">SystemException</span></a>
-        
-        <span class="result"> extends Exception</span>
-      </span>
-      </h4>
-      <p class="comment cmt">This is the basic system exception.</p>
+      <p class="shortcomment cmt">A type alias for OStore Json keys.</p><div class="fullcomment"><div class="comment cmt"><p>A type alias for OStore Json keys.
+JsonKey values should be restricted to
+permitted OStore key forms.</p><ul><li>String.</li><li>Number (restricted to integers that can fit in a Long).</li><li>Array of JsonKeys.
+</li></ul></div></div>
     </li></ol>
             </div>
         
@@ -237,6 +228,84 @@
       </span>
       </h4>
       <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonKeys#keyCompare" data-isabs="false">
+      <a id="keyCompare(Json,Json):Int"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyCompare</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="b">b: Json</span>)</span><span class="result">: <span name="scala.Int" class="extype">Int</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Compares two JsonKeys.</p><div class="fullcomment"><div class="comment cmt"><p>Compares two JsonKeys.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key.</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key.</p><p>@return</p><ul><li>0 if the two keys are equal.</li><li>&lt;0 if a is less than b in key order.</li><li>&gt;0 if a is greater than b in key order.</li></ul></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonKeys#keyEq" data-isabs="false">
+      <a id="keyEq(Json,Json):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyEq</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="b">b: Json</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Compares two JsonKeys for equality.</p><div class="fullcomment"><div class="comment cmt"><p>Compares two JsonKeys for equality.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key.</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key.
+</p></dd><dt>returns</dt><dd class="cmt"><p>true if the two keys are equal.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonKeys#keyLs" data-isabs="false">
+      <a id="keyLs(Json,Json):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyLs</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="b">b: Json</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Compares two JsonKeys.</p><div class="fullcomment"><div class="comment cmt"><p>Compares two JsonKeys.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key.</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key.
+</p></dd><dt>returns</dt><dd class="cmt"><p>true if a is less than b in key ordering.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonKeys#keyPrefix" data-isabs="false">
+      <a id="keyPrefix(JsonKey,JsonKey):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyPrefix</span>
+        
+        <span class="params">(<span name="a">a: JsonKey</span>, <span name="b">b: JsonKey</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Determines if one JsonKey is a prefix of another JsonKey.</p><div class="fullcomment"><div class="comment cmt"><p>Determines if one JsonKey is a prefix of another JsonKey.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key
+</p></dd><dt>returns</dt><dd class="cmt"><p>true if a is a prefix of b.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonKeys#keyUriDecode" data-isabs="false">
+      <a id="keyUriDecode(String):JsonKey"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyUriDecode</span>
+        
+        <span class="params">(<span name="s">s: String</span>)</span><span class="result">: JsonKey</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">An decoder for REST key forms.</p><div class="fullcomment"><div class="comment cmt"><p>An decoder for REST key forms.
+Converts a key within the query part of
+a url for the OStore REST api to a JsonKey.</p></div></div>
+    </li><li visbl="pub" name="com.persist.JsonKeys#keyUriEncode" data-isabs="false">
+      <a id="keyUriEncode(JsonKey):String"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">keyUriEncode</span>
+        
+        <span class="params">(<span name="j">j: JsonKey</span>)</span><span class="result">: String</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">An encoder for REST key forms.</p><div class="fullcomment"><div class="comment cmt"><p>An encoder for REST key forms.
+Converts an OStore key to a string form that
+can be used as a key within the query part of
+a url for the OStore REST api.</p></div></div>
     </li><li visbl="pub" name="scala.AnyRef#ne" data-isabs="false">
       <a id="ne(AnyRef):Boolean"></a>
       <h4 class="signature">

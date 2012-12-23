@@ -28,10 +28,14 @@
       </span>
       </h4>
       
-          <div class="fullcommenttop" id="comment"><div class="comment cmt"><p>Provides types and functions for working with the OStore Json types.</p><p>In OStore, Json is represented by immutable Scala types.
+          <div class="fullcommenttop" id="comment"><div class="comment cmt"><p>Provides types and functions for working with Json types.</p><p>Json is represented by immutable Scala types.
 Instead of having separate Json types, type aliases are
 defined for Json forms.</p><p>Scala types used for Json are</p><ul><li>Json Object. Immutable Map[String,Json]<ul><li>Note that keys are not ordered.</li></ul><ul><li> When converting to a string with Compact or Pretty
-      keys are sorted.</li></ul></li><li>Json Array. Immutable Seq[Json]</li><li>Json String. String</li><li>Json Boolean. Boolean</li><li>Json Number. Int, Long, BigDecimal</li><li>Json Null. Null</li></ul></div><div class="toggleContainer block">
+      keys are sorted.</li></ul></li><li>Json Array. Immutable Seq[Json]</li><li>Json String. String</li><li>Json Boolean. Boolean</li><li>Json Number. Int, Long, BigDecimal (with .), Double (with e)</li><li>Json Null. Null</li></ul><p>Any of the Json types can be at the top level
+of a document (not just array and object).</p><p>The Json parser supports some extensions that are useful for human edited
+Json input (such as configurations).</p><ul><li>Comments. The characters // to end of line are discarded during parsing.</li><li>Scala-like raw strings. Start with &quot;&quot;{ and end with }&quot;&quot;. Treated as normal strings after parsing.</li><li>No quotes on simple names. If an object component name starts with a letter and contains
+    only letters and digits the &quot; quotes are not required. After parsing names with and without
+    quotes are not distinguished.</li></ul></div><div class="toggleContainer block">
           <span class="toggle">Linear Supertypes</span>
           <div class="superTypes hiddenContent">AnyRef, <span name="scala.Any" class="extype">Any</span></div>
         </div></div>
@@ -85,20 +89,6 @@ to only those types used to represent Json.</p></div></div>
       </span>
       </h4>
       <p class="shortcomment cmt">A type alias for Json Arrays.</p>
-    </li><li visbl="pub" name="com.persist.JsonOps#JsonKey" data-isabs="false">
-      <a id="JsonKey:JsonKey"></a>
-      <h4 class="signature">
-      <span class="kind">type</span>
-      <span class="symbol"> 
-        <span class="name">JsonKey</span>
-        
-        <span class="result"> = <span name="scala.Any" class="extype">Any</span></span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">A type alias for OStore Json keys.</p><div class="fullcomment"><div class="comment cmt"><p>A type alias for OStore Json keys.
-JsonKey values should be restricted to
-permitted OStore key forms.</p><ul><li>String.</li><li>Number (restricted to integers that can fit in a Long).</li><li>Array of JsonKeys.
-</li></ul></div></div>
     </li><li visbl="pub" name="com.persist.JsonOps#JsonObject" data-isabs="false">
       <a id="JsonObject:JsonObject"></a>
       <h4 class="signature">
@@ -370,6 +360,20 @@ designed for human readability.</p></div></div>
       </span>
       </h4>
       <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jdelete" data-isabs="false">
+      <a id="jdelete(Json,Any*):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jdelete</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Delete a value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Delete a value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the input Json value.</p></dd><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
+</li></ul></dd><dt>returns</dt><dd class="cmt"><p>a copy of the input with the value replaced.</p></dd></dl></div>
     </li><li visbl="pub" name="com.persist.JsonOps#jget" data-isabs="false">
       <a id="jget(Json,Any*):Json"></a>
       <h4 class="signature">
@@ -381,7 +385,7 @@ designed for human readability.</p></div></div>
       </span>
       </h4>
       <p class="shortcomment cmt">Get a value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get a value within a nested Json value.
-</p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the input Json value.</p></dd><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
    the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
 </li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected value or null if not present.</p></dd></dl></div>
     </li><li visbl="pub" name="com.persist.JsonOps#jgetArray" data-isabs="false">
@@ -468,6 +472,49 @@ designed for human readability.</p></div></div>
 </p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
    the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
 </li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected string value or &quot;&quot; if not present.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jhas" data-isabs="false">
+      <a id="jhas(Json,Any*):Boolean"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jhas</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Tests if a nested Json value is present.</p><div class="fullcomment"><div class="comment cmt"><p>Tests if a nested Json value is present.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the input Json value.</p></dd><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
+</li></ul></dd><dt>returns</dt><dd class="cmt"><p>true if the selected field is present.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jinsert" data-isabs="false">
+      <a id="jinsert(Json,Any*)(Json):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jinsert</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="params">(<span name="v">v: Json</span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Insert a value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Insert a value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the input Json value.</p></dd><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.</li></ul></dd><dt class="param">v</dt><dd class="cmt"><p>the new value
+</p></dd><dt>returns</dt><dd class="cmt"><p>a copy of the input with the value inserted. For JsonArrays the value is inserted before the
+specified value.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jput" data-isabs="false">
+      <a id="jput(Json,Any*)(Json):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jput</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="params">(<span name="v">v: Json</span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Replace a value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Replace a value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the input Json value.</p></dd><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.</li></ul></dd><dt class="param">v</dt><dd class="cmt"><p>the new value.
+</p></dd><dt>returns</dt><dd class="cmt"><p>a copy of the input with the value replaced.</p></dd></dl></div>
     </li><li visbl="pub" name="com.persist.JsonOps#jsize" data-isabs="false">
       <a id="jsize(Json):Int"></a>
       <h4 class="signature">
@@ -478,86 +525,7 @@ designed for human readability.</p></div></div>
         <span class="params">(<span name="j">j: Json</span>)</span><span class="result">: <span name="scala.Int" class="extype">Int</span></span>
       </span>
       </h4>
-      <p class="shortcomment cmt">Get the size of a Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get the size of a Json value.</p><ul><li>For a Json Object the number of name-value pairs.</li><li>For a Json Array the number of elements.</li><li>For anything else, 0.
-</li></ul></div></div>
-    </li><li visbl="pub" name="com.persist.JsonOps#keyCompare" data-isabs="false">
-      <a id="keyCompare(Json,Json):Int"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">keyCompare</span>
-        
-        <span class="params">(<span name="a">a: Json</span>, <span name="b">b: Json</span>)</span><span class="result">: <span name="scala.Int" class="extype">Int</span></span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">Compares two JsonKeys.</p><div class="fullcomment"><div class="comment cmt"><p>Compares two JsonKeys.
-</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key.</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key.</p><p>@return</p><ul><li>0 if the two keys are equal.</li><li>&lt;0 if a is less than b in key order.</li><li>&gt;0 if a is greater than b in key order.</li></ul></dd></dl></div>
-    </li><li visbl="pub" name="com.persist.JsonOps#keyEq" data-isabs="false">
-      <a id="keyEq(Json,Json):Boolean"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">keyEq</span>
-        
-        <span class="params">(<span name="a">a: Json</span>, <span name="b">b: Json</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">Compares two JsonKeys for equality.</p><div class="fullcomment"><div class="comment cmt"><p>Compares two JsonKeys for equality.
-</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key.</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key.
-</p></dd><dt>returns</dt><dd class="cmt"><p>true if the two keys are equal.</p></dd></dl></div>
-    </li><li visbl="pub" name="com.persist.JsonOps#keyLs" data-isabs="false">
-      <a id="keyLs(Json,Json):Boolean"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">keyLs</span>
-        
-        <span class="params">(<span name="a">a: Json</span>, <span name="b">b: Json</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">Compares two JsonKeys.</p><div class="fullcomment"><div class="comment cmt"><p>Compares two JsonKeys.
-</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key.</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key.
-</p></dd><dt>returns</dt><dd class="cmt"><p>true if a is less than b in key ordering.</p></dd></dl></div>
-    </li><li visbl="pub" name="com.persist.JsonOps#keyPrefix" data-isabs="false">
-      <a id="keyPrefix(JsonKey,JsonKey):Boolean"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">keyPrefix</span>
-        
-        <span class="params">(<span name="a">a: JsonKey</span>, <span name="b">b: JsonKey</span>)</span><span class="result">: <span name="scala.Boolean" class="extype">Boolean</span></span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">Determines if one JsonKey is a prefix of another JsonKey.</p><div class="fullcomment"><div class="comment cmt"><p>Determines if one JsonKey is a prefix of another JsonKey.
-</p></div><dl class="paramcmts block"><dt class="param">a</dt><dd class="cmt"><p>the first key</p></dd><dt class="param">b</dt><dd class="cmt"><p>the second key
-</p></dd><dt>returns</dt><dd class="cmt"><p>true if a is a prefix of b.</p></dd></dl></div>
-    </li><li visbl="pub" name="com.persist.JsonOps#keyUriDecode" data-isabs="false">
-      <a id="keyUriDecode(String):JsonKey"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">keyUriDecode</span>
-        
-        <span class="params">(<span name="s">s: String</span>)</span><span class="result">: JsonKey</span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">An decoder for REST key forms.</p><div class="fullcomment"><div class="comment cmt"><p>An decoder for REST key forms.
-Converts a key within the query part of
-a url for the OStore REST api to a JsonKey.</p></div></div>
-    </li><li visbl="pub" name="com.persist.JsonOps#keyUriEncode" data-isabs="false">
-      <a id="keyUriEncode(JsonKey):String"></a>
-      <h4 class="signature">
-      <span class="kind">def</span>
-      <span class="symbol"> 
-        <span class="name">keyUriEncode</span>
-        
-        <span class="params">(<span name="j">j: JsonKey</span>)</span><span class="result">: String</span>
-      </span>
-      </h4>
-      <p class="shortcomment cmt">An encoder for REST key forms.</p><div class="fullcomment"><div class="comment cmt"><p>An encoder for REST key forms.
-Converts an OStore key to a string form that
-can be used as a key within the query part of
-a url for the OStore REST api.</p></div></div>
+      <p class="shortcomment cmt">Get the size of a Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get the size of a Json value.</p><ul><li>For a Json Object the number of name-value pairs.</li><li>For a Json Array the number of elements.</li><li>For anything else, 0.</li></ul></div></div>
     </li><li visbl="pub" name="scala.AnyRef#ne" data-isabs="false">
       <a id="ne(AnyRef):Boolean"></a>
       <h4 class="signature">

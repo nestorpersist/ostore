@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html>
         <head>
-          <title>com.persist.Exceptions</title>
+          <title>com.persist.JsonMapper</title>
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link type="text/css" media="screen" rel="stylesheet" href="../../lib/template.css" />
@@ -16,20 +16,37 @@
       <div id="definition">
         <img src="../../lib/object_big.png" />
         <p id="owner"><a name="com" class="extype" href="../package.html">com</a>.<a name="com.persist" class="extype" href="package.html">persist</a></p>
-        <h1>Exceptions</h1>
+        <h1>JsonMapper</h1>
       </div>
 
       <h4 class="signature" id="signature">
       <span class="kind">object</span>
       <span class="symbol"> 
-        <span class="name">Exceptions</span>
+        <span class="name">JsonMapper</span>
         
         <span class="result"> extends AnyRef</span>
       </span>
       </h4>
       
-          <div class="fullcommenttop" id="comment"><div class="comment cmt"><p>This object defines the Exceptions used within Persist-Json.
-</p></div><div class="toggleContainer block">
+          <div class="fullcommenttop" id="comment"><div class="comment cmt"><p>This object has methods that use reflection for converting between
+Json and user defined case classes. Here is an example:</p><pre>
+ import com.persist.JsonOps._
+ import com.persist.JsonMapper._
+
+ case class Person(name:String, age:Option[Int])
+ case class Group(city: String, people:Seq[Person], var cnt:Int, props:JsonObject)
+
+ val j:Json = Json(&quot;&quot;&quot;{city:&quot;Seattle&quot;, cnt:2, props:{i:1, j:2},
+                       people:[{name:&quot;Joe&quot;},
+                               {name:&quot;Tom&quot;, age:20}]
+                      }&quot;&quot;&quot;)
+
+ val group:Group = ToObject[Group](j)
+
+ val j1:Json = ToJson(group)
+
+ assert(j1 == j)
+</pre></div><div class="toggleContainer block">
           <span class="toggle">Linear Supertypes</span>
           <div class="superTypes hiddenContent">AnyRef, <span name="scala.Any" class="extype">Any</span></div>
         </div></div>
@@ -47,7 +64,7 @@
                 <span class="filtertype">Inherited</span>
                 <ol><li class="hideall out"><span>Hide All</span></li>
                 <li class="showall in"><span>Show all</span></li></ol>
-                <ol id="linearization"><li name="com.persist.Exceptions" class="in"><span>Exceptions</span></li><li name="scala.AnyRef" class="in"><span>AnyRef</span></li><li name="scala.Any" class="in"><span>Any</span></li></ol>
+                <ol id="linearization"><li name="com.persist.JsonMapper" class="in"><span>JsonMapper</span></li><li name="scala.AnyRef" class="in"><span>AnyRef</span></li><li name="scala.Any" class="in"><span>Any</span></li></ol>
               </div>
           <div id="visbl">
               <span class="filtertype">Visibility</span>
@@ -57,32 +74,7 @@
 
         
 
-        <div class="types members" id="types">
-              <h3>Type Members</h3>
-              <ol><li visbl="pub" name="com.persist.Exceptions.JsonParseException" data-isabs="false">
-      <a id="JsonParseException:JsonParseException"></a>
-      <h4 class="signature">
-      <span class="kind">class</span>
-      <span class="symbol"> 
-        <a href="Exceptions$$JsonParseException.html"><span class="name">JsonParseException</span></a>
         
-        <span class="result"> extends SystemException</span>
-      </span>
-      </h4>
-      <p class="comment cmt">This subclass of SystemException is used for errors that occur parsing JSON.</p>
-    </li><li visbl="pub" name="com.persist.Exceptions.SystemException" data-isabs="false">
-      <a id="SystemException:SystemException"></a>
-      <h4 class="signature">
-      <span class="kind">class</span>
-      <span class="symbol"> 
-        <a href="Exceptions$$SystemException.html"><span class="name">SystemException</span></a>
-        
-        <span class="result"> extends Exception</span>
-      </span>
-      </h4>
-      <p class="comment cmt">This is the basic system exception.</p>
-    </li></ol>
-            </div>
         
         
 
@@ -143,6 +135,31 @@
       </span>
       </h4>
       <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>final </dd><dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonMapper#ToJson" data-isabs="false">
+      <a id="ToJson[T](T)(ClassManifest[T]):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">ToJson</span>
+        <span class="tparams">[<span name="T">T</span>]</span>
+        <span class="params">(<span name="x">x: T</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="m">m: ClassManifest[T]</span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Converts an object to Json.</p><div class="fullcomment"><div class="comment cmt"><p>Converts an object to Json.
+</p></div><dl class="paramcmts block"><dt class="param">x</dt><dd class="cmt"><p>the object.</p></dd><dt>returns</dt><dd class="cmt"><p>the Json form for the object.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonMapper#ToObject" data-isabs="false">
+      <a id="ToObject[T](Json)(ClassManifest[T]):T"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">ToObject</span>
+        <span class="tparams">[<span name="T">T</span>]</span>
+        <span class="params">(<span name="j">j: Json</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="m">m: ClassManifest[T]</span>)</span><span class="result">: T</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Converts Json to an object of a specified type.</p><div class="fullcomment"><div class="comment cmt"><p>Converts Json to an object of a specified type.
+</p></div><dl class="paramcmts block"><dt class="tparam">T</dt><dd class="cmt"><p>the type for the result.</p></dd><dt class="param">j</dt><dd class="cmt"><p>the Json to convert.</p></dd><dt>returns</dt><dd class="cmt"><p>the produced object.
+</p></dd></dl></div>
     </li><li visbl="pub" name="scala.Any#asInstanceOf" data-isabs="false">
       <a id="asInstanceOf[T0]:T0"></a>
       <h4 class="signature">
