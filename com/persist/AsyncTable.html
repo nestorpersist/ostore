@@ -134,8 +134,9 @@ If options are not specified it will include the keys of all items
 in the table.
 </p></div><dl class="paramcmts block"><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.
    Options can modify what items are returned and what information is
-   returned for each item.</p><ul><li><b>&quot;reverse&quot;=true</b> if true, return keys in reverse order. Default is false.</li><li><b>&quot;get=&quot;kvcde&quot;</b> if specified this method returns an object with requested fields
-     (Key, Value, vector Clock, Deleted, Expires time).</li><li><b>&quot;low&quot;=key</b> the lowest key that should be returned.</li><li><b>&quot;includelow&quot;=true</b> if true, the low option is inclusive.
+   returned for each item.</p><ul><li><b>&quot;reverse&quot;=true</b> if true, return keys in reverse order. Default is false.</li><li><b>&quot;get=&quot;kvcder&quot;</b> if specified this method returns an object with requested fields
+     (Key, Value, vector Clock, Deleted, Expires time, Reduce staging).
+     Ordinary code should not use d or r.</li><li><b>&quot;low&quot;=key</b> the lowest key that should be returned.</li><li><b>&quot;includelow&quot;=true</b> if true, the low option is inclusive.
  If false, the low option is exclusive. Default is false.</li><li><b>&quot;high&quot;=key</b> the highest key that should be returned.</li><li><b>&quot;includehigh&quot;=true</b> if true, the high option is inclusive.
  If false, the high option is exclusive. Default is false.</li><li><b>&quot;prefix&quot;=key</b> only keys for which this is a prefix are returned.</li><li><b>&quot;includeprefix&quot;=true</b> if true, any key equal to the prefix is included.
  If false, any key equal to the prefix is not included. Default is false.</li><li><b>&quot;parent&quot;=key</b> only keys which are direct children of this key are included.
@@ -306,8 +307,9 @@ call.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json obj
       </span>
       </h4>
       <p class="shortcomment cmt">Gets information about an item with a specified key.</p><div class="fullcomment"><div class="comment cmt"><p>Gets information about an item with a specified key.
-</p></div><dl class="paramcmts block"><dt class="param">key</dt><dd class="cmt"><p>the key.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;get=&quot;kvcde&quot;</b> if specified this method returns an object with requested fields
-     (Key, Value, vector Clock, Deleted, Expires time).</li><li><b>&quot;r&quot;=n</b> read from at least n rings before returning. Default is 1.</li><li><b>&quot;ring&quot;=&quot;ringName&quot;</b> get from this ring.</li><li><b>&quot;prefixtab&quot;=&quot;prefixName&quot;</b> get items from this prefix table rather than the main table.
+</p></div><dl class="paramcmts block"><dt class="param">key</dt><dd class="cmt"><p>the key.</p></dd><dt class="param">options</dt><dd class="cmt"><p>optional json object containing options.</p><ul><li><b>&quot;get=&quot;kvcder&quot;</b> if specified this method returns an object with requested fields
+     (Key, Value, vector Clock, Deleted, Expires time, Reduce staging).
+     Ordinary code should not use d or r.</li><li><b>&quot;r&quot;=n</b> read from at least n rings before returning. Default is 1.</li><li><b>&quot;ring&quot;=&quot;ringName&quot;</b> get from this ring.</li><li><b>&quot;prefixtab&quot;=&quot;prefixName&quot;</b> get items from this prefix table rather than the main table.
 </li></ul></dd><dt>returns</dt><dd class="cmt"><p>A future that upon completion will have value
 None if there is no item with that key, or Some(X) if the item exists.
 X will be the value of the item if the get option is not specified;

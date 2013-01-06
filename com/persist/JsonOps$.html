@@ -402,6 +402,20 @@ designed for human readability.</p></div></div>
 </p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
    the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
 </li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected JsonArray value or an empty JsonArray if not present.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jgetBigDecimal" data-isabs="false">
+      <a id="jgetBigDecimal(Json,Any*):BigDecimal"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jgetBigDecimal</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="result">: BigDecimal</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Get a big decimal value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get a big decimal value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
+</li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected big decimal value or 0.0 if not present.</p></dd></dl></div>
     </li><li visbl="pub" name="com.persist.JsonOps#jgetBoolean" data-isabs="false">
       <a id="jgetBoolean(Json,Any*):Boolean"></a>
       <h4 class="signature">
@@ -416,6 +430,20 @@ designed for human readability.</p></div></div>
 </p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
    the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
 </li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected boolean value or false if not present.</p></dd></dl></div>
+    </li><li visbl="pub" name="com.persist.JsonOps#jgetDouble" data-isabs="false">
+      <a id="jgetDouble(Json,Any*):Double"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">jgetDouble</span>
+        
+        <span class="params">(<span name="a">a: Json</span>, <span name="ilist">ilist: <span name="scala.Any" class="extype">Any</span>*</span>)</span><span class="result">: <span name="scala.Double" class="extype">Double</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Get a double value within a nested Json value.</p><div class="fullcomment"><div class="comment cmt"><p>Get a double value within a nested Json value.
+</p></div><dl class="paramcmts block"><dt class="param">ilist</dt><dd class="cmt"><p>a list of values that are either strings or integers</p><ul><li>A string selects the value of a JsonObject name-value pair where
+   the name equals the string.</li><li>An integer i selects the ith elements of a JsonArray.
+</li></ul></dd><dt>returns</dt><dd class="cmt"><p>the selected double value or 0.0 if not present.</p></dd></dl></div>
     </li><li visbl="pub" name="com.persist.JsonOps#jgetInt" data-isabs="false">
       <a id="jgetInt(Json,Any*):Int"></a>
       <h4 class="signature">

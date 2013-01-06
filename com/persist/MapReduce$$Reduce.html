@@ -86,22 +86,39 @@ an abelian group.
 a new value of the ReduceType.</p><div class="fullcomment"><div class="comment cmt"><p>Takes two value with the ReduceType and combines them into
 a new value of the ReduceType.
 This is the operation for the abelian group.
-This operation must be commutative and associative.
-</p></div><dl class="attributes block"> <dt>Attributes</dt><dd>abstract </dd></dl></div>
-    </li><li visbl="pub" name="com.persist.MapReduce.Reduce#item" data-isabs="true">
-      <a id="item(JsonKey,Json):Json"></a>
+This operation must be commutative and associative.</p></div><dl class="paramcmts block"><dt class="param">value1</dt><dd class="cmt"><p>the first reduce type value.</p></dd><dt class="param">value2</dt><dd class="cmt"><p>the second reduce type value.
+</p></dd><dt>returns</dt><dd class="cmt"><p>the new reduce type value.
+</p></dd></dl><dl class="attributes block"> <dt>Attributes</dt><dd>abstract </dd></dl></div>
+    </li><li visbl="pub" name="com.persist.MapReduce.Reduce#in" data-isabs="true">
+      <a id="in(JsonKey,Json):Json"></a>
       <h4 class="signature">
       <span class="kind">def</span>
       <span class="symbol"> 
-        <span class="name">item</span>
+        <span class="name">in</span>
         
         <span class="params">(<span name="key">key: JsonKey</span>, <span name="value">value: Json</span>)</span><span class="result">: Json</span>
       </span>
       </h4>
       <p class="shortcomment cmt">Takes the key and value of an item in the source table and
 produces a value of the ReduceType.</p><div class="fullcomment"><div class="comment cmt"><p>Takes the key and value of an item in the source table and
-produces a value of the ReduceType.
-</p></div><dl class="attributes block"> <dt>Attributes</dt><dd>abstract </dd></dl></div>
+produces a value of the ReduceType.</p></div><dl class="paramcmts block"><dt class="param">key</dt><dd class="cmt"><p>the input key</p></dd><dt class="param">value</dt><dd class="cmt"><p>the input value
+</p></dd><dt>returns</dt><dd class="cmt"><p>the corresponding reduce value
+</p></dd></dl><dl class="attributes block"> <dt>Attributes</dt><dd>abstract </dd></dl></div>
+    </li><li visbl="pub" name="com.persist.MapReduce.Reduce#out" data-isabs="true">
+      <a id="out(JsonKey,Json):Json"></a>
+      <h4 class="signature">
+      <span class="kind">def</span>
+      <span class="symbol"> 
+        <span class="name">out</span>
+        
+        <span class="params">(<span name="key">key: JsonKey</span>, <span name="value">value: Json</span>)</span><span class="result">: Json</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Produce the destination value from the final combined
+reduce type value.</p><div class="fullcomment"><div class="comment cmt"><p>Produce the destination value from the final combined
+reduce type value.</p></div><dl class="paramcmts block"><dt class="param">key</dt><dd class="cmt"><p>the key of the destination item.</p></dd><dt class="param">value</dt><dd class="cmt"><p>the reduce type value.
+</p></dd><dt>returns</dt><dd class="cmt"><p>the value to be stored in the destination item.
+</p></dd></dl><dl class="attributes block"> <dt>Attributes</dt><dd>abstract </dd></dl></div>
     </li><li visbl="pub" name="com.persist.MapReduce.Reduce#subtract" data-isabs="true">
       <a id="subtract(Json,Json):Json"></a>
       <h4 class="signature">
@@ -115,8 +132,9 @@ produces a value of the ReduceType.
       <p class="shortcomment cmt">Takes two value with the ReduceType and combines them into
 a new value of the ReduceType.</p><div class="fullcomment"><div class="comment cmt"><p>Takes two value with the ReduceType and combines them into
 a new value of the ReduceType.
-This operation is the inverse of the add operation.
-</p></div><dl class="attributes block"> <dt>Attributes</dt><dd>abstract </dd></dl></div>
+This operation is the inverse of the add operation.</p></div><dl class="paramcmts block"><dt class="param">value1</dt><dd class="cmt"><p>the first reduce type value.</p></dd><dt class="param">value2</dt><dd class="cmt"><p>the second reduce type value.
+</p></dd><dt>returns</dt><dd class="cmt"><p>the new reduce type value.
+</p></dd></dl><dl class="attributes block"> <dt>Attributes</dt><dd>abstract </dd></dl></div>
     </li><li visbl="pub" name="com.persist.MapReduce.Reduce#zero" data-isabs="true">
       <a id="zero:Json"></a>
       <h4 class="signature">
