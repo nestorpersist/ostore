@@ -45,10 +45,10 @@ import ExceptionOps._
  * Map and reduce are computed continuously and incrementally. When
  * a source item changes all values that depend upon it in derived tables
  * are changed. Derived tables become eventually consistent in near real-time.
- * 
+ *
  * Source-destination links can form cycles. This allows computation of
  * transitive closures and can be used to implement graph traversals.
- * 
+ *
  * If a database has multiple rings, derived map and reduce tables are
  * computed separately for each ring.
  *
@@ -68,11 +68,11 @@ object MapReduce {
   trait MapAll {
     /**
      * Options passed in from the config file for the
-     * map operation. 
+     * map operation.
      * The system initializes this variable. User code should not
      * change it.
      */
-    var options:Json = emptyJsonObject
+    var options: Json = emptyJsonObject
     /**
      * The inverse operation for a map.
      *
@@ -103,21 +103,21 @@ object MapReduce {
   }
 
   /**
-   * Extend this trait for prefix maps. Prefix maps are used to 
+   * Extend this trait for prefix maps. Prefix maps are used to
    * preform "joins".
-   * 
+   *
    * Each derived map table can have one or more named prefix subtables.
    * An item in a prefix tables is associated with all those items in the main table
    * where the prefix table key is a prefix of the key of the main table item.
-   *  
+   *
    * There will be a separate map derivation rules for the main table and
    * each of the subtables. Subtable maps are specified by including
    * the toprefix property in the table configuration. The value
    * of the toprefix property will be the name of the destination prefix subtable.
-   * 
-   * A prefix map will take as its source a map table and one of its prefix 
-   * subtables. 
-   * 
+   *
+   * A prefix map will take as its source a map table and one of its prefix
+   * subtables.
+   *
    * Classes that implement this
    * trait can be referenced in the act2 property of map specifications
    * within table configurations.
@@ -128,10 +128,10 @@ object MapReduce {
      * The system initializes this variable. User code should not
      * change it.
      */
-    var fromprefix:String = ""
+    var fromprefix: String = ""
     /**
      * The prefix mapping function.
-     * 
+     *
      * @param prefixKey the key of the source prefix subtable.
      * @param prefixValue the value of the source prefix subtable.
      * @param key the key of the source item.
@@ -169,13 +169,13 @@ object MapReduce {
      * The system initializes this variable. User code should not
      * change it.
      */
-    var options:Json = emptyJsonObject
+    var options: Json = emptyJsonObject
     /**
      * The number of elements in the ReduceKey array passed in from the config file.
      * The system initializes this variable. User code should not
      * change it.
      */
-    var size:Int = 1
+    var size: Int = 1
     /**
      * The value of a reduce with no inputs. This is the identity element for the
      * abelian group.
@@ -184,24 +184,45 @@ object MapReduce {
     /**
      * Takes the key and value of an item in the source table and
      * produces a value of the ReduceType.
+     * @param key the input key
+     * @param value the input value
+     *
+     * @return the corresponding reduce value
      */
-    def item(key: JsonKey, value: Json): Json
+    def in(key: JsonKey, value: Json): Json
     /**
      * Takes two value with the ReduceType and combines them into
      * a new value of the ReduceType.
      * This is the operation for the abelian group.
      * This operation must be commutative and associative.
+     * @param value1 the first reduce type value.
+     * @param value2 the second reduce type value.
+     *
+     * @return the new reduce type value.
      */
     def add(value1: Json, value2: Json): Json
     /**
      * Takes two value with the ReduceType and combines them into
      * a new value of the ReduceType.
      * This operation is the inverse of the add operation.
+     * @param value1 the first reduce type value.
+     * @param value2 the second reduce type value.
+     *
+     * @return the new reduce type value.
      */
     def subtract(value1: Json, value2: Json): Json
+    /**
+     * Produce the destination value from the final combined
+     * reduce type value.
+     * @param key the key of the destination item.
+     * @param value the reduce type value.
+     *
+     * @return the value to be stored in the destination item.
+     */
+    def out(key: JsonKey, value: Json): Json
   }
-  
-  private[persist] def getMap(className:String, options:Json):Map = {
+
+  private[persist] def getMap(className: String, options: Json): Map = {
     try {
       val c = Class.forName(className)
       val obj = c.newInstance()
@@ -209,15 +230,15 @@ object MapReduce {
       map.options = options
       map
     } catch {
-      case x=> {
+      case x => {
         val ex = InternalException(x.toString())
         println(ex.toString())
         throw ex
       }
     }
   }
-  
-  private[persist] def getMap2(className:String, options:Json, fromPrefix:String):Map2 = {
+
+  private[persist] def getMap2(className: String, options: Json, fromPrefix: String): Map2 = {
     try {
       val c = Class.forName(className)
       val obj = c.newInstance()
@@ -226,14 +247,14 @@ object MapReduce {
       map.fromprefix = fromPrefix
       map
     } catch {
-      case x=> {
+      case x => {
         val ex = InternalException(x.toString())
         println(ex.toString())
         throw ex
       }
     }
   }
-  
+
   private[persist] def getMap(options: Json): MapAll = {
     val act = jgetString(options, "act")
     val act2 = jgetString(options, "act2")
@@ -247,7 +268,7 @@ object MapReduce {
     }
   }
 
-  private def getReduce(className:String, options:Json, size:Int):Reduce = {
+  private def getReduce(className: String, options: Json, size: Int): Reduce = {
     try {
       val c = Class.forName(className)
       val obj = c.newInstance()
@@ -256,14 +277,14 @@ object MapReduce {
       reduce.size = size
       reduce
     } catch {
-      case x=> {
+      case x => {
         val ex = InternalException(x.toString())
         println(ex.toString())
         throw ex
       }
     }
   }
-  
+
   private[persist] def getReduce(options: Json): Reduce = {
     val act = jgetString(options, "act")
     val size = jgetInt(options, "size")

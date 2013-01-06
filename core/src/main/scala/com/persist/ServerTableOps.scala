@@ -15,7 +15,7 @@
  *  limitations under the License.
 */
 
-package com.persist 
+package com.persist
 
 import JsonOps._
 import JsonKeys._
@@ -29,6 +29,7 @@ import akka.actor.ActorSystem
 import Exceptions._
 import ExceptionOps._
 import Codes.emptyResponse
+import akka.actor.ActorRef
 
 private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
   val ops: ServerTableOps
@@ -55,6 +56,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
         if (items.contains("c")) result = result + ("c" -> jget(meta, "c"))
         if (items.contains("d")) result = result + ("d" -> jgetBoolean(meta, "d"))
         if (items.contains("e")) result = result + ("e" -> jgetLong(meta, "e"))
+        if (items.contains("r")) result = result + ("r" -> jget(meta, "r"))
         Compact(result)
       } else {
         value
@@ -131,7 +133,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       result
     }
 
-    private def put1(key: String, value: String, requests: String): (String, Any) = {
+    private def put1(key: String, value: String, requests: String, sender: ActorRef, uid: Long): (String, Any) = {
       val request = Json(requests)
       val fast = jgetBoolean(request, "o", "fast")
       val expires = jgetLong(request, "o", "expires")
@@ -168,16 +170,31 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       if (expires != 0) newMeta += ("e" -> expires)
       val newMetaS = Compact(newMeta)
       info.storeTable.put(key, newMetaS, value, fast)
-      if (doSync && sync.hasSync) sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
+      val w = if (doSync && sync.hasSync) {
+        jgetInt(request, "o", "w")
+      } else {
+        1
+      }
+      val groupId = if (w > 1) d else 0
+      if (groupId != 0) info.send ! (1, "startgroup", info.tableName, groupId, sender, uid, w - 1)
+      if (doSync && sync.hasSync) {
+        val os = if (fast || groupId == 0) Compact(JsonObject("fast"->true)) else emptyResponse 
+        sync.toRings(key, oldMetaS, oldvS, newMetaS, value, groupId, os)
+      }
       map.doMap(key, oldMetaS, oldvS, newMetaS, value)
       reduce.doReduce(key, oldMetaS, oldvS, newMetaS, value)
-      (Codes.Ok, emptyResponse)
+      if (groupId != 0) {
+        info.send ! (1, "endgroup", info.tableName, groupId)
+        ("", emptyResponse)
+      } else {
+        (Codes.Ok, emptyResponse)
+      }
     }
 
-    def put(key: String, value: String, requests: String): (String, Any) = {
+    def put(key: String, value: String, requests: String, sender: ActorRef, uid: Long): (String, Any) = {
       cntPut += 1
       val t0 = System.currentTimeMillis()
-      val result = put1(key, value, requests)
+      val result = put1(key, value, requests, sender, uid)
       val t1 = System.currentTimeMillis()
       val delta = max(t1 - t0, 1)
       timePut += delta
@@ -185,7 +202,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       result
     }
 
-    def delete(key: String, requests: String): (String, Any) = {
+    def delete(key: String, requests: String, sender: ActorRef, uid: Long): (String, Any) = {
       val request = Json(requests)
       val fast = jgetBoolean(request, "o", "fast")
       val doSync = !jgetBoolean("request", "o", "testnosync")
@@ -210,12 +227,26 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
       val cv = ClockVector.incr(oldcv, info.ringName, d)
       val newMeta = JsonObject("c" -> cv, "d" -> true)
       val newMetaS = Compact(newMeta)
-      // if fast, commit will run in background
       info.storeTable.put(key, newMetaS, value, fast)
-      if (doSync && sync.hasSync) sync.toRings(key, oldMetaS, oldvS, newMetaS, value)
+      val w = if (doSync && sync.hasSync) {
+        jgetInt(request, "o", "w")
+      } else {
+        1
+      }
+      val groupId = if (w > 1) d else 0
+      if (groupId != 0) info.send ! (1, "startgroup", info.tableName, groupId, sender, uid, w - 1)
+      if (doSync && sync.hasSync) {
+        val os = if (fast || groupId == 0) Compact(JsonObject("fast"->true)) else emptyResponse 
+        sync.toRings(key, oldMetaS, oldvS, newMetaS, value, groupId, os)
+      }
       map.doMap(key, oldMetaS, oldvS, newMetaS, value)
       reduce.doReduce(key, oldMetaS, oldvS, newMetaS, value)
-      (Codes.Ok, emptyResponse)
+      if (groupId != 0) {
+        info.send ! (1, "endgroup", info.tableName, groupId)
+        ("", emptyResponse)
+      } else {
+        (Codes.Ok, emptyResponse)
+      }
     }
 
     def resync(key: String, requests: String): (String, Any) = {
@@ -228,7 +259,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
           case Some(s: String) => s
           case None => Stores.NOVAL
         }
-        sync.toRings(key, info.absentMetaS, Stores.NOVAL, metaS, value)
+        sync.toRings(key, info.absentMetaS, Stores.NOVAL, metaS, value, 0, emptyResponse)
       }
       (Codes.Ok, emptyResponse)
     }
@@ -318,7 +349,7 @@ private[persist] trait ServerTableOpsComponent { this: ServerTableAssembly =>
                       case None => Stores.NOVAL
                     }
                   } else {
-                     Stores.NOVAL
+                    Stores.NOVAL
                   }
                   val result = getItems(key2, meta, v, get)
                   Some((key2, result))

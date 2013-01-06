@@ -19,18 +19,12 @@ package com.persist.reduce
 
 import com.persist.JsonOps._
 import com.persist.JsonKeys._
-import scala.collection.immutable.HashSet
 
-private[persist] class KeyPair() extends com.persist.MapReduce.Reduce {
-  val zero = JsonArray()
-  def in(key: JsonKey, value: Json): Json = jgetArray(key).takeRight(1)
-  def add(accum: Json, value: Json): Json = {
-    val set = new HashSet[Json]() ++ jgetArray(accum) ++ jgetArray(value)
-    set.toList
-  }
-  def subtract(accum: Json, value: Json): Json = {
-    val set = new HashSet[Json]() ++ jgetArray(accum) -- jgetArray(value)
-    set.toList
-  }
+private[persist] class Count() extends com.persist.MapReduce.Reduce {
+  val zero = 0
+  def in(key: JsonKey, value: Json): Json = 1
+  def add(accum: Json, value: Json): Json = jgetLong(accum) + jgetLong(value)
+  def subtract(accum: Json, value: Json): Json = jgetLong(accum) - jgetLong(value)
   def out(key:JsonKey, value: Json):Json = value
 }
+

@@ -37,13 +37,14 @@ private[persist] class Check(cmd: String, config: Json) {
   // TODO be able to run continuously as background operation
   // TODO do expire
   // TODO garbage collection of deleted items and clock vectors
-  // TODO check and fix map and reduce tables
+  // TODO cfix map and reduce tables
 
   private val now = System.currentTimeMillis()
   private val client = new Client(jget(config, "client"))
   val fix = cmd == "fix"
     
   val checkMap = new CheckMap(client, cmd,config)
+  val checkReduce = new CheckReduce(client, cmd, config)
 
   private def checkPair1(database: Database, table: Table, key: JsonKey, i1: Item, i2: Item) {
     def pair(p1: String, p2: String) = "[" + p1 + "," + p2 + "]"
@@ -161,192 +162,6 @@ private[persist] class Check(cmd: String, config: Json) {
     nextItem(database, table, rings, ringItems, keys, prev)
   }
 
-  /*
-  private def loc(table: String, key: JsonKey) = table + ":" + Compact(key)
-  private def loc(table: String, key: JsonKey, value: Json) = table + ":(" + Compact(key) + "," + Compact(value) + ")"
-  private def loc(table: String, pkey: JsonKey, pvalue: Json, key: JsonKey, value: Json) =
-    table + ":(" + Compact(pkey) + "," + Compact(pvalue) + ")" +
-      ":(" + Compact(key) + "," + Compact(value) + ")"
-
-  private class PrefixVals(prefix: String, table: Table, size: Int) {
-    // TODO !!! must specify ring
-    val opt = JsonObject("prefixtab" -> prefix)
-    private var savek: JsonKey = null
-    private var savev: Option[Json] = null
-    def get(fullk: JsonKey): (JsonKey, Option[Json]) = {
-      val k = jgetArray(fullk).take(size)
-      if (k != savek) {
-        val v = table.get(k, opt)
-        savek = k
-        savev = v
-      }
-      (savek, savev)
-    }
-  }
-
-  private trait MapperInfo {
-    def mapTo(k: JsonKey, v: Json): Traversable[(JsonKey, Json)]
-    def fromLoc(k: JsonKey, v: Json): String
-  }
-
-  private object MapperInfo {
-    def apply(table: Table, mapper: MapReduce.MapAll, map: Json, prefixes: Map[String, Int]): MapperInfo = {
-      if (jgetString(map, "act2") != "") {
-        new MapperInfo2(table, mapper, map, prefixes)
-      } else {
-        new MapperInfo1(mapper, map)
-      }
-    }
-  }
-
-  private class MapperInfo2(table: Table, mapper: MapReduce.MapAll, map: Json, prefixes: Map[String, Int]) extends MapperInfo {
-    val map2 = mapper.asInstanceOf[MapReduce.Map2]
-    val prefix = map2.fromprefix
-    val size = prefixes(prefix)
-    val pvals = new PrefixVals(map2.fromprefix, table, size)
-    def mapTo(k: JsonKey, v: Json) = {
-      val (pk, opv) = pvals.get(k)
-      opv match {
-        case Some(pv:Json) => {
-          val m2 = map2.to(pk, pv, k, v)
-          m2
-        }
-        case None => List()
-      }
-    }
-    def fromLoc(k: JsonKey, v: Json) = {
-      val (pk, opv) = pvals.get(k)
-      loc(prefix, pk, opv.getOrElse(null), k, v)
-    }
-  }
-
-  private class MapperInfo1(mapper: MapReduce.MapAll, map: Json) extends MapperInfo {
-    val from = jgetString(map, "from")
-    val map1 = mapper.asInstanceOf[MapReduce.Map]
-    def mapTo(k: JsonKey, v: Json) = map1.to(k, v)
-    def fromLoc(k: JsonKey, v: Json) = loc(from, k, v)
-  }
-
-  def getAllMappers(t: Json) = {
-    def getMapper(m: Json): MapReduce.MapAll = {
-      val act = jgetString(m, "act")
-      val act2 = jgetString(m, "act2")
-      if (act != "") {
-        MapReduce.getMap(act, m)
-      } else if (act2 != "") {
-        val from = jgetString(m, "fromprefix")
-        MapReduce.getMap2(act2, m, from)
-      } else {
-        null
-      }
-    }
-
-    // Map[(toprefix,from),map]
-    val mappers1 = jgetArray(t, "map").map(m => ((jgetString(m, "toprefix"), jgetString(m, "from")), getMapper(m))).toMap
-
-    // Map[toprefix,Map[(toprefix,from),map]]
-    val mappers2 = mappers1.groupBy { case ((prefix, from), m1) => prefix }
-
-    // Map[toprefix,Map[from,map]]
-    val mappers = mappers2.map { case (prefix, m1) => prefix -> m1.map { case ((prefix, from), map) => from -> map } }
-    mappers
-  }
-
-  private def checkMaps(table: Table, t: Json, p: JsonArray) {
-    val mappers = getAllMappers(t)
-    val prefixes = p.map(i => (jgetString(i, "name") -> jgetInt(i, "size"))).toMap
-
-    for (ring <- table.database.allRings) {
-      val ringOption = JsonObject("ring" -> ring)
-      // Checking sources
-      for (map <- jgetArray(t, "map")) {
-        val from = jgetString(map, "from")
-        val prefix = jgetString(map, "toprefix")
-        val (toOption, toName) = if (prefix == "") {
-          (ringOption, table.tableName)
-        } else {
-          (ringOption + ("prefixtab" -> prefix), table.tableName + ":" + prefix)
-        }
-        println(from + "=>" + toName + " on ring " + ring)
-        val mapper = mappers(prefix)(from).asInstanceOf[MapReduce.MapAll]
-        val mapperInfo = MapperInfo(table, mapper, map, prefixes)
-        for (kv <- table.database.table(from).all(ringOption + ("get" -> "kv"))) {
-          val k = jget(kv, "k")
-          val v = jget(kv, "v")
-          for ((k1, v1) <- mapperInfo.mapTo(k, v)) {
-            table.get(k1, toOption) match {
-              case Some(v2) => {
-                //if (prefix != "") println(Compact(k1) + ":" + Compact(v1) + "==" + Compact(v2))
-                if (true || Compact(v1) != Compact(v2)) {
-                  println("Wrong destination item value " + loc(toName, k1, v1) + " from " + mapperInfo.fromLoc(k, v) + " on ring " + ring)
-                  // TODO fix
-                }
-              }
-              case None => {
-                println("Missing destination item " + loc(toName, k1) + " from " + mapperInfo.fromLoc(k, v) + " on ring " + ring)
-                // TODO fix
-              }
-            }
-            val k2 = mapper.from(k1)
-            if (Compact(k2) != Compact(k)) {
-              println("Bad map inverse " + Compact(k2) + " from " + mapperInfo.fromLoc(k, v) + " via " + Compact(k1) + " on ring " + ring)
-              // TODO can't fix: user map class error
-            }
-          }
-        }
-      }
-      // Checking destination
-      println("DEST")
-      mappers.get("") match {
-        case Some(mapper) => {
-          for (kvc <- table.all(ringOption + ("get" -> "kvc"))) {
-            checkMapInverse(table, mapper, ringOption, ring, table.tableName, kvc)
-          }
-        }
-        case _ =>
-      }
-      // Checking prefix destinations
-      for (pInfo <- p) {
-        val prefix = jgetString(pInfo, "name")
-        println("DEST:" + prefix)
-        for (kvc <- table.all(ringOption + ("prefixtab" -> prefix, "get" -> "kvc"))) {
-          checkMapInverse(table, mappers(prefix), ringOption, ring, table.tableName + ":" + prefix, kvc)
-        }
-      }
-    }
-  }
-
-  private def checkMapInverse(table: Table, mappers: Map[String, MapReduce.MapAll], ringOption: JsonObject, ring: String, toName: String, kvc: Json) {
-    val k = jget(kvc, "k")
-    val v = jget(kvc, "v")
-    val c = jget(kvc, "c")
-    val from = jgetObject(c).keys.head
-    // TODO act2 nyi
-    mappers(from) match {
-      case mapper: MapReduce.Map => {
-        val k1 = mapper.from(k)
-        val v1 = table.database.table(from).get(k1, ringOption).getOrElse(null)
-        println("INVERSE:" + Compact(k) + "->" + Compact(k1))
-        if (!mapper.to(k1, v1).exists { case (k2, v2) => k2 == k }) {
-          println("Extra destination item " + loc(table.tableName, k, v) + " from " + loc(from, k1, v1) + " on ring " + ring)
-          // TODO fix
-        }
-      }
-      case _ => // act2 NYI
-    }
-  }
-  */
-
-  private def checkReduces(table: Table, t: Json) {
-    val ring0 = table.database.allRings.head
-    for (ring <- table.database.allRings) {
-      for (reduce <- jgetArray(t, "reduce")) {
-        // TODO add reduce checks
-        if (ring == ring0) println("    REDUCE NYI")
-      }
-    }
-  }
-
   private def checkTable(database: Database, tableName: String) {
     val info = database.tableInfo(tableName, JsonObject("get" -> "tp"))
     val t = jget(info, "t")
@@ -357,8 +172,8 @@ private[persist] class Check(cmd: String, config: Json) {
       // TODO clean up tombstones
       allRings(database, table)
     } else {
-      checkMap.checkMaps1(database, table, t, p)
-      checkReduces(table, t)
+      checkMap.checkMaps(database, table, t, p)
+      checkReduce.checkReduces(database, table, t)
     }
   }
 

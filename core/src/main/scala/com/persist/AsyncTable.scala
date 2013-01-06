@@ -211,8 +211,9 @@ class AsyncTable private[persist] (val database:Database, val tableName: String,
    *
    * @param key the key.
    * @param options optional json object containing options.
-   *  - '''"get="kvcde"''' if specified this method returns an object with requested fields
-   *      (Key, Value, vector Clock, Deleted, Expires time).
+   *  - '''"get="kvcder"''' if specified this method returns an object with requested fields
+   *      (Key, Value, vector Clock, Deleted, Expires time, Reduce staging).
+   *      Ordinary code should not use d or r.
    *  - '''"r"=n''' read from at least n rings before returning. Default is 1.
    *  - '''"ring"="ringName"''' get from this ring.
    *  - '''"prefixtab"="prefixName"''' get items from this prefix table rather than the main table.
@@ -265,8 +266,9 @@ class AsyncTable private[persist] (val database:Database, val tableName: String,
    *    Options can modify what items are returned and what information is
    *    returned for each item.
    *  - '''"reverse"=true''' if true, return keys in reverse order. Default is false.
-   *  - '''"get="kvcde"''' if specified this method returns an object with requested fields
-   *      (Key, Value, vector Clock, Deleted, Expires time).
+   *  - '''"get="kvcder"''' if specified this method returns an object with requested fields
+   *      (Key, Value, vector Clock, Deleted, Expires time, Reduce staging).
+   *      Ordinary code should not use d or r.
    *  - '''"low"=key''' the lowest key that should be returned.
    *  - '''"includelow"=true''' if true, the low option is inclusive.
    *  If false, the low option is exclusive. Default is false.

@@ -21,6 +21,7 @@ import akka.actor.ActorSystem
 import JsonOps._
 import JsonKeys._
 import scala.collection.immutable.TreeMap
+import scala.collection.mutable.HashMap
 import akka.actor.Cancellable
 import akka.pattern._
 import akka.util.Timeout
@@ -35,12 +36,109 @@ import akka.actor.Props
 
 private[persist] class Messaging(config: DatabaseConfig, client: Option[Client]) extends CheckedActor {
 
-  private val system = context.system
-  private val map = DatabaseMap(config)
-  private val msgs = new Msgs()
-  private val databaseName = config.name
-  val change = context.actorOf(Props(new Change(config, client, self)), name = "change")
-  var serverMsgCount:Long = 0L
+  private[this] val system = context.system
+  private[this] val map = DatabaseMap(config)
+  private[this] val msgs = new Msgs()
+  private[this] val groups = new Groups()
+  private[this] val databaseName = config.name
+  private[this] val change = context.actorOf(Props(new Change(config, client, self)), name = "change")
+  private[this] var serverMsgCount: Long = 0L
+
+  private class Group(
+    sender:ActorRef,
+    uid:Long,
+    w: Int) {
+    private[this] var needSync = 0
+    private[this] var needOther = 0
+    private[this] var sync = 0
+    private[this] var other = 0
+    private[this] var isReady = false
+    def addCommand(cmd: String) {
+      if (cmd == "sync") {
+          if (needSync < w) needSync += 1 
+      } else {
+          needOther += 1 
+      }
+    }
+    def ready() {
+      isReady = true
+    }
+    def endCommand(cmd: String) {
+      if (cmd == "sync") sync += 1 else other += 1
+    }
+    def send(): Boolean = {
+      if (isReady && sync >= needSync && other >= needOther) {
+        sender ! (Codes.Ok, uid, emptyResponse)
+        true
+      } else {
+        false
+      }
+    }
+  }
+
+  private class Groups {
+    // TODO time out groups (2 minutes???)
+    private[this] val groups = HashMap[String, HashMap[Long, Group]]()
+
+    def addGroup(table: String, id: Long, sender:ActorRef, uid:Long , needSync: Int) {
+      val group = new Group(sender, uid, needSync)
+      val subgroup = if (groups.contains(table)) {
+        groups(table)
+      } else {
+        val subgroup1 = new HashMap[Long, Group]()
+        groups += (table -> subgroup1)
+        subgroup1
+      }
+      subgroup += (id -> group)
+    }
+
+    private def removeGroup(table: String, id: Long) {
+      if (groups.contains(table)) {
+        val subgroup = groups(table)
+        if (subgroup.contains(id)) {
+          subgroup -= id
+        }
+      }
+    }
+
+    private def getGroup(table: String, id: Long): Option[Group] = {
+      if (groups.contains(table)) {
+        val subgroup = groups(table)
+        subgroup.get(id)
+      } else {
+        None
+      }
+    }
+
+    def ready(table: String, id: Long) = {
+      getGroup(table, id) match {
+        case Some(g: Group) => {
+          g.ready()
+          if (g.send()) removeGroup(table, id)
+        }
+        case None =>
+      }
+    }
+
+    def addCommand(table: String, id: Long, cmd: String) {
+      getGroup(table, id) match {
+        case Some(g: Group) => {
+          g.addCommand(cmd)
+        }
+        case None =>
+      }
+    }
+
+    def endCommand(table: String, id: Long, cmd: String) {
+      getGroup(table, id) match {
+        case Some(g: Group) => {
+          g.endCommand(cmd)
+          if (g.send()) removeGroup(table, id)
+        }
+        case None =>
+      }
+    }
+  }
 
   private class Msg(
     var cmd: String,
@@ -85,7 +183,8 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
     ringName: String,
     tableName: String,
     key: String,
-    value: Any) extends Msg(cmd, ringName, tableName, key, value)
+    value: Any,
+    val id: Long) extends Msg(cmd, ringName, tableName, key, value)
 
   private class ClientMsg(
     cmd: String,
@@ -97,15 +196,14 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
     extends Msg(cmd, ringName, tableName, key, value)
 
   private class Msgs() {
-    private val uidGen = new UidGen
+    private[this] val uidGen = new UidGen
 
-    private var msgs = TreeMap[Long, Msg]()
+    private[this] var msgs = TreeMap[Long, Msg]()
+    private[this] var events = TreeMap[Long, Long]()
 
-    private var events = TreeMap[Long, Long]()
-    private var timer: Cancellable = null
-    private var timerWhen = 0L
-    
-    
+    private[this] var timer: Cancellable = null
+    private[this] var timerWhen = 0L
+
     def size = msgs.size
 
     private def timeout(cnt: Int, delay: Boolean): Int = {
@@ -287,6 +385,7 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
           }
           case sm: ServerMsg => {
             if (code == Codes.Ok) {
+              if (sm.id != 0) groups.endCommand(sm.tableName, sm.id, sm.cmd)
               // done
             } else {
               val info = msg.toJson() + ("msg" -> "failing server message", "code" -> code)
@@ -311,17 +410,36 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
     case ("busy") => {
       sender ! (Codes.Ok, serverMsgCount, msgs.size)
     }
-    case (cmd: String, ringName: String, tableName: String, key: String, value: Any) => {
+    case (cmd: String, ringName: String, id: Long, tableName: String, key: String, value: Any) => {
       // server request
       // TODO value should be String so msgs can be stored in persist store
+      if (id != 0) {
+        groups.addCommand(tableName, id, cmd)
+      }
       serverMsgCount += 1
-      val msg = new ServerMsg(cmd, ringName, tableName, key, value)
+      val msg = new ServerMsg(cmd, ringName, tableName, key, value, id)
       msgs.newMsg(msg)
     }
+    //case (cmd: String, ringName: String, tableName: String, key: String, value: Any) => {
+      //throw new SystemException(Codes.InternalError, JsonObject("cmd" -> cmd, "table" -> tableName))
+      // server request
+      // TODO value should be String so msgs can be stored in persist store
+      /*
+      serverMsgCount += 1
+      val msg = new ServerMsg(cmd, ringName, tableName, key, value, 0)
+      msgs.newMsg(msg)
+      */
+    //}
     case (cmd: String, ringName: String, reply: Promise[Any], tableName: String, key: String, value: Any) => {
       // client request
       val msg = new ClientMsg(cmd, ringName, tableName, key, value, reply)
       msgs.newMsg(msg)
+    }
+    case (1, "startgroup", tableName: String, id: Long, sender:ActorRef, uid:Long, syncCnt: Int) => {
+      groups.addGroup(tableName, id, sender, uid, syncCnt)
+    }
+    case (1, "endgroup", tableName: String, id: Long) => {
+      groups.ready(tableName, id)
     }
     // TODO client request to server
     // TODO client request to monitor
@@ -334,7 +452,7 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
         case None => // Discard it (already processed) 
       }
     }
-    // TODO r=n, w=n
+    // TODO r=n
     case (0, "addRing", ringName: String, nodes: JsonArray) => {
       if (!map.hasRing(ringName)) {
         map.addRing(ringName, nodes)

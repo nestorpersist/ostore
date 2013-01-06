@@ -42,22 +42,24 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
       }
     }
 
-    def toRings(key: String, oldMeta: String, oldValue: String, meta: String, value: String) {
+    def toRings(key: String, oldMeta: String, oldValue: String, meta: String, value: String, id: Long, options: String) {
       // send to other rings
-      val vals = (oldMeta, oldValue, meta, value)
+      val vals = (options, oldMeta, oldValue, meta, value)
       for ((name, config) <- info.config.rings) {
         if (name != info.ringName) {
-          info.send ! ("sync", name, info.tableName, key, vals)
+          info.send ! ("sync", name, id, info.tableName, key, vals)
         }
       }
     }
 
-    def toRing(ringName: String, key: String, meta: String, value: String) {
-      val vals = (info.absentMetaS, Stores.NOVAL, meta, value)
-      info.send ! ("sync", ringName, info.tableName, key, vals)
+    def toRing(ringName: String, key: String, meta: String, value: String, options: String) {
+      val vals = (options, info.absentMetaS, Stores.NOVAL, meta, value)
+      info.send ! ("sync", ringName, 0L, info.tableName, key, vals)
     }
 
-    def sync(key: String, oldmeta: String, oldv: String, meta: String, v: String): (String, Any) = {
+    def sync(key: String, oldmeta: String, oldv: String, meta: String, v: String, os: String): (String, Any) = {
+      val options = Json(os)
+      val fast = jgetBoolean(options, "fast")
       cntSync += 1
       val cv1 = jget(Json(meta), "c")
       val oldMetaS = info.storeTable.getMeta(key) match {
@@ -74,7 +76,7 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
             case Some(v) => v
             case None => Stores.NOVAL
           }
-          info.storeTable.put(key, meta, v)
+          info.storeTable.put(key, meta, v, fast)
           map.doMap(key, oldMetaS, value2, Compact(cv1), v)
           reduce.doReduce(key, oldMetaS, value2, Compact(cv1), v)
         }
@@ -94,8 +96,8 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
           val newValue = if (deleted) Stores.NOVAL else Compact(value)
           val dobj = if (deleted) JsonObject("d" -> true) else JsonObject()
           val newMeta = Compact(JsonObject("c" -> cv) ++ dobj)
-          info.storeTable.put(key, newMeta, newValue)
-          toRings(key, oldMetaS, value2, newMeta, newValue)
+          info.storeTable.put(key, newMeta, newValue, fast)
+          toRings(key, oldMetaS, value2, newMeta, newValue, 0, emptyResponse)
           map.doMap(key, oldMetaS, value2, newMeta, newValue)
           reduce.doReduce(key, oldMetaS, value2, newMeta, newValue)
         }

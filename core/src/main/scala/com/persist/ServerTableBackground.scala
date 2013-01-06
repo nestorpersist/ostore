@@ -20,6 +20,7 @@ package com.persist
 import com.persist.JsonOps._
 import akka.actor.ActorRef
 import Stores._
+import Codes.emptyResponse
 
 private[persist] case class RingCopyTask(val ringName: String, val low: String, var high: String)
 
@@ -42,7 +43,7 @@ private[persist] trait ServerTableBackgroundComponent { this: ServerTableAssembl
         case Some(v1: String) => v1
         case None => NOVAL
       }
-      sync.toRing(ringName, key, meta, v)
+      sync.toRing(ringName, key, meta, v, emptyResponse)
     }
 
     private def ringCopy(task: RingCopyTask): Boolean = {

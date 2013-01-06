@@ -24,6 +24,7 @@ import akka.actor.ActorRef
 import Exceptions._
 import ExceptionOps._
 import Stores._
+import Codes.emptyResponse
 
 private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =>
   val bal: ServerTableBalance
@@ -181,7 +182,7 @@ private[persist] trait ServerTableBalanceComponent { this: ServerTableAssembly =
       val value = jgetString(request, "v")
       val low = jgetString(request, "low")
       if (prefix != "") {
-        map.map(key, prefix, meta, value)
+        map.map(key, prefix, meta, value, emptyResponse)
         val response = JsonObject("p" -> JsonObject("p" -> prefix, "k" -> key, "m" -> meta))
         prevNode ! ("fromNext", Compact(response))
         return

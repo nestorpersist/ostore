@@ -113,20 +113,20 @@ private[persist] trait LayoutComponent { this: UIAssembly =>
   }
 
   class Right {
+    def rows(s:String) = s.split("\n").size
     val all = new Panel("")
     all.setSizeFull()
-    all.getContent().setSizeFull()
-    private val r1 = new VerticalLayout()
+    private[this] val r1 = new VerticalLayout()
     all.addComponent(r1)
     val databaseButtons = new CssLayout()
     r1.addComponent(databaseButtons)
-    val tableButtons = new HorizontalLayout()
+    val tableButtons = new CssLayout()
     r1.addComponent(tableButtons)
-    val itemButtons = new HorizontalLayout()
+    val itemButtons = new CssLayout()
     r1.addComponent(itemButtons)
-    val ringButtons = new HorizontalLayout()
+    val ringButtons = new CssLayout()
     r1.addComponent(ringButtons)
-    val nodeButtons = new HorizontalLayout()
+    val nodeButtons = new CssLayout()
     r1.addComponent(nodeButtons)
 
     val status = new Label("")
@@ -135,12 +135,13 @@ private[persist] trait LayoutComponent { this: UIAssembly =>
     val ro = new Label("")
     r1.addComponent(ro)
 
-    val map = new TextArea("Map")
-    map.setSizeFull()
+    private[this] val map = new TextArea("Map")
+    map.setRows(10)
+    //map.setSizeFull()
     r1.addComponent(map)
     map.setVisible(false)
-    
-    val reduce = new TextArea("Reduce")
+
+    private[this] val reduce = new TextArea("Reduce")
     reduce.setSizeFull()
     r1.addComponent(reduce)
     reduce.setVisible(false)
@@ -168,13 +169,17 @@ private[persist] trait LayoutComponent { this: UIAssembly =>
         if (info.get("map") != None) {
           map.setVisible(true)
           map.setReadOnly(false)
-          map.setValue(Pretty(jget(info,"map")))
+          val p = Pretty(jget(info,"map"))
+          map.setValue(p)
+          map.setRows(rows(p))
           map.setReadOnly(true)
         }
         if (info.get("reduce") != None)
           reduce.setVisible(true)
           reduce.setReadOnly(false)
-          reduce.setValue(Pretty(jget(info,"reduce")))
+          val p = Pretty(jget(info,"reduce"))
+          reduce.setValue(p)
+          reduce.setRows(rows(p))
           reduce.setReadOnly(true)
       }
     }

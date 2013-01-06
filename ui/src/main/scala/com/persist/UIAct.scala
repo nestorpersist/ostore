@@ -319,11 +319,15 @@ private[persist] trait ActComponent { this: UIAssembly =>
       right.setMode("item")
       right.ta.setReadOnly(false)
       itemVal = v
-      right.ta.setValue(Pretty(v))
+      val p = Pretty(v)
+      right.ta.setValue(p)
+      right.ta.setRows(right.rows(p))
       right.ta.setReadOnly(true)
 
       right.vta.setReadOnly(false)
-      right.vta.setValue(vcToString(cv))
+      val vcs = vcToString(cv)
+      right.vta.setValue(vcs)
+      right.vta.setRows(right.rows(vcs))
       right.vta.setReadOnly(true)
       
       buttons.editItem.setVisible(! tableReadOnly)

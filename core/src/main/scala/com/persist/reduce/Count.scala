@@ -20,10 +20,18 @@ package com.persist.reduce
 import com.persist.JsonOps._
 import com.persist.JsonKeys._
 
-private[persist] class Count() extends com.persist.MapReduce.Reduce {
-  val zero = 0
-  def item(key: JsonKey, value: Json): Json = 1
-  def add(accum: Json, value: Json): Json = jgetLong(accum) + jgetLong(value)
-  def subtract(accum: Json, value: Json): Json = jgetLong(accum) - jgetLong(value)
+private[persist] class Average() extends com.persist.MapReduce.Reduce {
+  val zero = JsonObject("cnt" -> 0L, "sum" -> 0.0)
+  def in(key: JsonKey, value: Json): Json = JsonObject("cnt" -> 1, "sum" -> jgetDouble(value))
+  def add(accum: Json, value: Json): Json =
+    JsonObject("cnt" -> (jgetLong(accum, "cnt") + jgetLong(value, "cnt")),
+      "sum" -> (jgetDouble(accum, "sum") + jgetDouble(value, "sum")))
+  def subtract(accum: Json, value: Json): Json =
+    JsonObject("cnt" -> (jgetLong(accum, "cnt") - jgetLong(value, "cnt")),
+      "sum" -> (jgetDouble(accum, "sum") - jgetDouble(value, "sum")))
+  def out(key: JsonKey, value: Json): Json = {
+    val cnt = jgetLong(value, "cnt")
+    if (cnt == 0) 0.0 else jgetDouble(value, "sum") / cnt
+  }
 }
 

@@ -4,6 +4,7 @@
     {"name":"tab3"},
     {"name":"map3", "map":{"from":"tab3","act":"com.persist.map.Index","field":"a"}},
     {"name":"count2", "reduce":{"from":"tab2","act":"com.persist.reduce.Count","size":1}},
+    {name:"avg2", reduce:{from:"tab2", act:"com.persist.reduce.Average", size:1}},
     {"name":"icount2", "map":{"from":"count2","act":"com.persist.map.Invert"}}
     ],
   "rings":[

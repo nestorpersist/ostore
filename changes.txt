@@ -1,5 +1,16 @@
 LOG OF CHANGES
 
+1/1/2013 fast now fully supported
+12/31/2012 w=n now supported
+12/31/2112 INTERNAL MESSAGE FORMAT CHANGE, shutdown and restart all nodes
+12/28/2012 Add jgetDouble and jgetBigDecimal to JsonOps
+12/28/2102 Add Average mapper and avg2 table to test 
+12/28/2012 Reduce item=>in, add out
+12/25/2012 Check now checks (but not yet fixes) reduce tables
+12/25/2012 Added CheckReduce
+12/24/2012 can now get values from destination reduce staging tables (get=r)
+12/23/2012 UI layout improvements
+
 12/22/2012 Check now checks (but not yet fixes) all maps
 12/22/2012 fixed bug in addNode (and related commands)
 12/19/2012 Performance improvements: Json parser and mapper

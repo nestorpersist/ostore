@@ -102,8 +102,8 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
 
         // do local reduction
         if (oldMapVal == null && newMapVal == null) return
-        if (oldMapVal != null) newsum = ri.reduce.subtract(newsum, ri.reduce.item(jkey, oldMapVal))
-        if (newMapVal != null) newsum = ri.reduce.add(newsum, ri.reduce.item(jkey, newMapVal))
+        if (oldMapVal != null) newsum = ri.reduce.subtract(newsum, ri.reduce.in(jkey, oldMapVal))
+        if (newMapVal != null) newsum = ri.reduce.add(newsum, ri.reduce.in(jkey, newMapVal))
 
         // save and send to dest
         if (Compact(oldsum) != Compact(newsum)) {
@@ -111,20 +111,19 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
             ri.storeTable.remove(keyEncode(prefix))
             ri.reduce.zero
           } else {
-            ri.storeTable.put(keyEncode(prefix), info.absentMetaS, Compact(newsum))
+            ri.storeTable.put(keyEncode(prefix), info.absentMetaS, Compact(newsum), true)
             newsum
           }
           val dest = Map("ring" -> info.ringName)
           val ret = "" // TODO will eventually hook this up
           //val t = System.currentTimeMillis()
           val t = info.uidGen.get
-          //info.send ! ("reduce", dest, ret, ri.to, keyEncode(prefix), (info.nodeName, Compact(newsum1), t))
-          info.send ! ("reduce", info.ringName, ri.to, keyEncode(prefix), (info.nodeName, Compact(newsum1), t))
+          info.send ! ("reduce", info.ringName, 0L, ri.to, keyEncode(prefix), (emptyResponse, info.nodeName, Compact(newsum1), t))
         }
       }
     }
 
-    def reduce(key: String, node: String, item: String, newt: Long): (String, Any) = {
+    def reduce(key: String, node: String, item: String, newt: Long, os:String): (String, Any) = {
       // {"c":{"node":t},"r":{"node":"sum"}}
       var oldMetaS = info.storeTable.getMeta(key) match {
         case Some(s: String) => s
@@ -150,6 +149,7 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
         for ((name, itemval) <- items) {
           sum = fromReduce.add(sum, itemval)
         }
+        sum = fromReduce.out(keyDecode(key), sum)
         meta = meta + ("r" -> items)
         val cmeta = Compact(meta)
         val csum = Compact(sum)
@@ -157,7 +157,7 @@ private[persist] trait ServerTableReduceComponent { this: ServerTableAssembly =>
           case Some(s) => s
           case None => NOVAL
         }
-        info.storeTable.put(key, cmeta, csum)
+        info.storeTable.put(key, cmeta, csum, true)
         map.doMap(key, oldMetaS, oldSum, cmeta, csum)
         doReduce(key, oldMetaS, oldSum, cmeta, csum)
       }

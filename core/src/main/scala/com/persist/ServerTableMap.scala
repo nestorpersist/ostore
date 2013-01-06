@@ -86,7 +86,7 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
       val dest = Map("ring" -> info.ringName)
       val ret = "" // TODO will eventually hook this up
       val passMeta = Compact(JsonObject("c" -> JsonObject(info.tableName -> t)))
-      info.send ! ("map", info.ringName, to, key, (prefix, passMeta, value))
+      info.send ! ("map", info.ringName, 0L, to, key, (emptyResponse, prefix, passMeta, value))
     }
 
     private def deletePair(to: String, prefix: String, key: String, value: String) {
@@ -95,7 +95,7 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
       val dest = Map("ring" -> info.ringName)
       val ret = "" // TODO will eventually hook this up
       val passMeta = Compact(JsonObject("c" -> JsonObject(info.tableName -> t), "d" -> true))
-      info.send ! ("map", info.ringName, to, key, (prefix, passMeta, NOVAL))
+      info.send ! ("map", info.ringName, 0L, to, key, (emptyResponse, prefix, passMeta, NOVAL))
     }
 
     private def mapPairs(to: String, prefix: String, dedup: Boolean, hasOld: Boolean, hasNew: Boolean,
@@ -278,7 +278,7 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
       }
     }
 
-    def map(key: String, prefix: String, meta: String, value: String): (String, Any) = {
+    def map(key: String, prefix: String, meta: String, value: String, os:String): (String, Any) = {
       val (size, store, pinfo) = if (prefix == "") {
         (0, info.storeTable, null)
       } else {
@@ -306,7 +306,7 @@ private[persist] trait ServerTableMapComponent { this: ServerTableAssembly =>
           case Some(s: String) => s
           case None => NOVAL
         }
-        store.put(key, meta, value)
+        store.put(key, meta, value, true)
         if (prefix == "") {
           // Main table update 
           doMap(key, oldMetaS, oldvS, meta, value)

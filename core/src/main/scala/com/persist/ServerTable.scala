@@ -116,18 +116,18 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
     (Codes.Ok, Compact(r))
   }
 
-  def doBasicCommand(kind: String, key: String, value: Any): (String, Any) = {
+  def doBasicCommand(kind: String, key: String, value: Any, sender:ActorRef, uid:Long): (String, Any) = {
     (kind, value) match {
-      case ("map", (prefix: String, meta: String, v: String)) => {
-        val (code, result) = map.map(key, prefix, meta, v)
+      case ("map", (os: String, prefix: String, meta: String, v: String)) => {
+        val (code, result) = map.map(key, prefix, meta, v, os)
         (code, result)
       }
-      case ("reduce", (node: String, item: String, t: Long)) => {
-        val (code, result) = reduce.reduce(key, node, item, t)
+      case ("reduce", (os:String, node: String, item: String, t: Long)) => {
+        val (code, result) = reduce.reduce(key, node, item, t, os)
         (code, result)
       }
-      case ("sync", (oldcv: String, oldv: String, cv: String, v: String)) => {
-        val (code, result) = sync.sync(key, oldcv, v, cv, v)
+      case ("sync", (os:String, oldcv: String, oldv: String, cv: String, v: String)) => {
+        val (code, result) = sync.sync(key, oldcv, v, cv, v, os)
         (code, result)
       }
       case x => {
@@ -137,14 +137,14 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
             case ("get", v: String) => ops.get(key, v)
             case ("put", (v: String, os: String)) => {
               if (ops.canWrite) {
-                ops.put(key, v, os)
+                ops.put(key, v, os, sender, uid)
               } else {
                 (Codes.ReadOnly, Compact(JsonObject("table" -> info.tableName)))
               }
             }
             case ("delete", v: String) => {
               if (ops.canWrite) {
-                ops.delete(key, v)
+                ops.delete(key, v, sender, uid)
               } else {
                 (Codes.ReadOnly, info.tableName)
               }
@@ -248,7 +248,6 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
         sender ! Codes.Ok
       }
       case (kind: String, uid: Long, key: String, value: Any) => {
-        //val sender1 = sender  // must preserve sender for futures
         back.qcnt += 1
         try {
           val (code, result) = kind match {
@@ -256,7 +255,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
             case x => {
               val less = kind == "prev-"
               if (info.checkKey(key, less, info.low, info.high)) {
-                doBasicCommand(kind, key, value)
+                doBasicCommand(kind, key, value,sender, uid)
               } else {
                 val server = info.config.rings(ringName).nodes(bal.nextNodeName).server
                 val host = server.host
@@ -267,19 +266,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
               }
             }
           }
-          sender ! (code, uid, result)
-          /*
-          f map { pair =>
-            val (code,result) = pair
-            //println("RESPOND:"+sender+":"+code+":"+result+":"+sender1)
-            sender1 ! (code, uid, result)
-          } recover { case ex => {
-            sender1 ! (Codes.InternalError, uid, ex.getMessage())
-            println("Table internal error: " + kind + ":" + ex.toString())
-            ex.printStackTrace()
-            }
-          }
-          */
+          if (code != "") sender ! (code, uid, result)
         } catch {
           case ex: Exception => {
             val (code, v1) = exceptionToCode(ex)
