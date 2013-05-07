@@ -21,7 +21,7 @@ The overall system has not been fully tuned for performance.
 The OStore code is licensed under the Apache 2.0 license.
 
 ## Documentation
-1. [Wiki](ostore/wiki)
+1. [Wiki](wiki)
 1. [ScalaDoc](http://nestorpersist.github.com/ostore)
 
 ## Contact
