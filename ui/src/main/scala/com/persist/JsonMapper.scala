@@ -119,7 +119,7 @@ object JsonMapper {
             case None => null
           }
         }
-        case map: Map[String, _] => map
+        case map: Map[_, _] => map
         case obj => {
           val ci = getClassInfo(clazz)
           val args = (ci.vals(x) zip ci.getTypes) map { case (v, clazz1) => toJson(clazz1, v) }
@@ -128,7 +128,7 @@ object JsonMapper {
       }
     } catch {
       case se: SystemException => throw se
-      case ex => throw new SystemException("JsonMapper", JsonObject("from" -> clazz.getName()))
+      case ex:Throwable => throw new SystemException("JsonMapper", JsonObject("from" -> clazz.getName()))
     }
   }
 
@@ -172,7 +172,7 @@ object JsonMapper {
       }
     } catch {
       case se: SystemException => throw se
-      case ex => throw new SystemException("JsonMapper", JsonObject("from" -> j, "to" -> clazz.getName()))
+      case ex:Throwable => throw new SystemException("JsonMapper", JsonObject("from" -> j, "to" -> clazz.getName()))
     }
   }
 

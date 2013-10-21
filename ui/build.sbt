@@ -12,6 +12,8 @@ seq(webSettings: _*)
 
 resolvers += "Vaadin add-ons repository" at "http://maven.vaadin.com/vaadin-addons"
 
+resolvers += "typesafe0" at "http://repo.typesafe.com/typesafe/releases"
+
 // basic dependencies
 libraryDependencies ++= Seq(
   "com.typesafe.akka" % "akka-actor" %  "2.0.3",

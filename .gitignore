@@ -3,6 +3,7 @@
 
 .worksheet
 *.sc
+*.iml
 .history
 .DS_Store
 .project

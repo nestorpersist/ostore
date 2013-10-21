@@ -1,5 +1,8 @@
 LOG OF CHANGES
 
+2/16/2013 Json Compact and Pretty no longer escape "/"
+2/16/2013 Json Compact and jget now accept mutable maps
+
 1/1/2013 fast now fully supported
 12/31/2012 w=n now supported
 12/31/2112 INTERNAL MESSAGE FORMAT CHANGE, shutdown and restart all nodes

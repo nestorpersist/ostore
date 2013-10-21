@@ -59,7 +59,7 @@ object JsonOps {
   /**
    *
    * A type alias for all Json forms.
-   * Json values should be restriced by convention
+   * Json values should be restricted by convention
    * to only those types used to represent Json.
    *
    */
@@ -71,13 +71,11 @@ object JsonOps {
    */
   type JsonObject = Map[String, Json]
 
-  //type JsonPair = (String, Json)
-
   /**
    *
    * A constructor for JsonObject.
    *
-   * @param Pairs a sequence of name value pairs.
+   * @param pairs a sequence of name value pairs.
    *
    * @return the constructed Json Object.
    */
@@ -163,7 +161,7 @@ object JsonOps {
         case (a1: JsonArray, i1: Int) => {
           if (0 <= i1 && i1 < a1.size) { a1(i1) } else { null }
         }
-        case (a1: JsonObject, i1: String) => {
+        case (a1: scala.collection.Map[String,Json], i1: String) => {
           a1.get(i1) match {
             case Some(v) => v
             case None => null
