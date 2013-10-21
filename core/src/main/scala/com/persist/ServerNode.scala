@@ -176,13 +176,18 @@ private[persist] class ServerNode(databaseName: String, ringName: String, nodeNa
       }
       sender ! Codes.Ok
     }
-    case ("copyRing", ringName: String) => {
+    case ("copyRing", ringName: String, fromNodeName: String) => {
+      // Create NodeAct
+      //if (fromNodeName == nodeName) create MasterNodeAct
       this.config = config
       for ((tableName1, tableInfo) <- tables) {
-        val f = tableInfo.table ? ("copyRing", ringName)
+        val f = tableInfo.table ? ("copyRing", ringName, self)
         Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
+    }
+    case ("nodeCopyAct", toRingName:String, tableName:String) => {
+      println("NODECOPYACT:"+ nodeName +"/ "+ tableName)
     }
     case ("ringReady", ringName: String) => {
       var code = Codes.Ok

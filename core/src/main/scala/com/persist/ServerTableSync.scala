@@ -52,9 +52,9 @@ private[persist] trait ServerTableSyncComponent { this: ServerTableAssembly =>
       }
     }
 
-    def toRing(ringName: String, key: String, meta: String, value: String, options: String) {
+    def toRing(ringName: String, key: String, meta: String, value: String, id:Long, options: String) {
       val vals = (options, info.absentMetaS, Stores.NOVAL, meta, value)
-      info.send ! ("sync", ringName, 0L, info.tableName, key, vals)
+      info.send ! ("sync", ringName, id, info.tableName, key, vals)
     }
 
     def sync(key: String, oldmeta: String, oldv: String, meta: String, v: String, os: String): (String, Any) = {

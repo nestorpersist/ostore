@@ -135,15 +135,14 @@ private[persist] class ServerRing(databaseName: String, ringName: String, send: 
       }
       sender ! Codes.Ok
     }
-    case ("copyRing", ringName1) => {
+    case ("copyRing", ringName1, fromNodeName:String) => {
       this.config = config
       for ((nodeName, nodeInfo) <- nodes) {
-        val f = nodeInfo.node ? ("copyRing", ringName1)
+        val f = nodeInfo.node ? ("copyRing", ringName1, fromNodeName)
         val v = Await.result(f, 5 seconds)
       }
       sender ! Codes.Ok
     }
-
     case ("ringReady", ringName: String) => {
       var code = Codes.Ok
       for ((nodeName, nodeInfo) <- nodes) {

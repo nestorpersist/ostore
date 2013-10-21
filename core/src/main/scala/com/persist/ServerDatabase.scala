@@ -156,10 +156,10 @@ private[persist] class ServerDatabase(var config: DatabaseConfig, serverConfig: 
       }
       sender ! Codes.Ok
     }
-    case ("copyRing", ringName: String, fromRingName: String) => {
+    case ("copyRing", ringName: String, fromRingName: String, fromNodeName:String) => {
       for ((ringName1, ringInfo) <- rings) {
         if (ringName1 == fromRingName) {
-          val f = ringInfo.ring ? ("copyRing", ringName)
+          val f = ringInfo.ring ? ("copyRing", ringName, fromNodeName)
           Await.result(f, 5 seconds)
         }
       }

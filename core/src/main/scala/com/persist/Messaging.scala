@@ -34,6 +34,16 @@ import akka.dispatch.Promise
 import Codes.emptyResponse
 import akka.actor.Props
 
+private[persist] class Progress {
+  private[this] var cnt1:Long = 0
+  def cnt:Long = {
+    synchronized { cnt1 }
+  }
+  def cnt_=(c:Long) { 
+    synchronized{ cnt1 = c }
+  }
+}
+
 private[persist] class Messaging(config: DatabaseConfig, client: Option[Client]) extends CheckedActor {
 
   private[this] val system = context.system
@@ -44,10 +54,18 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
   private[this] val change = context.actorOf(Props(new Change(config, client, self)), name = "change")
   private[this] var serverMsgCount: Long = 0L
 
-  private class Group(
-    sender:ActorRef,
-    uid:Long,
-    w: Int) {
+  private trait Group {
+
+    def addCommand(cmd: String): Unit
+    def ready(): Unit
+    def endCommand(cmd: String): Unit
+    def send(): Boolean
+  }
+
+  private class PutGroup(
+    sender: ActorRef,
+    uid: Long,
+    w: Int) extends Group {
     private[this] var needSync = 0
     private[this] var needOther = 0
     private[this] var sync = 0
@@ -55,9 +73,9 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
     private[this] var isReady = false
     def addCommand(cmd: String) {
       if (cmd == "sync") {
-          if (needSync < w) needSync += 1 
+        if (needSync < w) needSync += 1
       } else {
-          needOther += 1 
+        needOther += 1
       }
     }
     def ready() {
@@ -76,12 +94,43 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
     }
   }
 
+  private class CopyGroup(
+    nodeRef: ActorRef,
+    ringName: String,
+    nodeName: String,
+    tableName: String,
+    toRingName: String,
+    progress:Progress) extends Group {
+    private[this] var needOther = 0
+    private[this] var other = 0
+    private[this] var isReady = false
+    private[this] var high:Int = 0
+    def addCommand(cmd: String) {
+      needOther += 1
+    }
+    def ready() {
+      isReady = true
+    }
+    def endCommand(cmd: String) {
+      other += 1
+      progress.cnt = other
+    }
+    def send(): Boolean = {
+      if (isReady && other >= needOther) {
+        nodeRef ! ("nodeCopyAct", toRingName, tableName)
+        //println("MSGRINGCOPY:" + " /" + ringName + "/" + nodeName + "/" + tableName + " => " + toRingName + " " + other)
+        true
+      } else {
+        false
+      }
+    }
+  }
+
   private class Groups {
     // TODO time out groups (2 minutes???)
     private[this] val groups = HashMap[String, HashMap[Long, Group]]()
 
-    def addGroup(table: String, id: Long, sender:ActorRef, uid:Long , needSync: Int) {
-      val group = new Group(sender, uid, needSync)
+    def addGroup(table: String, id: Long, group:Group) { 
       val subgroup = if (groups.contains(table)) {
         groups(table)
       } else {
@@ -420,29 +469,22 @@ private[persist] class Messaging(config: DatabaseConfig, client: Option[Client])
       val msg = new ServerMsg(cmd, ringName, tableName, key, value, id)
       msgs.newMsg(msg)
     }
-    //case (cmd: String, ringName: String, tableName: String, key: String, value: Any) => {
-      //throw new SystemException(Codes.InternalError, JsonObject("cmd" -> cmd, "table" -> tableName))
-      // server request
-      // TODO value should be String so msgs can be stored in persist store
-      /*
-      serverMsgCount += 1
-      val msg = new ServerMsg(cmd, ringName, tableName, key, value, 0)
-      msgs.newMsg(msg)
-      */
-    //}
     case (cmd: String, ringName: String, reply: Promise[Any], tableName: String, key: String, value: Any) => {
       // client request
       val msg = new ClientMsg(cmd, ringName, tableName, key, value, reply)
       msgs.newMsg(msg)
     }
-    case (1, "startgroup", tableName: String, id: Long, sender:ActorRef, uid:Long, syncCnt: Int) => {
-      groups.addGroup(tableName, id, sender, uid, syncCnt)
+    case (1, "startgroup", tableName: String, id: Long, sender: ActorRef, uid: Long, syncCnt: Int) => {
+      val group = new PutGroup(sender, uid, syncCnt)
+      groups.addGroup(tableName, id, group)
+    }
+    case (1, "startcopygroup", ringName:String, nodeName:String, tableName:String, id:Long, nodeRef:ActorRef, toRingName:String, progress:Progress) => {
+      val group = new CopyGroup(nodeRef, ringName, nodeName, tableName, toRingName, progress)
+      groups.addGroup(tableName, id, group)
     }
     case (1, "endgroup", tableName: String, id: Long) => {
       groups.ready(tableName, id)
     }
-    // TODO client request to server
-    // TODO client request to monitor
     case (code: String, uid: Long, response: String) => {
       // response
       msgs.get(uid) match {

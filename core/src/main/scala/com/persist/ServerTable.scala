@@ -42,7 +42,7 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
     val reduce = check(new ServerTableReduce)
     val sync = check(new ServerTableSync)
     val bal = check(new ServerTableBalance(context.system))
-    val back = check(new ServerTableBackground)
+    val back = check(new ServerTableBackground(context.system))
   }
 
   val info = all.info
@@ -228,8 +228,8 @@ private[persist] class ServerTable(databaseName: String, ringName: String, nodeN
         if (ringName == ringName1) bal.setPrevNext()
         sender ! Codes.Ok
       }
-      case ("copyRing", ringName1: String) => {
-        back.ringCopyTask(ringName1)
+      case ("copyRing", ringName1: String, nodeRef:ActorRef) => {
+        if (ops.canWrite) back.ringCopyTask(ringName1, nodeRef)
         sender ! Codes.Ok
       }
       case ("ringReady", ringName: String) => {

@@ -17,91 +17,143 @@
 
 package com.persist
 
-import com.persist.JsonOps._
+import JsonOps._
+import JsonKeys._
 import akka.actor.ActorRef
+import akka.actor.ActorSystem
 import Stores._
 import Codes.emptyResponse
+import akka.dispatch.DefaultPromise
+import akka.util.duration._
 
-private[persist] case class RingCopyTask(val ringName: String, val low: String, var high: String)
+private[persist] case class RingCopyTasks(send: ActorRef, tableName: String, groupId: Long, toRingName: String, progress: Progress) {
+  var sent:Int = 0
+  private[this] var cnt: Int = 0
+  def setCnt(cnt: Int) {
+    this.cnt = cnt
+    if (cnt == 0) done
+  }
+  def done() {
+    cnt -= 1
+    if (cnt == 0) {
+      send ! (1, "endgroup", tableName, groupId)
+    }
+  }
+}
+
+private[persist] case class RingCopyTask(val low: String, var high: String, tasks: RingCopyTasks) {
+  val high1 = high
+  println(Compact(keyDecode(low)) + ":" + Compact(keyDecode(high)))
+  def done() {
+    tasks.done()
+  }
+}
 
 private[persist] trait ServerTableBackgroundComponent { this: ServerTableAssembly =>
   val back: ServerTableBackground
-  class ServerTableBackground {
+  class ServerTableBackground(system:ActorSystem) {
 
-    private var tokenSent = false
-    private var load: Int = 50
+    private[this] var tokenSent = false
+    private[this] var load: Int = 50
     var qcnt = 0
 
-    private var tasks = List[RingCopyTask]()
+    private[this] final val fastOption = Compact(JsonObject("fast" -> true))
 
-    private def doCopy(ringName: String, key: String) {
-      val meta = info.storeTable.getMeta(key) match {
-        case Some(m: String) => m
-        case None => "{}"
+    private[this] var tasks = List[RingCopyTask]()
+    
+    private type Action = Int
+    private[this] final val DONE = 0
+    private[this] final val THROTTLED = 1
+    private[this] final val MORE = 2
+    
+    private[this] final val minDelay = 10
+    private[this] final val maxDelay = 2000
+    private[this] final var delay = minDelay
+    
+    private[this] final val maxInFlight = 40
+
+    private def doCopy(task: RingCopyTask, key: String):Action = {
+      val inFlight = task.tasks.sent - task.tasks.progress.cnt
+      if (inFlight > maxInFlight) {
+        THROTTLED
+      } else {
+        val meta = info.storeTable.getMeta(key) match {
+          case Some(m: String) => m
+          case None => "{}"
+        }
+        val v = info.storeTable.get(key) match {
+          case Some(v1: String) => v1
+          case None => NOVAL
+        }
+        sync.toRing(task.tasks.toRingName, key, meta, v, task.tasks.groupId, fastOption)
+        task.tasks.sent += 1
+        MORE
       }
-      val v = info.storeTable.get(key) match {
-        case Some(v1: String) => v1
-        case None => NOVAL
-      }
-      sync.toRing(ringName, key, meta, v, emptyResponse)
     }
 
-    private def ringCopy(task: RingCopyTask): Boolean = {
+    private def ringCopy(task: RingCopyTask): Action = {
       val key = info.storeTable.prev(task.high, false)
       key match {
         case Some(s) => {
           if (s >= task.low) {
-            doCopy(task.ringName, s)
-            task.high = s
-            true
+            val act = doCopy(task, s)
+            if (act != THROTTLED) task.high = s
+            act
           } else {
-            false
+            DONE
           }
         }
-        case None => false
+        case None => DONE
       }
     }
 
-    def ringCopyTask(ringName: String) = {
+    def ringCopyTask(ringName: String, nodeRef:ActorRef) = {
+      val progress = new Progress
+      val groupId = info.uidGen.get
+      val ringTasks = new RingCopyTasks(info.send, info.tableName, groupId, ringName, progress)
+      info.send ! (1, "startcopygroup", info.ringName, info.nodeName, info.tableName, groupId, nodeRef, ringName, progress)
       if (info.low == info.high) {
         // Nothing here
+        ringTasks.setCnt(0)
       } else if (info.low < info.high) {
-        val task = new RingCopyTask(ringName, info.low, info.high)
+        ringTasks.setCnt(1)
+        val task = new RingCopyTask(info.low, info.high, ringTasks)
         tasks = task +: tasks
       } else {
-        val task1 = new RingCopyTask(ringName, "", info.high)
+        ringTasks.setCnt(2)
+        val task1 = new RingCopyTask("", info.high, ringTasks)
         tasks = task1 +: tasks
-        val task2 = new RingCopyTask(ringName, info.low, "\uFFFF")
+        val task2 = new RingCopyTask(info.low, "\uFFFF", ringTasks)
         tasks = task2 +: tasks
       }
-      // TODO change to incremental
-      //for (task <- tasks) {
-      //  while (ringCopy(task)) { }
-      //}
     }
 
-    private def ringTask(task: RingCopyTask, cnt: Int): Boolean = {
+    private def ringTask(task: RingCopyTask, cnt: Int): Action = {
       for (i <- 0 until cnt) {
-        if (ringCopy(task)) {
-        } else {
-          tasks = tasks.filter(t => t != task)
-          return false
+        val act = ringCopy(task)
+        if (act != MORE) {
+          if (act == DONE) {
+            task.done()
+            tasks = tasks.filter(t => t != task)
+          }
+          return act
         }
       }
-      true
+      MORE
     }
 
-    private def ringTasks(cnt: Int): Boolean = {
-      var more = false
+    private def ringTasks(cnt: Int): Action = {
+      var act = DONE
       for (task <- tasks) {
-        if (ringTask(task, cnt)) more = true
+        val act1 = ringTask(task, cnt)
+        act = math.max(act,act1)
       }
-      more
+      act
     }
 
     def ringCopyActive(ringName: String): Boolean = {
       for (task <- tasks) {
-        if (task.ringName == ringName) return true
+        if (task.tasks.toRingName == ringName) return true
       }
       false
     }
@@ -114,16 +166,23 @@ private[persist] trait ServerTableBackgroundComponent { this: ServerTableAssembl
     }
 
     def act(self: ActorRef) = {
-      val more = ringTasks(1)
+      val act = ringTasks(1)
       if (bal.canSend) bal.sendToNext
       if (bal.canReport) bal.reportToPrev
       // send info to monitor
       if (!tokenSent) {
-        if (more || qcnt > 1) {
+        if (act != DONE || qcnt > 1) {
           val t = System.currentTimeMillis()
           //println("token:" + self + ":" + qcnt + ":" + more)
-          qcnt = 0
-          self ! ("token", t)
+          if (act == MORE || qcnt > 1) {
+            qcnt = 0
+            self ! ("token", t)
+            delay = minDelay
+          } else {
+            println("DELAY: "+ delay)
+            system.scheduler.scheduleOnce(delay milliseconds, self, ("token", t))
+            if (delay < maxDelay) delay = 2 * delay
+          }
           tokenSent = true
         } else {
           //println("token idle:" + self)
@@ -135,6 +194,7 @@ private[persist] trait ServerTableBackgroundComponent { this: ServerTableAssembl
       val t1 = System.currentTimeMillis()
       val delta = t1 - t
       // set and use load (based on cnt and t)
+      
       tokenSent = false
     }
   }

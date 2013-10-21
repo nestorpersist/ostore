@@ -255,8 +255,9 @@ private[persist] class ServerActor(serverConfig: Json, create: Boolean) extends 
       }
       case "copyRing" => {
         val ringName = jgetString(request, "ring")
-        val fromRingName = jgetString(request, "from")
-        val f = database ? ("copyRing", ringName, fromRingName)
+        val fromRingName = jgetString(request, "fromRing")
+        val fromNodeName = jgetString(request, "fromNode")
+        val f = database ? ("copyRing", ringName, fromRingName, fromNodeName)
         Await.result(f, 5 seconds)
         sender ! (Codes.Ok, emptyResponse)
       }

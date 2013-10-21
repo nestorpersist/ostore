@@ -390,6 +390,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
         val jconfig = jget(info, "c")
         val config = DatabaseConfig(databaseName, jconfig)
         val (fromRingName, fromRingConfig) = config.rings.head
+        val fromNodeName = fromRingConfig.nodeSeq(1)
         val newRequest = JsonObject("config" -> jconfig)
         dba.pass("newDatabase", newRequest, servers = newServers)
 
@@ -402,7 +403,7 @@ private[persist] class Manager(host: String, port: Int) extends CheckedActor {
         dba.pass("addRing", request + ("nodes" -> nodes), servers = allServers)
 
         // set up copy acts
-        dba.pass("copyRing", request + ("from" -> fromRingName))
+        dba.pass("copyRing", request + ("fromRing" -> fromRingName, "fromNode" -> fromNodeName))
 
         dba.pass("start", JsonObject("balance" -> true))
 
